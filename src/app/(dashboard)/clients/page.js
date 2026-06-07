@@ -18,9 +18,39 @@ import {
   Clock, 
   AlertCircle,
   Eye,
+  EyeOff,
   IndianRupee
 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
+
+const maskEmail = (email) => {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [local, domain] = parts;
+  if (local.length <= 3) {
+    return local.substring(0, 1) + '*'.repeat(local.length - 1) + '@' + domain;
+  }
+  if (local.length <= 6) {
+    return local.substring(0, 2) + '***' + local.substring(local.length - 1) + '@' + domain;
+  }
+  return local.substring(0, 3) + '*****' + local.slice(-3) + '@' + domain;
+};
+
+const maskPhone = (phone) => {
+  if (!phone) return '';
+  const clean = phone.replace(/\s+/g, '');
+  if (clean.startsWith('+91')) {
+    const local = clean.slice(3);
+    if (local.length >= 5) {
+      return `+91 ${local.substring(0, 2)}*****${local.slice(-3)}`;
+    }
+  }
+  if (clean.length >= 7) {
+    return `${clean.substring(0, 3)}*****${clean.slice(-3)}`;
+  }
+  return phone;
+};
 
 export default function ClientsPage() {
   const { showToast, showConfirm } = useNotification();
@@ -34,6 +64,20 @@ export default function ClientsPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedClientData, setSelectedClientData] = useState(null); // includes { client, projects, invoices }
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Masking states
+  const [revealedEmails, setRevealedEmails] = useState({});
+  const [revealedPhones, setRevealedPhones] = useState({});
+  const [revealDetailEmail, setRevealDetailEmail] = useState(false);
+  const [revealDetailPhone, setRevealDetailPhone] = useState(false);
+
+  const toggleEmailVisibility = (clientId) => {
+    setRevealedEmails(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
+
+  const togglePhoneVisibility = (clientId) => {
+    setRevealedPhones(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
 
   // Form state
   const [clientForm, setClientForm] = useState({
@@ -108,6 +152,8 @@ export default function ClientsPage() {
       setLoadingDetails(true);
       setIsDetailModalOpen(true);
       setSelectedClientData(null);
+      setRevealDetailEmail(false);
+      setRevealDetailPhone(false);
       const res = await fetch(`/api/clients/${clientId}`);
       if (!res.ok) throw new Error('Failed to load client details');
       const data = await res.json();
@@ -270,14 +316,28 @@ export default function ClientsPage() {
                   <td>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                       <Mail size={14} />
-                      {client.email}
+                      <span>{revealedEmails[client._id] ? client.email : maskEmail(client.email)}</span>
+                      <button 
+                        onClick={() => toggleEmailVisibility(client._id)}
+                        style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={revealedEmails[client._id] ? "Hide Email" : "Show Email"}
+                      >
+                        {revealedEmails[client._id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
                     </span>
                   </td>
                   <td>
                     {client.phone ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         <Phone size={14} />
-                        {client.phone}
+                        <span>{revealedPhones[client._id] ? client.phone : maskPhone(client.phone)}</span>
+                        <button 
+                          onClick={() => togglePhoneVisibility(client._id)}
+                          style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title={revealedPhones[client._id] ? "Hide Phone" : "Show Phone"}
+                        >
+                          {revealedPhones[client._id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
                       </span>
                     ) : (
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
@@ -429,8 +489,30 @@ export default function ClientsPage() {
                       </span>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Mail size={14} /> {selectedClientData.client.email}</span>
-                      {selectedClientData.client.phone && <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Phone size={14} /> {selectedClientData.client.phone}</span>}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Mail size={14} />
+                        <span>{revealDetailEmail ? selectedClientData.client.email : maskEmail(selectedClientData.client.email)}</span>
+                        <button 
+                          onClick={() => setRevealDetailEmail(!revealDetailEmail)}
+                          style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}
+                          title={revealDetailEmail ? "Hide Email" : "Show Email"}
+                        >
+                          {revealDetailEmail ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </span>
+                      {selectedClientData.client.phone && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Phone size={14} />
+                          <span>{revealDetailPhone ? selectedClientData.client.phone : maskPhone(selectedClientData.client.phone)}</span>
+                          <button 
+                            onClick={() => setRevealDetailPhone(!revealDetailPhone)}
+                            style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}
+                            title={revealDetailPhone ? "Hide Phone" : "Show Phone"}
+                          >
+                            {revealDetailPhone ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </span>
+                      )}
                       {selectedClientData.client.address && <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><MapPin size={14} style={{ marginTop: '2px' }} /> <span style={{ whiteSpace: 'pre-wrap' }}>{selectedClientData.client.address}</span></span>}
                     </div>
                   </div>
