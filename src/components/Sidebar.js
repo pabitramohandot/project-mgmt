@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
@@ -51,7 +51,12 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar no-print">
+    <aside className={`sidebar no-print ${isOpen ? 'mobile-open' : ''}`}>
+      {/* Mobile Close Button */}
+      <button className="mobile-sidebar-close" onClick={onClose} aria-label="Close menu">
+        <X size={20} />
+      </button>
+
       <div className="logo">
         <LayoutDashboard size={28} />
         <span>IONETWEB Manager</span>
@@ -66,7 +71,7 @@ export default function Sidebar() {
 
             return (
               <li key={item.name} className={`menu-item ${isActive ? 'active' : ''}`}>
-                <Link href={item.path} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <Link href={item.path} onClick={onClose} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Icon size={20} />
                     <span>{item.name}</span>

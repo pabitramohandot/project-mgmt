@@ -164,7 +164,7 @@ export default function Dashboard() {
             <AlertTriangle size={24} style={{ strokeWidth: 2 }} />
             <span>Pending Tasks & Actions Required</span>
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+          <div className="tasks-grid">
             {stats.pendingTasks.map((task) => {
               let borderLeftColor = 'var(--accent-primary)';
               if (task.type === 'hosting_expiry') {
@@ -214,7 +214,7 @@ export default function Dashboard() {
       )}
 
       {/* Recent Activity Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+      <div className="grid-2col">
         {/* Recent Projects */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

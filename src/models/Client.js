@@ -17,6 +17,10 @@ const ClientSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    whatsapp: {
+      type: String,
+      trim: true,
+    },
     company: {
       type: String,
       trim: true,

@@ -271,10 +271,10 @@ function InvoicesContent() {
             <thead>
               <tr>
                 <th>Invoice #</th>
-                <th>Project</th>
+                <th className="hide-mobile">Project</th>
                 <th>Client</th>
-                <th>Issued</th>
-                <th>Due Date</th>
+                <th className="hide-mobile">Issued</th>
+                <th className="hide-mobile">Due Date</th>
                 <th>Total</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -288,7 +288,7 @@ function InvoicesContent() {
                       {inv.invoiceNumber}
                     </Link>
                   </td>
-                  <td>
+                  <td className="hide-mobile">
                     {inv.project ? (
                       <Link href={`/projects/${inv.project._id}`} style={{ color: 'var(--text-primary)' }}>
                         {inv.project.name}
@@ -298,8 +298,8 @@ function InvoicesContent() {
                     )}
                   </td>
                   <td>{inv.clientName}</td>
-                  <td>{new Date(inv.issueDate).toLocaleDateString()}</td>
-                  <td>{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Upon Receipt'}</td>
+                  <td className="hide-mobile">{new Date(inv.issueDate).toLocaleDateString()}</td>
+                  <td className="hide-mobile">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Upon Receipt'}</td>
                   <td style={{ fontWeight: 600, color: 'var(--accent-secondary)' }}>{formatCurrency(inv.total)}</td>
                   <td>
                     <span className={`badge badge-${inv.status.toLowerCase()}`}>

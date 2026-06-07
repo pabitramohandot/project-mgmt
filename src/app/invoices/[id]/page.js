@@ -233,9 +233,9 @@ export default function InvoiceDetailPage() {
     <div className="public-invoice-container animate-fade-in">
       <div style={{ width: '100%', maxWidth: '900px' }}>
         {/* Action header - hidden on print */}
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div className="invoice-detail-header no-print">
           {isAdmin ? (
-            <Link href="/invoices" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <Link href="/invoices" className="invoice-back-link">
               <ArrowLeft size={16} />
               <span>Back to Invoices</span>
             </Link>
@@ -243,7 +243,7 @@ export default function InvoiceDetailPage() {
             <div /> // placeholder for flex alignment
           )}
           
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div className="invoice-detail-actions">
             {updating && (
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginRight: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <Clock className="animate-spin" size={14} />
@@ -342,7 +342,7 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Linked Project / Direct Billing Context */}
-          <div style={{ background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '10px', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="invoice-project-link-card">
             <div>
               {invoice.project ? (
                 <>
@@ -364,31 +364,33 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Items Table */}
-          <table className="invoice-table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th style={{ textAlign: 'right', width: '80px' }}>Qty</th>
-                <th style={{ textAlign: 'right', width: '120px' }}>Rate</th>
-                <th style={{ textAlign: 'right', width: '150px' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.items.map((item, index) => (
-                <tr key={index}>
-                  <td style={{ fontWeight: 500 }}>{item.description}</td>
-                  <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                  <td style={{ textAlign: 'right' }}>{formatCurrency(item.rate)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>
-                    {formatCurrency(item.quantity * item.rate)}
-                  </td>
+          <div className="invoice-table-wrapper">
+            <table className="invoice-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th style={{ textAlign: 'right', width: '80px' }}>Qty</th>
+                  <th style={{ textAlign: 'right', width: '120px' }}>Rate</th>
+                  <th style={{ textAlign: 'right', width: '150px' }}>Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invoice.items.map((item, index) => (
+                  <tr key={index}>
+                    <td style={{ fontWeight: 500 }}>{item.description}</td>
+                    <td style={{ textAlign: 'right' }}>{item.quantity}</td>
+                    <td style={{ textAlign: 'right' }}>{formatCurrency(item.rate)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>
+                      {formatCurrency(item.quantity * item.rate)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Totals Section */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem', alignItems: 'start' }}>
+          <div className="invoice-totals-grid">
             {/* Notes */}
             <div style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
               {invoice.notes && (

@@ -70,6 +70,7 @@ export default function ClientsPage() {
   const [revealedPhones, setRevealedPhones] = useState({});
   const [revealDetailEmail, setRevealDetailEmail] = useState(false);
   const [revealDetailPhone, setRevealDetailPhone] = useState(false);
+  const [revealDetailWhatsapp, setRevealDetailWhatsapp] = useState(false);
 
   const toggleEmailVisibility = (clientId) => {
     setRevealedEmails(prev => ({ ...prev, [clientId]: !prev[clientId] }));
@@ -85,6 +86,7 @@ export default function ClientsPage() {
     name: '',
     email: '',
     phone: '',
+    whatsapp: '',
     company: '',
     address: ''
   });
@@ -127,6 +129,7 @@ export default function ClientsPage() {
       name: '',
       email: '',
       phone: '',
+      whatsapp: '',
       company: '',
       address: ''
     });
@@ -140,6 +143,7 @@ export default function ClientsPage() {
       name: client.name,
       email: client.email,
       phone: client.phone || '',
+      whatsapp: client.whatsapp || '',
       company: client.company || '',
       address: client.address || ''
     });
@@ -154,6 +158,7 @@ export default function ClientsPage() {
       setSelectedClientData(null);
       setRevealDetailEmail(false);
       setRevealDetailPhone(false);
+      setRevealDetailWhatsapp(false);
       const res = await fetch(`/api/clients/${clientId}`);
       if (!res.ok) throw new Error('Failed to load client details');
       const data = await res.json();
@@ -289,9 +294,9 @@ export default function ClientsPage() {
             <thead>
               <tr>
                 <th>Client Name</th>
-                <th>Company</th>
+                <th className="hide-mobile">Company</th>
                 <th>Email</th>
-                <th>Phone</th>
+                <th className="hide-mobile">Phone</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -303,7 +308,7 @@ export default function ClientsPage() {
                       {client.name}
                     </span>
                   </td>
-                  <td>
+                  <td className="hide-mobile">
                     {client.company ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
                         <Building size={14} style={{ color: 'var(--accent-secondary)' }} />
@@ -326,7 +331,7 @@ export default function ClientsPage() {
                       </button>
                     </span>
                   </td>
-                  <td>
+                  <td className="hide-mobile">
                     {client.phone ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         <Phone size={14} />
@@ -418,16 +423,29 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Company Name</label>
-                <input 
-                  type="text" 
-                  name="company"
-                  className="form-input" 
-                  placeholder="e.g., Acme Corporation"
-                  value={clientForm.company}
-                  onChange={handleInputChange}
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">WhatsApp Number</label>
+                  <input 
+                    type="text" 
+                    name="whatsapp"
+                    className="form-input" 
+                    placeholder="e.g., +91 9876543210"
+                    value={clientForm.whatsapp || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Company Name</label>
+                  <input 
+                    type="text" 
+                    name="company"
+                    className="form-input" 
+                    placeholder="e.g., Acme Corporation"
+                    value={clientForm.company}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
               <div className="form-group">
@@ -513,8 +531,51 @@ export default function ClientsPage() {
                           </button>
                         </span>
                       )}
+                      {selectedClientData.client.whatsapp && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                          </svg>
+                          <span>{revealDetailWhatsapp ? selectedClientData.client.whatsapp : maskPhone(selectedClientData.client.whatsapp)}</span>
+                          <button 
+                            onClick={() => setRevealDetailWhatsapp(!revealDetailWhatsapp)}
+                            style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}
+                            title={revealDetailWhatsapp ? "Hide WhatsApp" : "Show WhatsApp"}
+                          >
+                            {revealDetailWhatsapp ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </span>
+                      )}
                       {selectedClientData.client.address && <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><MapPin size={14} style={{ marginTop: '2px' }} /> <span style={{ whiteSpace: 'pre-wrap' }}>{selectedClientData.client.address}</span></span>}
                     </div>
+
+                    {/* Contact Actions for direct calling/chatting */}
+                    {(selectedClientData.client.phone || selectedClientData.client.whatsapp) && (
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                        {selectedClientData.client.phone && (
+                          <a 
+                            href={`tel:${selectedClientData.client.phone}`}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <Phone size={12} /> Call
+                          </a>
+                        )}
+                        {(selectedClientData.client.whatsapp || selectedClientData.client.phone) && (
+                          <a 
+                            href={`https://api.whatsapp.com/send?phone=${(selectedClientData.client.whatsapp || selectedClientData.client.phone).replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-whatsapp"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.16 1.449 4.815 1.451 5.432.002 9.851-4.416 9.854-9.852.002-2.633-1.02-5.107-2.88-6.97C16.565 1.96 14.094.939 11.465.939c-5.437 0-9.857 4.418-9.859 9.856 0 1.76.47 3.47 1.365 4.978l-1.026 3.75 3.864-.986zm11.215-6.738c-.29-.144-1.711-.844-1.977-.94-.266-.097-.46-.144-.652.144-.193.289-.748.94-.917 1.133-.17.192-.338.217-.628.072-.29-.144-1.226-.452-2.335-1.442-.863-.77-1.447-1.72-1.616-2.01-.17-.29-.018-.447.127-.59.13-.129.29-.338.435-.507.145-.168.193-.289.29-.482.097-.193.048-.36-.024-.507-.072-.145-.652-1.57-.893-2.147-.234-.565-.47-.488-.652-.497-.17-.008-.362-.01-.555-.01-.193 0-.507.072-.772.36-.266.289-1.014.992-1.014 2.418 0 1.427 1.038 2.808 1.183 3.001.145.193 2.043 3.12 4.949 4.373.69.298 1.23.476 1.65.61.694.22 1.326.19 1.825.115.556-.083 1.711-.699 1.953-1.374.242-.675.242-1.253.17-1.374-.073-.12-.266-.193-.556-.34z"/>
+                            </svg> WhatsApp
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Financial Stats Widget */}

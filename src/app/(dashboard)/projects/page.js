@@ -297,8 +297,8 @@ export default function ProjectsPage() {
                 <th>Project Name</th>
                 <th>Client</th>
                 <th>Budget</th>
-                <th>Due Date</th>
-                <th>Status Message</th>
+                <th className="hide-mobile">Due Date</th>
+                <th className="hide-mobile">Status Message</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -321,8 +321,8 @@ export default function ProjectsPage() {
                     </td>
                     <td>{project.clientName}</td>
                     <td style={{ fontWeight: 600, color: 'var(--accent-secondary)' }}>{formatCurrency(project.budget)}</td>
-                    <td>{project.endDate ? new Date(project.endDate).toLocaleDateString('en-IN') : 'No Date'}</td>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td className="hide-mobile">{project.endDate ? new Date(project.endDate).toLocaleDateString('en-IN') : 'No Date'}</td>
+                    <td className="hide-mobile" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {latestUpdate ? (
                         <span title={`${latestUpdate.message} (${new Date(latestUpdate.date).toLocaleDateString('en-IN')})`}>
                           {latestUpdate.message}

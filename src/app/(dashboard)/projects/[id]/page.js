@@ -484,16 +484,16 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Main Details and Checklist Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '2rem', alignItems: 'start' }}>
+      <div className="project-detail-grid">
         
         {/* Project info card */}
         <div>
           <div className="card" style={{ marginBottom: '2rem' }}>
             {isEditing ? (
               <form id="project-edit-form" onSubmit={handleEditSubmit}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div className="project-edit-card-header">
                   <h3>Edit Project Details</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="hide-mobile" style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={() => setIsEditing(false)}>Cancel</button>
                     <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} disabled={updating}>
                       {updating ? 'Saving...' : 'Save'}
@@ -537,7 +537,7 @@ export default function ProjectDetailPage() {
 
                   {isAddClientOpen ? (
                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="form-row" style={{ gap: '0.75rem' }}>
                         <div className="form-group">
                           <label className="form-label" style={{ fontSize: '0.75rem' }}>Client Name *</label>
                           <input 
@@ -804,7 +804,7 @@ export default function ProjectDetailPage() {
               </form>
             ) : (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                <div className="project-detail-card-header">
                   <div>
                     <span className={`badge badge-${project.status.toLowerCase().replace(' ', '')}`} style={{ marginBottom: '0.75rem' }}>
                       {project.status}
@@ -826,7 +826,7 @@ export default function ProjectDetailPage() {
                 </p>
 
                 {/* Project Metadata Details */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                <div className="project-metadata-grid">
                   <div>
                     <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>CLIENT DETAILS</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -885,7 +885,7 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Expiry Details Section */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', borderTop: '1px solid var(--border-color)', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
+                <div className="project-expiry-grid">
                   <div>
                     <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>HOSTING EXPIRY</h4>
                     {project.hostingExpiry ? (
@@ -962,7 +962,7 @@ export default function ProjectDetailPage() {
                               )}
                             </div>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
+                            <div className="project-cred-grid" style={{ fontSize: '0.85rem' }}>
                               <div>
                                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>Username</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
