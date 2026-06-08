@@ -2,13 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
+  const [theme, setTheme] = useState('dark');
+
+  useEffect(() => {
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    setTheme(activeTheme);
+  }, []);
+
+  const toggleTheme = (newTheme) => {
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    setTheme(newTheme);
+  };
 
   useEffect(() => {
     async function fetchPendingCount() {
@@ -35,6 +47,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Clients', path: '/clients', icon: Users },
     { name: 'Invoices', path: '/invoices', icon: FileSpreadsheet },
+    { name: 'Credentials', path: '/credentials', icon: Key },
     { name: 'Pending Tasks', path: '/tasks', icon: AlertTriangle, badge: pendingCount },
     { name: 'Announcements', path: '/announcements', icon: Megaphone },
   ];
@@ -97,6 +110,64 @@ export default function Sidebar({ isOpen, onClose }) {
         </ul>
       </nav>
       
+      {/* Theme Toggle */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0.4rem',
+        borderRadius: '12px',
+        background: 'rgba(255, 255, 255, 0.02)',
+        border: '1px solid var(--border-color)',
+        marginBottom: '1rem',
+        gap: '0.4rem'
+      }}>
+        <button
+          onClick={() => toggleTheme('light')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '0.45rem',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            background: theme === 'light' ? 'var(--accent-primary)' : 'transparent',
+            color: theme === 'light' ? '#ffffff' : 'var(--text-secondary)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Sun size={14} />
+          <span>Day</span>
+        </button>
+        <button
+          onClick={() => toggleTheme('dark')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '0.45rem',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            background: theme === 'dark' ? 'var(--accent-primary)' : 'transparent',
+            color: theme === 'dark' ? '#ffffff' : 'var(--text-secondary)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Moon size={14} />
+          <span>Night</span>
+        </button>
+      </div>
+
       {/* Logout Action */}
       <button 
         onClick={handleLogout}

@@ -198,7 +198,7 @@ export default function Dashboard() {
                         {new Date(task.date).toLocaleDateString('en-IN')}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem', color: '#f8fafc' }}>{task.title}</h3>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>{task.title}</h3>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{task.description}</p>
                   </div>
                   <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>

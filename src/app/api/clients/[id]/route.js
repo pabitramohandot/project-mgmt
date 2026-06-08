@@ -10,14 +10,16 @@ export async function GET(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const client = await Client.findById(id);
+    const client = await Client.findById(id).lean();
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Return projects and invoices associated with this client
-    const projects = await Project.find({ client: id }).sort({ createdAt: -1 });
-    const invoices = await Invoice.find({ client: id }).sort({ createdAt: -1 });
+    // Return projects and invoices associated with this client, fetched in parallel
+    const [projects, invoices] = await Promise.all([
+      Project.find({ client: id }).sort({ createdAt: -1 }).lean(),
+      Invoice.find({ client: id }).sort({ createdAt: -1 }).lean()
+    ]);
 
     return NextResponse.json({ client, projects, invoices });
   } catch (error) {

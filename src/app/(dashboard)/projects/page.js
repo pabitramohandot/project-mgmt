@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Briefcase, Plus, Search, Calendar, IndianRupee, X, CheckSquare, Clock } from 'lucide-react';
+import { 
+  Briefcase, 
+  Plus, 
+  Search, 
+  Calendar, 
+  IndianRupee, 
+  X, 
+  Clock, 
+  AlertCircle
+} from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useNotification } from '@/components/NotificationProvider';
 
@@ -38,6 +47,27 @@ export default function ProjectsPage() {
   const [clients, setClients] = useState([]);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [inlineClient, setInlineClient] = useState({ name: '', email: '' });
+
+  const getClientAvatar = (name) => {
+    if (!name) return { initials: '?', bg: 'hsl(260, 50%, 50%)' };
+    const parts = name.trim().split(/\s+/);
+    const initials = parts.length > 1 
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
+
+    // Generate deterministic HSL color based on string hash
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    const s = 65; 
+    const l = 45; 
+    return {
+      initials,
+      bg: `hsl(${h}, ${s}%, ${l}%)`
+    };
+  };
 
   const fetchClients = async () => {
     try {
@@ -230,145 +260,186 @@ export default function ProjectsPage() {
     window.open(url, '_blank');
   };
 
+  // Stats calculation
+  const totalCount = projects.length;
+  const inProgressCount = projects.filter(p => p.status === 'In Progress').length;
+  const pendingCount = projects.filter(p => p.status === 'Pending').length;
+  const completedCount = projects.filter(p => p.status === 'Completed').length;
+
   return (
     <>
       <div className="animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Projects</h1>
-          <p className="page-subtitle">Manage, track, and update all client development milestones.</p>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Projects</h1>
+            <p className="page-subtitle">Manage, track, and update all client development milestones.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} />
+            <span>New Project</span>
+          </button>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} />
-          <span>New Project</span>
-        </button>
-      </div>
 
-      {/* Filter and Search Bar */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
-          <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
-          <input 
-            type="text" 
-            placeholder="Search projects by name, description, client..." 
-            className="form-input"
-            style={{ paddingLeft: '2.75rem' }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select 
-          className="form-select" 
-          style={{ width: '200px' }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="Planning">Planning</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Under Review">Under Review</option>
-          <option value="Completed">Completed</option>
-          <option value="Pending">Pending</option>
-        </select>
-      </div>
+        {/* Stats Summary strip */}
+        {projects.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1.25rem',
+            marginBottom: '2.5rem'
+          }}>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid var(--accent-primary)', background: 'var(--bg-card)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Total Projects</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-heading)', marginTop: '2px' }}>{totalCount}</span>
+              </div>
+            </div>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid #3b82f6', background: 'var(--bg-card)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>In Progress</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-heading)', marginTop: '2px', color: '#3b82f6' }}>{inProgressCount}</span>
+              </div>
+            </div>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid #f97316', background: 'var(--bg-card)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Pending / Overdue</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-heading)', marginTop: '2px', color: '#f97316' }}>{pendingCount}</span>
+              </div>
+            </div>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid #10b981', background: 'var(--bg-card)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Completed</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-heading)', marginTop: '2px', color: '#10b981' }}>{completedCount}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Projects Grid */}
-      {loading && projects.length === 0 ? (
-        <div className="empty-state">
-          <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
-          <h3>Loading projects...</h3>
+        {/* Filter and Search Bar with Toggle */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+            <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
+            <input 
+              type="text" 
+              placeholder="Search projects by name, description, client..." 
+              className="form-input"
+              style={{ paddingLeft: '2.75rem' }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select 
+            className="form-select" 
+            style={{ width: '200px' }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="Planning">Planning</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Completed">Completed</option>
+            <option value="Pending">Pending</option>
+          </select>
         </div>
-      ) : error ? (
-        <div className="empty-state" style={{ color: '#ef4444' }}>
-          <h3>Error loading projects</h3>
-          <p>{error}</p>
-        </div>
-      ) : projects.length === 0 ? (
-        <div className="empty-state">
-          <Briefcase size={48} />
-          <h3>No projects found</h3>
-          <p>Try refining your search or create a new project to get started.</p>
-        </div>
-      ) : (
-        <div className="table-container">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Project Name</th>
-                <th>Client</th>
-                <th>Budget</th>
-                <th className="hide-mobile">Due Date</th>
-                <th className="hide-mobile">Status Message</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => {
-                const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
-                  ? project.statusUpdates[project.statusUpdates.length - 1]
-                  : null;
 
-                return (
-                  <tr key={project._id}>
-                    <td>
-                      <Link href={`/projects/${project._id}`} style={{ fontWeight: 600, color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                        {project.name}
-                      </Link>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {project.description || 'No description'}
-                      </span>
-                    </td>
-                    <td>{project.clientName}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--accent-secondary)' }}>{formatCurrency(project.budget)}</td>
-                    <td className="hide-mobile">{project.endDate ? new Date(project.endDate).toLocaleDateString('en-IN') : 'No Date'}</td>
-                    <td className="hide-mobile" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {latestUpdate ? (
-                        <span title={`${latestUpdate.message} (${new Date(latestUpdate.date).toLocaleDateString('en-IN')})`}>
-                          {latestUpdate.message}
+        {/* Projects Listing View */}
+        {loading && projects.length === 0 ? (
+          <div className="empty-state">
+            <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
+            <h3>Loading projects...</h3>
+          </div>
+        ) : error ? (
+          <div className="empty-state" style={{ color: '#ef4444' }}>
+            <h3>Error loading projects</h3>
+            <p>{error}</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="empty-state">
+            <Briefcase size={48} />
+            <h3>No projects found</h3>
+            <p>Try refining your search or create a new project to get started.</p>
+          </div>
+        ) : (
+          /* List Table Layout */
+          <div className="table-container">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Project Name</th>
+                  <th>Client</th>
+                  <th>Budget</th>
+                  <th className="hide-mobile">Due Date</th>
+                  <th className="hide-mobile">Status Message</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map((project) => {
+                  const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
+                    ? project.statusUpdates[project.statusUpdates.length - 1]
+                    : null;
+
+                  return (
+                    <tr key={project._id}>
+                      <td>
+                        <Link href={`/projects/${project._id}`} style={{ fontWeight: 600, color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                          {project.name}
+                        </Link>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {project.description || 'No description'}
                         </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No status message</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge badge-${project.status.toLowerCase().replace(' ', '')}`}>
-                        {project.status}
-                      </span>
-                    </td>
-                    <td style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <Link href={`/projects/${project._id}`} className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-                        Details
-                      </Link>
-                      <button 
-                        onClick={() => handleWhatsAppShare(project)}
-                        className="btn" 
-                        style={{ 
-                          padding: '0.35rem 0.75rem', 
-                          fontSize: '0.8rem',
-                          background: 'rgba(37, 211, 102, 0.12)',
-                          color: '#25D366',
-                          border: '1px solid rgba(37, 211, 102, 0.25)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          transition: 'all 0.2s ease'
-                        }}
-                        title="Send update via WhatsApp"
-                      >
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.16 1.449 4.815 1.451 5.432.002 9.851-4.416 9.854-9.852.002-2.633-1.02-5.107-2.88-6.97C16.565 1.96 14.094.939 11.465.939c-5.437 0-9.857 4.418-9.859 9.856 0 1.76.47 3.47 1.365 4.978l-1.026 3.75 3.864-.986zm11.215-6.738c-.29-.144-1.711-.844-1.977-.94-.266-.097-.46-.144-.652.144-.193.289-.748.94-.917 1.133-.17.192-.338.217-.628.072-.29-.144-1.226-.452-2.335-1.442-.863-.77-1.447-1.72-1.616-2.01-.17-.29-.018-.447.127-.59.13-.129.29-.338.435-.507.145-.168.193-.289.29-.482.097-.193.048-.36-.024-.507-.072-.145-.652-1.57-.893-2.147-.234-.565-.47-.488-.652-.497-.17-.008-.362-.01-.555-.01-.193 0-.507.072-.772.36-.266.289-1.014.992-1.014 2.418 0 1.427 1.038 2.808 1.183 3.001.145.193 2.043 3.12 4.949 4.373.69.298 1.23.476 1.65.61.694.22 1.326.19 1.825.115.556-.083 1.711-.699 1.953-1.374.242-.675.242-1.253.17-1.374-.073-.12-.266-.193-.556-.34z"/>
-                        </svg>
-                        WhatsApp
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      </td>
+                      <td>{project.clientName}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--accent-secondary)' }}>{formatCurrency(project.budget)}</td>
+                      <td className="hide-mobile">{project.endDate ? new Date(project.endDate).toLocaleDateString('en-IN') : 'No Date'}</td>
+                      <td className="hide-mobile" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {latestUpdate ? (
+                          <span title={`${latestUpdate.message} (${new Date(latestUpdate.date).toLocaleDateString('en-IN')})`}>
+                            {latestUpdate.message}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No status message</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${project.status.toLowerCase().replace(' ', '')}`}>
+                          {project.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <Link href={`/projects/${project._id}`} className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                            Details
+                          </Link>
+                          <button 
+                            type="button"
+                            onClick={() => handleWhatsAppShare(project)}
+                            className="btn btn-whatsapp" 
+                            style={{ 
+                              padding: '0.35rem 0.75rem', 
+                              fontSize: '0.8rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem'
+                            }}
+                            title="Send update via WhatsApp"
+                          >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.16 1.449 4.815 1.451 5.432.002 9.851-4.416 9.854-9.852.002-2.633-1.02-5.107-2.88-6.97C16.565 1.96 14.094.939 11.465.939c-5.437 0-9.857 4.418-9.859 9.856 0 1.76.47 3.47 1.365 4.978l-1.026 3.75 3.864-.986zm11.215-6.738c-.29-.144-1.711-.844-1.977-.94-.266-.097-.46-.144-.652.144-.193.289-.748.94-.917 1.133-.17.192-.338.217-.628.072-.29-.144-1.226-.452-2.335-1.442-.863-.77-1.447-1.72-1.616-2.01-.17-.29-.018-.447.127-.59.13-.129.29-.338.435-.507.145-.168.193-.289.29-.482.097-.193.048-.36-.024-.507-.072-.145-.652-1.57-.893-2.147-.234-.565-.47-.488-.652-.497-.17-.008-.362-.01-.555-.01-.193 0-.507.072-.772.36-.266.289-1.014.992-1.014 2.418 0 1.427 1.038 2.808 1.183 3.001.145.193 2.043 3.12 4.949 4.373.69.298 1.23.476 1.65.61.694.22 1.326.19 1.825.115.556-.083 1.711-.699 1.953-1.374.242-.675.242-1.253.17-1.374-.073-.12-.266-.193-.556-.34z"/>
+                            </svg>
+                            <span>WhatsApp</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* New Project Modal */}

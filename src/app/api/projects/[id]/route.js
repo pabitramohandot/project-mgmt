@@ -9,21 +9,26 @@ export async function GET(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const project = await Project.findById(id);
+    const project = await Project.findById(id).lean();
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Auto-update to Pending if overdue
+    // Fetch invoices in parallel with checking/updating project overdue status
+    const invoicesPromise = Invoice.find({ project: id }).sort({ createdAt: -1 }).lean();
+
+    let finalProject = project;
     if (project.endDate && new Date(project.endDate) < new Date() && project.status !== 'Completed' && project.status !== 'Pending') {
-      project.status = 'Pending';
-      await project.save();
+      // Dynamic update for the response object
+      finalProject = { ...project, status: 'Pending' };
+      // Database update in background
+      Project.updateOne({ _id: id }, { $set: { status: 'Pending' } })
+        .catch(err => console.error('Error auto-updating project status in GET [id]:', err));
     }
 
-    // Fetch invoices associated with this project
-    const invoices = await Invoice.find({ project: id }).sort({ createdAt: -1 });
+    const invoices = await invoicesPromise;
 
-    return NextResponse.json({ project, invoices });
+    return NextResponse.json({ project: finalProject, invoices });
   } catch (error) {
     console.error('Project GET API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch project details' }, { status: 500 });

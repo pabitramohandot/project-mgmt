@@ -17,7 +17,7 @@ export async function GET(request) {
       ];
     }
 
-    const clients = await Client.find(query).sort({ name: 1 });
+    const clients = await Client.find(query).sort({ name: 1 }).lean();
     return NextResponse.json(clients);
   } catch (error) {
     console.error('Clients GET API Error:', error);

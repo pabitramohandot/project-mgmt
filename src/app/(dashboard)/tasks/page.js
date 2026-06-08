@@ -184,7 +184,7 @@ export default function PendingTasksPage() {
                         Dated: {new Date(task.date).toLocaleDateString('en-IN')}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc', marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                       {task.title}
                     </h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.4 }}>

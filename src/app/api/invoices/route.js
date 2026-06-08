@@ -16,7 +16,8 @@ export async function GET(request) {
 
     const invoices = await Invoice.find(query)
       .populate('project', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(invoices);
   } catch (error) {

@@ -10,42 +10,42 @@ export async function GET(request, context) {
 
     const invoice = await Invoice.findById(id)
       .populate('project', 'name description status clientName clientEmail client')
-      .populate('client', 'name email company phone address');
+      .populate('client', 'name email company phone address')
+      .lean();
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    const invoiceObj = invoice.toObject();
-    if ((!invoiceObj.clientCompany || !invoiceObj.clientAddress) || !invoiceObj.client) {
+    if ((!invoice.clientCompany || !invoice.clientAddress) || !invoice.client) {
       try {
         const Client = (await import('@/models/Client')).default;
         let clientObj = null;
 
-        if (invoiceObj.client) {
-          clientObj = await Client.findById(invoiceObj.client);
-        } else if (invoiceObj.project?.client) {
-          clientObj = await Client.findById(invoiceObj.project.client);
+        if (invoice.client) {
+          clientObj = await Client.findById(invoice.client).lean();
+        } else if (invoice.project?.client) {
+          clientObj = await Client.findById(invoice.project.client).lean();
         } else {
           // Fallback to name/email matching
           clientObj = await Client.findOne({
             $or: [
-              { name: { $regex: new RegExp(`^${invoiceObj.clientName}$`, 'i') } },
-              { email: invoiceObj.clientEmail?.toLowerCase().trim() }
+              { name: { $regex: new RegExp(`^${invoice.clientName}$`, 'i') } },
+              { email: invoice.clientEmail?.toLowerCase().trim() }
             ]
-          });
+          }).lean();
         }
 
         if (clientObj) {
-          if (!invoiceObj.client) invoiceObj.client = clientObj.toObject();
-          if (!invoiceObj.clientCompany) invoiceObj.clientCompany = clientObj.company || '';
-          if (!invoiceObj.clientAddress) invoiceObj.clientAddress = clientObj.address || '';
+          if (!invoice.client) invoice.client = clientObj;
+          if (!invoice.clientCompany) invoice.clientCompany = clientObj.company || '';
+          if (!invoice.clientAddress) invoice.clientAddress = clientObj.address || '';
         }
       } catch (clientErr) {
         console.error('Failed to resolve client details:', clientErr);
       }
     }
 
-    return NextResponse.json(invoiceObj);
+    return NextResponse.json(invoice);
   } catch (error) {
     console.error('Invoice GET API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch invoice details' }, { status: 500 });

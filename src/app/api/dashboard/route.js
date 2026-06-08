@@ -7,46 +7,58 @@ export async function GET() {
   try {
     await dbConnect();
 
-    // Auto update past-due projects to Pending
-    await Project.updateMany(
+    // Auto-update past-due projects to Pending in the background to avoid blocking the user request
+    Project.updateMany(
       {
         endDate: { $lt: new Date() },
         status: { $nin: ['Completed', 'Pending'] }
       },
       { $set: { status: 'Pending' } }
-    );
+    ).catch(err => console.error('Dashboard auto-update projects error:', err));
+
+    // Fetch all projects and invoices in parallel using lean() for maximum performance
+    const [allProjects, allInvoices] = await Promise.all([
+      Project.find({}).sort({ createdAt: -1 }).lean(),
+      Invoice.find({}).sort({ createdAt: -1 }).lean()
+    ]);
+
+    // Compute dynamic project status updates for current response (since DB update runs in background)
+    const processedProjects = allProjects.map(proj => {
+      if (proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed' && proj.status !== 'Pending') {
+        return { ...proj, status: 'Pending' };
+      }
+      return proj;
+    });
 
     // Project stats
-    const totalProjects = await Project.countDocuments();
-    const activeProjects = await Project.countDocuments({
-      status: { $in: ['Planning', 'In Progress', 'Under Review', 'Pending'] },
-    });
-    const completedProjects = await Project.countDocuments({ status: 'Completed' });
-
-    const allProjects = await Project.find({});
-    const totalBudget = allProjects.reduce((sum, proj) => sum + (proj.budget || 0), 0);
+    const totalProjects = processedProjects.length;
+    const activeProjects = processedProjects.filter(p => 
+      ['Planning', 'In Progress', 'Under Review', 'Pending'].includes(p.status)
+    ).length;
+    const completedProjects = processedProjects.filter(p => p.status === 'Completed').length;
+    const totalBudget = processedProjects.reduce((sum, proj) => sum + (proj.budget || 0), 0);
 
     // Invoice stats
-    const totalInvoices = await Invoice.countDocuments();
-    const paidInvoices = await Invoice.find({ status: 'Paid' });
-    const pendingInvoicesCount = await Invoice.countDocuments({ status: { $in: ['Draft', 'Sent', 'Overdue'] } });
+    const totalInvoices = allInvoices.length;
+    const paidInvoices = allInvoices.filter(inv => inv.status === 'Paid');
+    const pendingInvoicesCount = allInvoices.filter(inv => 
+      ['Draft', 'Sent', 'Overdue'].includes(inv.status)
+    ).length;
     
     const totalEarnings = paidInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-
-    const invoices = await Invoice.find({});
-    const totalPendingAmount = invoices
+    const totalPendingAmount = allInvoices
       .filter(inv => inv.status !== 'Paid')
       .reduce((sum, inv) => sum + (inv.total || 0), 0);
 
-    // Recent activity
-    const recentProjects = await Project.find({}).sort({ createdAt: -1 }).limit(5);
-    const recentInvoices = await Invoice.find({}).sort({ createdAt: -1 }).limit(5);
+    // Recent activity (since arrays are sorted by createdAt desc by mongoose, we can just slice them!)
+    const recentProjects = processedProjects.slice(0, 5);
+    const recentInvoices = allInvoices.slice(0, 5);
 
     // Compile Pending Tasks / Action Required
     const pendingTasks = [];
 
     // 1. Invoice not sent (Drafts)
-    const draftInvoices = await Invoice.find({ status: 'Draft' });
+    const draftInvoices = allInvoices.filter(inv => inv.status === 'Draft');
     for (const inv of draftInvoices) {
       pendingTasks.push({
         id: inv._id,
@@ -62,9 +74,9 @@ export async function GET() {
     const thirtySevenDaysFromNow = new Date();
     thirtySevenDaysFromNow.setDate(thirtySevenDaysFromNow.getDate() + 37);
 
-    const expiringHostingProjects = await Project.find({
-      hostingExpiry: { $ne: null, $lte: thirtySevenDaysFromNow }
-    });
+    const expiringHostingProjects = processedProjects.filter(proj => 
+      proj.hostingExpiry && new Date(proj.hostingExpiry) <= thirtySevenDaysFromNow
+    );
     for (const proj of expiringHostingProjects) {
       const remainingDays = Math.ceil((new Date(proj.hostingExpiry) - new Date()) / (1000 * 60 * 60 * 24));
       const expStr = remainingDays < 0 ? 'Expired' : `expires in ${remainingDays} days`;
@@ -79,10 +91,9 @@ export async function GET() {
     }
 
     // 3. Projects past due date (Pending status)
-    const overdueProjectsList = await Project.find({
-      endDate: { $lt: new Date() },
-      status: { $ne: 'Completed' }
-    });
+    const overdueProjectsList = processedProjects.filter(proj => 
+      proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed'
+    );
     for (const proj of overdueProjectsList) {
       pendingTasks.push({
         id: proj._id,

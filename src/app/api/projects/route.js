@@ -22,17 +22,26 @@ export async function GET(request) {
       ];
     }
 
-    // Auto update past-due projects to Pending
-    await Project.updateMany(
+    // Auto update past-due projects to Pending in the background to avoid blocking
+    Project.updateMany(
       {
         endDate: { $lt: new Date() },
         status: { $nin: ['Completed', 'Pending'] }
       },
       { $set: { status: 'Pending' } }
-    );
+    ).catch(err => console.error('Error auto-updating projects in GET:', err));
 
-    const projects = await Project.find(query).populate('client').sort({ createdAt: -1 });
-    return NextResponse.json(projects);
+    const projects = await Project.find(query).populate('client').sort({ createdAt: -1 }).lean();
+    
+    // Map status dynamically to Pending for any overdue project not yet saved in DB
+    const processedProjects = projects.map(proj => {
+      if (proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed' && proj.status !== 'Pending') {
+        return { ...proj, status: 'Pending' };
+      }
+      return proj;
+    });
+
+    return NextResponse.json(processedProjects);
   } catch (error) {
     console.error('Projects GET API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });

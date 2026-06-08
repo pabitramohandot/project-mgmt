@@ -31,6 +31,43 @@
   --status-sent: #3b82f6;
   --status-paid: #10b981;
   --status-overdue: #ef4444; /* Red */
+  
+  --table-header-bg: #0d0d1a;
+  --sticky-bar-bg: rgba(13, 13, 26, 0.75);
+  --toast-bg: rgba(13, 13, 26, 0.85);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: #ffffff;
+  
+  --border-color: rgba(0, 0, 0, 0.06);
+  --border-color-hover: rgba(139, 92, 246, 0.25);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --accent-primary: #7c3aed; /* Deep Violet */
+  --accent-primary-glow: rgba(124, 58, 237, 0.08);
+  --accent-secondary: #0891b2; /* Deep Cyan */
+  --accent-secondary-glow: rgba(8, 145, 178, 0.08);
+
+  --status-planning: #64748b;
+  --status-progress: #2563eb;
+  --status-review: #d97706;
+  --status-completed: #059669;
+
+  --status-draft: #64748b;
+  --status-sent: #2563eb;
+  --status-paid: #059669;
+  --status-overdue: #dc2626;
+
+  --table-header-bg: #f1f5f9;
+  --sticky-bar-bg: rgba(255, 255, 255, 0.8);
+  --toast-bg: rgba(255, 255, 255, 0.9);
 }
 
 /* Reset */
@@ -52,6 +89,13 @@ body {
     radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 45%);
   background-attachment: fixed;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, background-image 0.3s ease;
+}
+
+[data-theme="light"] body {
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 45%);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -89,6 +133,7 @@ a {
   position: fixed;
   height: 100vh;
   z-index: 100;
+  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .main-content {
@@ -341,7 +386,7 @@ a {
   top: 0;
   z-index: 10;
   padding: 0.8rem 1.25rem;
-  background: #0d0d1a;
+  background: var(--table-header-bg);
   color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 600;
@@ -381,7 +426,7 @@ a {
 }
 
 .modal-content {
-  background: #0d0d1a;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   max-width: 600px;
@@ -474,8 +519,8 @@ input[type="file"]::file-selector-button:hover {
 
 /* Fix dropdown options showing white bg & white text */
 .form-select option, select option {
-  background-color: #0d0d1a !important;
-  color: #f8fafc !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 .form-textarea {
@@ -697,7 +742,7 @@ input[type="file"]::file-selector-button:hover {
   left: 260px;
   right: 0;
   z-index: 999;
-  background: rgba(13, 13, 26, 0.75);
+  background: var(--sticky-bar-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-color);
@@ -743,7 +788,7 @@ input[type="file"]::file-selector-button:hover {
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  background: rgba(13, 13, 26, 0.85);
+  background: var(--toast-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
