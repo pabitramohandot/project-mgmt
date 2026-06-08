@@ -44,7 +44,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 20px; margin: 0;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <div style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px; text-align: center; color: #ffffff;">
             <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">IONETWEB</h1>
             <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Development & Consulting Services</p>
           </div>
@@ -111,7 +111,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
                 ` : ''}
                 <tr style="border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: bold; color: #0f172a;">
                   <td style="padding: 10px 0 0 0;">Total Due:</td>
-                  <td style="text-align: right; padding: 10px 0 0 0; color: #7c3aed;">₹${invoice.total.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; padding: 10px 0 0 0; color: #009fe3;">₹${invoice.total.toLocaleString('en-IN')}</td>
                 </tr>
               </table>
             </div>
@@ -126,7 +126,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
 
             <!-- Call to Action -->
             <div style="text-align: center; margin-top: 40px;">
-              <a href="${invoiceUrl}" target="_blank" style="display: inline-block; background-color: #7c3aed; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.25);">
+              <a href="${invoiceUrl}" target="_blank" style="display: inline-block; background-color: #009fe3; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(0, 159, 227, 0.25);">
                 Download PDF
               </a>
             </div>
@@ -184,10 +184,10 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
         <meta charset="utf-8">
         <title>${subject}</title>
       </head>
-      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #080810; color: #f8fafc; padding: 20px; margin: 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #0d0d1a; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);">
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #070e16; color: #f8fafc; padding: 20px; margin: 0;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #0c1520; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <div style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px; text-align: center; color: #ffffff;">
             <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">IONETWEB Announcement</h1>
             <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Official Broadcast Update</p>
           </div>
@@ -199,7 +199,7 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
           </div>
           
           <!-- Footer -->
-          <div style="background-color: #05050a; border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; text-align: center; font-size: 12px; color: #64748b;">
+          <div style="background-color: #03070b; border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; text-align: center; font-size: 12px; color: #64748b;">
             This email was sent by the management system of IONETWEB.
           </div>
         </div>

@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
@@ -64,15 +64,20 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   return (
-    <aside className={`sidebar no-print ${isOpen ? 'mobile-open' : ''}`}>
+    <aside className={`sidebar no-print ${isOpen ? 'mobile-open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       {/* Mobile Close Button */}
       <button className="mobile-sidebar-close" onClick={onClose} aria-label="Close menu">
         <X size={20} />
       </button>
 
-      <div className="logo">
+      {/* Sidebar Toggle Button (Desktop/Tablet) */}
+      <button onClick={onToggleCollapse} className="sidebar-toggle-btn" aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </button>
+
+      <div className="logo" style={{ justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
         <LayoutDashboard size={28} />
-        <span>IONETWEB Manager</span>
+        {!isCollapsed && <span>IONETWEB</span>}
       </div>
       <nav style={{ flex: 1 }}>
         <ul className="menu-list">
@@ -84,12 +89,35 @@ export default function Sidebar({ isOpen, onClose }) {
 
             return (
               <li key={item.name} className={`menu-item ${isActive ? 'active' : ''}`}>
-                <Link href={item.path} onClick={onClose} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Link 
+                  href={item.path} 
+                  onClick={onClose} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: isCollapsed ? 'center' : 'space-between', 
+                    alignItems: 'center', 
+                    width: '100%',
+                    padding: isCollapsed ? '0.7rem 0' : undefined
+                  }}
+                  title={isCollapsed ? item.name : undefined}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', position: 'relative' }}>
                     <Icon size={20} />
-                    <span>{item.name}</span>
+                    {isCollapsed && item.badge > 0 && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-2px',
+                        right: '-4px',
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: '#fbbf24',
+                        border: '1.5px solid var(--bg-secondary)'
+                      }} />
+                    )}
+                    {!isCollapsed && <span>{item.name}</span>}
                   </div>
-                  {item.badge > 0 && (
+                  {!isCollapsed && item.badge > 0 && (
                     <span style={{
                       background: 'rgba(245, 158, 11, 0.15)',
                       color: '#fbbf24',
@@ -113,6 +141,7 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Theme Toggle */}
       <div style={{
         display: 'flex',
+        flexDirection: isCollapsed ? 'column' : 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0.4rem',
@@ -120,16 +149,18 @@ export default function Sidebar({ isOpen, onClose }) {
         background: 'rgba(255, 255, 255, 0.02)',
         border: '1px solid var(--border-color)',
         marginBottom: '1rem',
-        gap: '0.4rem'
+        gap: '0.4rem',
+        width: '100%'
       }}>
         <button
           onClick={() => toggleTheme('light')}
+          title={isCollapsed ? "Day Mode" : undefined}
           style={{
-            flex: 1,
+            width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '6px',
+            gap: isCollapsed ? '0' : '6px',
             padding: '0.45rem',
             borderRadius: '8px',
             border: 'none',
@@ -142,16 +173,17 @@ export default function Sidebar({ isOpen, onClose }) {
           }}
         >
           <Sun size={14} />
-          <span>Day</span>
+          {!isCollapsed && <span>Day</span>}
         </button>
         <button
           onClick={() => toggleTheme('dark')}
+          title={isCollapsed ? "Night Mode" : undefined}
           style={{
-            flex: 1,
+            width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '6px',
+            gap: isCollapsed ? '0' : '6px',
             padding: '0.45rem',
             borderRadius: '8px',
             border: 'none',
@@ -164,7 +196,7 @@ export default function Sidebar({ isOpen, onClose }) {
           }}
         >
           <Moon size={14} />
-          <span>Night</span>
+          {!isCollapsed && <span>Night</span>}
         </button>
       </div>
 
@@ -172,11 +204,13 @@ export default function Sidebar({ isOpen, onClose }) {
       <button 
         onClick={handleLogout}
         className="menu-item-logout"
+        title={isCollapsed ? "Logout" : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.85rem 1rem',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
+          gap: isCollapsed ? '0' : '0.75rem',
+          padding: isCollapsed ? '0.85rem 0' : '0.85rem 1rem',
           borderRadius: '12px',
           background: 'transparent',
           border: 'none',
@@ -191,12 +225,14 @@ export default function Sidebar({ isOpen, onClose }) {
         }}
       >
         <LogOut size={20} />
-        <span>Logout</span>
+        {!isCollapsed && <span>Logout</span>}
       </button>
 
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-        v1.0.0 • Localhost Mode
-      </div>
+      {!isCollapsed && (
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          v1.0.0 • Localhost Mode
+        </div>
+      )}
 
       <style jsx global>{`
         .menu-item-logout:hover {

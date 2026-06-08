@@ -151,7 +151,7 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at center, #1e1b4b 0%, #09090b 100%)',
+      background: 'radial-gradient(circle at center, #0c1c2e 0%, #03070b 100%)',
       padding: '1.5rem'
     }}>
       <div className="card" style={{
@@ -159,9 +159,9 @@ export default function LoginPage() {
         width: '100%',
         padding: '2.5rem',
         backdropFilter: 'blur(20px)',
-        background: 'rgba(15, 10, 30, 0.45)',
-        border: '1px solid rgba(139, 92, 246, 0.15)',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(124, 58, 237, 0.05)',
+        background: 'rgba(12, 21, 32, 0.5)',
+        border: '1px solid rgba(0, 174, 239, 0.15)',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 174, 239, 0.05)',
         borderRadius: '24px',
         animation: 'fadeIn 0.6s ease-out'
       }}>
@@ -174,15 +174,15 @@ export default function LoginPage() {
             width: '60px',
             height: '60px',
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
+            background: 'linear-gradient(135deg, rgba(0, 174, 239, 0.2) 0%, rgba(242, 101, 34, 0.2) 100%)',
+            border: '1px solid rgba(0, 174, 239, 0.3)',
             color: 'var(--accent-primary)',
             marginBottom: '1rem',
-            boxShadow: '0 0 20px rgba(139, 92, 246, 0.15)'
+            boxShadow: '0 0 20px rgba(0, 174, 239, 0.15)'
           }}>
             <LayoutDashboard size={32} />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #ffffff 0%, #a78bfa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #ffffff 0%, #00aeef 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             IONETWEB Manager
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.5rem' }}>

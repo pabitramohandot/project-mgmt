@@ -107,7 +107,7 @@ export default function AnnouncementsPage() {
       const payload = {
         recipientType,
         recipients: recipientType === 'individual' ? selectedIndividual : (recipientType === 'selected' ? selectedClients : null),
-        subject: channels.includes('email') ? (subject || 'Broadcast from IONETWEB') : '',
+        subject: channels.includes('email') ? (subject || 'Broadcast from iNETWEB') : '',
         message,
         channels
       };
@@ -281,11 +281,11 @@ export default function AnnouncementsPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                           <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                              <th style={{ padding: '0.5rem', width: '40px', textAlign: 'center', position: 'sticky', top: 0, background: '#0d0d1a', zIndex: 1 }}></th>
-                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: '#0d0d1a', zIndex: 1 }}>Client Name</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: '#0d0d1a', zIndex: 1 }}>Company</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: '#0d0d1a', zIndex: 1 }}>Email</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: '#0d0d1a', zIndex: 1 }}>Phone</th>
+                              <th style={{ padding: '0.5rem', width: '40px', textAlign: 'center', position: 'sticky', top: 0, background: 'var(--table-header-bg)', zIndex: 1 }}></th>
+                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--table-header-bg)', zIndex: 1 }}>Client Name</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--table-header-bg)', zIndex: 1 }}>Company</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--table-header-bg)', zIndex: 1 }}>Email</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--table-header-bg)', zIndex: 1 }}>Phone</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -298,7 +298,7 @@ export default function AnnouncementsPage() {
                                   style={{ 
                                     borderBottom: '1px solid var(--border-color)', 
                                     cursor: 'pointer',
-                                    background: isChecked ? 'rgba(139, 92, 246, 0.04)' : 'transparent'
+                                    background: isChecked ? 'var(--accent-primary-glow)' : 'transparent'
                                   }}
                                 >
                                   <td style={{ padding: '0.5rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
@@ -427,13 +427,13 @@ export default function AnnouncementsPage() {
               </div>
 
               {channels.includes('email') && (
-                <div className="animate-fade-in" style={{ background: '#0d0d1a', borderRadius: '10px', border: '1px solid var(--border-color)', overflow: 'hidden', marginBottom: '1.25rem' }}>
-                  <div style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', padding: '0.75rem 1rem', textAlign: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>
-                    IONETWEB Announcement
+                <div className="animate-fade-in" style={{ background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)', overflow: 'hidden', marginBottom: '1.25rem' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #00aeef 0%, #009fe3 100%)', padding: '0.75rem 1rem', textAlign: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>
+                    iNETWEB Announcement
                   </div>
                   <div style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Subject: </span> {subject || 'Broadcast from IONETWEB'}
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Subject: </span> {subject || 'Broadcast from iNETWEB'}
                     </div>
                     <div>
                       <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Hello {previewName},</p>
