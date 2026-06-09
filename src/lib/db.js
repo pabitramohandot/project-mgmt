@@ -28,11 +28,13 @@ async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      // Run migration asynchronously to avoid blocking connection promise
-      import('./migration').then(({ runClientMigration }) => {
-        runClientMigration();
+      // Run migrations asynchronously to avoid blocking connection promise
+      import('./migration').then(({ runClientMigration, runMultiTenancyMigration }) => {
+        runClientMigration()
+          .then(() => runMultiTenancyMigration())
+          .catch(err => console.error('Error in migration sequence:', err));
       }).catch(err => {
-        console.error('Failed to run client migration', err);
+        console.error('Failed to run migration imports:', err);
       });
       return mongooseInstance;
     });

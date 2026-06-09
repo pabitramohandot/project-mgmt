@@ -20,6 +20,27 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
     return { skipped: true, reason: 'Client email missing' };
   }
 
+  // Load company details dynamically
+  let companyName = 'IONETWEB';
+  let companyLogo = null;
+  let brandColors = { primary: '#00aeef', secondary: '#f26522' };
+
+  try {
+    if (invoice.companyId) {
+      const Company = (await import('@/models/Company')).default;
+      const company = await Company.findById(invoice.companyId).lean();
+      if (company) {
+        companyName = company.name || 'IONETWEB';
+        companyLogo = company.logo;
+        if (company.brandColors) {
+          brandColors = company.brandColors;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load company details for invoice email:', e);
+  }
+
   const invoiceUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/invoices/${invoice._id}?download=true`;
 
   const itemsHtml = invoice.items.map(item => `
@@ -39,13 +60,16 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
     <html>
       <head>
         <meta charset="utf-8">
-        <title>Invoice ${invoice.invoiceNumber} from IONETWEB</title>
+        <title>Invoice ${invoice.invoiceNumber} from ${companyName}</title>
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 20px; margin: 0;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">IONETWEB</h1>
+          <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px;" />` : ''}
+              <span>${companyName}</span>
+            </h1>
             <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Development & Consulting Services</p>
           </div>
           
@@ -111,7 +135,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
                 ` : ''}
                 <tr style="border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: bold; color: #0f172a;">
                   <td style="padding: 10px 0 0 0;">Total Due:</td>
-                  <td style="text-align: right; padding: 10px 0 0 0; color: #009fe3;">₹${invoice.total.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; padding: 10px 0 0 0; color: ${brandColors.primary}; font-weight: 700;">₹${invoice.total.toLocaleString('en-IN')}</td>
                 </tr>
               </table>
             </div>
@@ -126,7 +150,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
 
             <!-- Call to Action -->
             <div style="text-align: center; margin-top: 40px;">
-              <a href="${invoiceUrl}" target="_blank" style="display: inline-block; background-color: #009fe3; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(0, 159, 227, 0.25);">
+              <a href="${invoiceUrl}" target="_blank" style="display: inline-block; background-color: ${brandColors.primary}; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);">
                 Download PDF
               </a>
             </div>
@@ -134,7 +158,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
           
           <!-- Footer -->
           <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-            This is an automated email from your development team at IONETWEB.
+            This is an automated email from the team at ${companyName}.
           </div>
         </div>
       </body>
@@ -142,9 +166,9 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   `;
 
   const mailOptions = {
-    from: `"IONETWEB Invoicing" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
+    from: `"${companyName} Invoicing" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
     to: clientEmail,
-    subject: `Invoice ${invoice.invoiceNumber} from IONETWEB`,
+    subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
     html: htmlContent,
   };
 
@@ -164,7 +188,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   return info;
 }
 
-export async function sendAnnouncementEmail(clientEmail, clientName, subject, body) {
+export async function sendAnnouncementEmail(clientEmail, clientName, subject, body, companyId = null) {
   if (!process.env.EMAIL_PASS) {
     console.warn('WARNING: EMAIL_PASS is not configured in .env.local. Email send skipped.');
     return { skipped: true, reason: 'EMAIL_PASS not configured' };
@@ -175,6 +199,28 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
     return { skipped: true, reason: 'Client email missing' };
   }
 
+  // Load company details dynamically
+  let companyName = 'IONETWEB';
+  let companyLogo = null;
+  let brandColors = { primary: '#00aeef', secondary: '#f26522' };
+
+  try {
+    if (companyId) {
+      const Company = (await import('@/models/Company')).default;
+      const company = await Company.findById(companyId).lean();
+      if (company) {
+        companyName = company.name || 'IONETWEB';
+        companyLogo = company.logo;
+        if (company.brandColors) {
+          brandColors = company.brandColors;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load company details for announcement email:', e);
+  }
+
+  const emailSubject = subject || `Broadcast from ${companyName}`;
   const personalizedBody = body.replace(/\[ClientName\]/g, clientName);
 
   const htmlContent = `
@@ -182,13 +228,16 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
     <html>
       <head>
         <meta charset="utf-8">
-        <title>${subject}</title>
+        <title>${emailSubject}</title>
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #070e16; color: #f8fafc; padding: 20px; margin: 0;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #0c1520; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">IONETWEB Announcement</h1>
+          <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px;" />` : ''}
+              <span>${companyName} Announcement</span>
+            </h1>
             <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Official Broadcast Update</p>
           </div>
           
@@ -200,7 +249,7 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
           
           <!-- Footer -->
           <div style="background-color: #03070b; border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; text-align: center; font-size: 12px; color: #64748b;">
-            This email was sent by the management system of IONETWEB.
+            This email was sent by the management system of ${companyName}.
           </div>
         </div>
       </body>
@@ -208,9 +257,9 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   `;
 
   const mailOptions = {
-    from: `"IONETWEB Broadcast" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
+    from: `"${companyName} Broadcast" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
     to: clientEmail,
-    subject: subject,
+    subject: emailSubject,
     html: htmlContent,
   };
 
@@ -218,4 +267,3 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   console.log(`Announcement Email sent successfully to ${clientEmail}: ${info.messageId}`);
   return info;
 }
-

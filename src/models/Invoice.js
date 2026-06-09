@@ -52,6 +52,11 @@ const InvoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Client',
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company',
+      required: true,
+    },
     items: [InvoiceItemSchema],
     taxRate: {
       type: Number,
@@ -93,4 +98,8 @@ const InvoiceSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema);
+if (mongoose.models.Invoice) {
+  delete mongoose.models.Invoice;
+}
+
+export default mongoose.model('Invoice', InvoiceSchema);

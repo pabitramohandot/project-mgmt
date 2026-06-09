@@ -2,15 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import Sidebar from "@/components/Sidebar";
+import FooterFeedback from "@/components/FooterFeedback";
+import NotificationBell from "@/components/NotificationBell";
 import { Menu } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar_collapsed') === 'true';
     setIsCollapsed(saved);
+  }, []);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          if (data.company?.name) {
+            localStorage.setItem('company_name', data.company.name);
+          }
+          if (data.company?.brandColors) {
+            document.documentElement.style.setProperty('--accent-primary', data.company.brandColors.primary || '#00aeef');
+            document.documentElement.style.setProperty('--accent-secondary', data.company.brandColors.secondary || '#f26522');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load user info:', e);
+      }
+    }
+    loadUser();
   }, []);
 
   const handleToggleCollapse = () => {
@@ -27,9 +52,11 @@ export default function DashboardLayout({ children }) {
           <Menu size={24} />
         </button>
         <div className="mobile-logo">
-          <span>IONETWEB</span>
+          <span>{user?.company?.name || 'Workspace'}</span>
         </div>
-        <div style={{ width: 24 }}></div> {/* Balance placeholder */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px' }}>
+          <NotificationBell userRole={user?.role} />
+        </div>
       </header>
 
       {/* Sidebar with visibility states */}
@@ -38,6 +65,8 @@ export default function DashboardLayout({ children }) {
         onClose={() => setSidebarOpen(false)} 
         isCollapsed={isCollapsed}
         onToggleCollapse={handleToggleCollapse}
+        user={user}
+        company={user?.company}
       />
 
       {/* Sidebar backdrop overlay on mobile */}
@@ -48,6 +77,8 @@ export default function DashboardLayout({ children }) {
       <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
         {children}
       </main>
+
+      {user?.role && user.role !== 'superadmin' && <FooterFeedback />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useNotification } from '@/components/NotificationProvider';
 
 export default function AnnouncementsPage() {
   const { showToast } = useNotification();
+  const [companyName, setCompanyName] = useState('Workspace');
   
   // Recipients states
   const [clients, setClients] = useState([]);
@@ -46,6 +47,10 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     fetchClients();
+    if (typeof window !== 'undefined') {
+      const savedName = localStorage.getItem('company_name');
+      if (savedName) setCompanyName(savedName);
+    }
   }, []);
 
   const handleSelectClientCheckbox = (clientId) => {
@@ -107,7 +112,7 @@ export default function AnnouncementsPage() {
       const payload = {
         recipientType,
         recipients: recipientType === 'individual' ? selectedIndividual : (recipientType === 'selected' ? selectedClients : null),
-        subject: channels.includes('email') ? (subject || 'Broadcast from iNETWEB') : '',
+        subject: channels.includes('email') ? (subject || `Broadcast from ${companyName}`) : '',
         message,
         channels
       };
@@ -428,12 +433,12 @@ export default function AnnouncementsPage() {
 
               {channels.includes('email') && (
                 <div className="animate-fade-in" style={{ background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)', overflow: 'hidden', marginBottom: '1.25rem' }}>
-                  <div style={{ background: 'linear-gradient(135deg, #00aeef 0%, #009fe3 100%)', padding: '0.75rem 1rem', textAlign: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>
-                    iNETWEB Announcement
+                  <div style={{ background: 'var(--accent-primary)', padding: '0.75rem 1rem', textAlign: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>
+                    {companyName} Announcement
                   </div>
                   <div style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Subject: </span> {subject || 'Broadcast from iNETWEB'}
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Subject: </span> {subject || `Broadcast from ${companyName}`}
                     </div>
                     <div>
                       <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Hello {previewName},</p>

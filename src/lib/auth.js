@@ -76,3 +76,60 @@ export async function verifyToken(token) {
     return null;
   }
 }
+
+export async function hashPassword(password) {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => ('00' + b.toString(16)).slice(-2)).join('');
+  return hashHex;
+}
+
+export async function comparePassword(password, hash) {
+  const hashed = await hashPassword(password);
+  return hashed === hash;
+}
+
+export function getRequestSession(request) {
+  let companyId = request.headers.get('x-user-company-id');
+  let role = request.headers.get('x-user-role');
+  let userId = request.headers.get('x-user-id');
+  let username = request.headers.get('x-user-username');
+
+  // Fallback: If headers are missing, synchronously decode the payload from cookies.
+  // Since middleware has already verified the JWT signature, we can safely trust the cookie payload.
+  if (!role || !userId) {
+    try {
+      let token = null;
+      if (request.cookies && typeof request.cookies.get === 'function') {
+        token = request.cookies.get('admin_token')?.value;
+      }
+      if (!token) {
+        const cookieHeader = request.headers.get('cookie') || '';
+        const match = cookieHeader.match(/admin_token=([^;]+)/);
+        if (match) {
+          token = match[1];
+        }
+      }
+      if (token) {
+        const parts = token.split('.');
+        if (parts.length === 2) {
+          const base64Data = parts[0];
+          const paddedBase64 = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonStr = atob(paddedBase64);
+          const payload = JSON.parse(jsonStr);
+          if (payload && payload.exp > Date.now()) {
+            companyId = payload.companyId || companyId;
+            role = payload.role || role;
+            userId = payload.userId || userId;
+            username = payload.username || username;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('getRequestSession cookie fallback error:', e);
+    }
+  }
+
+  return { companyId, role, userId, username };
+}

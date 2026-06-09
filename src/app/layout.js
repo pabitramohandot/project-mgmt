@@ -2,7 +2,7 @@ import "./globals.css";
 import NotificationProvider from "@/components/NotificationProvider";
 
 export const metadata = {
-  title: "IONETWEB Project Manager",
+  title: "Workspace Manager",
   description: "Manage projects and generate client invoices locally",
 };
 

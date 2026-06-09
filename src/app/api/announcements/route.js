@@ -2,10 +2,12 @@ import dbConnect from '@/lib/db';
 import Client from '@/models/Client';
 import { sendAnnouncementEmail } from '@/lib/email';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 export async function POST(request) {
   try {
     await dbConnect();
+    const { companyId } = getRequestSession(request);
     const data = await request.json();
 
     const { recipientType, recipients, subject, message, channels } = data;
@@ -14,19 +16,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Message, recipient type, and at least one channel are required.' }, { status: 400 });
     }
 
+    let baseQuery = { companyId };
+
     // Find targeted clients
-    let query = {};
+    let query = { ...baseQuery };
     if (recipientType === 'individual') {
       if (!recipients || typeof recipients !== 'string') {
         return NextResponse.json({ error: 'A single client ID is required for individual broadcasts.' }, { status: 400 });
       }
-      query = { _id: recipients };
+      query._id = recipients;
     } else if (recipientType === 'selected') {
       if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
         return NextResponse.json({ error: 'At least one selected client ID is required.' }, { status: 400 });
       }
-      query = { _id: { $in: recipients } };
-    } // recipientType === 'all' sends query = {} (all clients)
+      query._id = { $in: recipients };
+    }
 
     const targetedClients = await Client.find(query).sort({ name: 1 });
 
@@ -57,7 +61,7 @@ export async function POST(request) {
             results.emailFailed.push({ name: client.name, reason: 'Client has no email address configured.' });
             continue;
           }
-          await sendAnnouncementEmail(client.email, client.name, subject || 'Broadcast from IONETWEB', message);
+          await sendAnnouncementEmail(client.email, client.name, subject, message, companyId);
           results.emailSent.push(client.name);
         } catch (e) {
           console.error(`Failed to send email to ${client.name}:`, e);

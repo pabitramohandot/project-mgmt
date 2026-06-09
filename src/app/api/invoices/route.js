@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import Invoice from '@/models/Invoice';
 import Project from '@/models/Project';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 export async function GET(request) {
   try {
@@ -9,7 +10,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = {};
+    const { companyId } = getRequestSession(request);
+    let query = { companyId };
+
     if (status) {
       query.status = status;
     }
@@ -29,6 +32,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await dbConnect();
+    const { companyId } = getRequestSession(request);
     const data = await request.json();
 
     const { project: projectId, client: clientId, items, taxRate = 0, discountRate = 0, status, dueDate, notes } = data;
@@ -36,6 +40,8 @@ export async function POST(request) {
     if ((!projectId && !clientId) || !items || items.length === 0) {
       return NextResponse.json({ error: 'Project or Client, and at least one item are required' }, { status: 400 });
     }
+
+    const targetCompanyId = companyId;
 
     let clientName = '';
     let clientEmail = '';
@@ -45,7 +51,8 @@ export async function POST(request) {
 
     if (projectId) {
       // Fetch project to get client details
-      const project = await Project.findById(projectId);
+      const projectQuery = { _id: projectId, companyId };
+      const project = await Project.findOne(projectQuery);
       if (!project) {
         return NextResponse.json({ error: 'Linked project not found' }, { status: 404 });
       }
@@ -55,7 +62,8 @@ export async function POST(request) {
 
       if (clientVal) {
         const Client = (await import('@/models/Client')).default;
-        const clientObj = await Client.findById(clientVal);
+        const clientQuery = { _id: clientVal, companyId };
+        const clientObj = await Client.findOne(clientQuery);
         if (clientObj) {
           clientCompany = clientObj.company || '';
           clientAddress = clientObj.address || '';
@@ -63,7 +71,8 @@ export async function POST(request) {
       }
     } else if (clientId) {
       const Client = (await import('@/models/Client')).default;
-      const clientObj = await Client.findById(clientId);
+      const clientQuery = { _id: clientId, companyId };
+      const clientObj = await Client.findOne(clientQuery);
       if (!clientObj) {
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });
       }
@@ -108,6 +117,7 @@ export async function POST(request) {
       status: status || 'Draft',
       dueDate,
       notes,
+      companyId: targetCompanyId
     };
 
     const invoice = await Invoice.create(invoiceData);

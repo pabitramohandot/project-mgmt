@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import Credential from '@/models/Credential';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 function checkPasscode(request) {
   const passcode = request.headers.get('x-vault-passcode');
@@ -19,7 +20,10 @@ export async function PUT(request, context) {
     const { id } = params;
     const data = await request.json();
 
-    const credential = await Credential.findById(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const credential = await Credential.findOne(query);
     if (!credential) {
       return NextResponse.json({ error: 'Credential not found' }, { status: 404 });
     }
@@ -48,10 +52,15 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const credential = await Credential.findByIdAndDelete(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const credential = await Credential.findOne(query);
     if (!credential) {
       return NextResponse.json({ error: 'Credential not found' }, { status: 404 });
     }
+
+    await Credential.deleteOne({ _id: id });
 
     return NextResponse.json({ message: 'Credential deleted successfully' });
   } catch (error) {

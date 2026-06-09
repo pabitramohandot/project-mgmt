@@ -214,7 +214,8 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (project) {
-      document.title = `${project.name} (${project.status}) | IONETWEB Manager`;
+      const compName = typeof window !== 'undefined' ? localStorage.getItem('company_name') || 'Workspace' : 'Workspace';
+      document.title = `${project.name} (${project.status}) | ${compName} Manager`;
     }
   }, [project]);
 
@@ -1104,7 +1105,7 @@ export default function ProjectDetailPage() {
               <strong>{taskProgress}%</strong>
             </div>
             <div style={{ height: '8px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: `${taskProgress}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)', borderRadius: '9999px', transition: 'width 0.3s ease' }}></div>
+              <div style={{ width: `${taskProgress}%`, height: '100%', background: 'var(--accent-primary)', borderRadius: '9999px', transition: 'width 0.3s ease' }}></div>
             </div>
             <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {completedTasks} of {totalTasks} items completed

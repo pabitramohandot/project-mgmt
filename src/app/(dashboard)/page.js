@@ -13,19 +13,37 @@ import {
   AlertCircle,
   AlertTriangle
 } from 'lucide-react';
+import { useNotification } from '@/components/NotificationProvider';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function Dashboard() {
+  const { showToast } = useNotification();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [companyName, setCompanyName] = useState('Workspace');
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch('/api/dashboard');
+        const [res, meRes] = await Promise.all([
+          fetch('/api/dashboard'),
+          fetch('/api/auth/me')
+        ]);
         if (!res.ok) throw new Error('Failed to load dashboard data');
         const data = await res.json();
         setStats(data);
+
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          if (meData.company?.name) {
+            setCompanyName(meData.company.name);
+          }
+          if (meData.role) {
+            setUserRole(meData.role);
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -68,10 +86,13 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Welcome to IONETWEB</h1>
+          <h1 className="page-title">Welcome to {companyName}</h1>
           <p className="page-subtitle">Here is the latest status of your client projects and billing.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', position: 'relative' }}>
+          {/* Reusable Notification Bell Icon for Desktop Welcome page */}
+          <NotificationBell userRole={userRole} />
+
           <Link href="/projects" className="btn btn-primary">
             <Plus size={18} />
             <span>New Project</span>

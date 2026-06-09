@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
@@ -52,6 +52,24 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { name: 'Announcements', path: '/announcements', icon: Megaphone },
   ];
 
+  if (user?.role === 'superadmin') {
+    menuItems.push(
+      { name: 'Companies', path: '/superadmin/companies', icon: Building },
+      { name: 'Users', path: '/superadmin/users', icon: ShieldCheck },
+      { name: 'Feedback', path: '/superadmin/feedback', icon: MessageSquare }
+    );
+  }
+
+  if (user?.role === 'company_admin' || user?.role === 'superadmin') {
+    menuItems.push(
+      { name: 'Branding', path: '/settings/branding', icon: Palette }
+    );
+  }
+
+  menuItems.push(
+    { name: 'Account Settings', path: '/settings/profile', icon: User }
+  );
+
   const handleLogout = async () => {
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' });
@@ -76,8 +94,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       </button>
 
       <div className="logo" style={{ justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
-        <LayoutDashboard size={28} />
-        {!isCollapsed && <span>IONETWEB</span>}
+        {company?.logo ? (
+          <img src={company.logo} alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '6px' }} />
+        ) : (
+          <LayoutDashboard size={28} />
+        )}
+        {!isCollapsed && <span>{company?.name || 'Workspace'}</span>}
       </div>
       <nav style={{ flex: 1 }}>
         <ul className="menu-list">

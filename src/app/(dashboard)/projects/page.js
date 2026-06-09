@@ -254,7 +254,8 @@ export default function ProjectsPage() {
       ? project.statusUpdates[project.statusUpdates.length - 1].message
       : 'No updates yet';
 
-    const message = `Hi ${project.clientName},\n\nHere is the latest update for project *${project.name}*:\n"${latestUpdate}"\n\n- IONETWEB`;
+    const compName = typeof window !== 'undefined' ? localStorage.getItem('company_name') || 'Workspace' : 'Workspace';
+    const message = `Hi ${project.clientName},\n\nHere is the latest update for project *${project.name}*:\n"${latestUpdate}"\n\n- ${compName}`;
 
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');

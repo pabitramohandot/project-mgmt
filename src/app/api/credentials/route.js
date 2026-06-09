@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import Credential from '@/models/Credential';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 function checkPasscode(request) {
   const passcode = request.headers.get('x-vault-passcode');
@@ -18,7 +19,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-    let query = {};
+    const { companyId } = getRequestSession(request);
+    let query = { companyId };
+
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -42,11 +45,14 @@ export async function POST(request) {
     }
 
     await dbConnect();
+    const { companyId } = getRequestSession(request);
     const data = await request.json();
 
     if (!data.title) {
       return NextResponse.json({ error: 'Credential title is required' }, { status: 400 });
     }
+
+    const targetCompanyId = companyId;
 
     const credential = await Credential.create({
       title: data.title.trim(),
@@ -54,6 +60,7 @@ export async function POST(request) {
       password: data.password || '',
       url: (data.url || '').trim(),
       notes: (data.notes || '').trim(),
+      companyId: targetCompanyId
     });
 
     return NextResponse.json(credential, { status: 201 });

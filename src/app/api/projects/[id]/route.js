@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import Invoice from '@/models/Invoice';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 export async function GET(request, context) {
   try {
@@ -9,13 +10,17 @@ export async function GET(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const project = await Project.findById(id).lean();
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const project = await Project.findOne(query).lean();
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     // Fetch invoices in parallel with checking/updating project overdue status
-    const invoicesPromise = Invoice.find({ project: id }).sort({ createdAt: -1 }).lean();
+    const invoicesQuery = { project: id, companyId };
+    const invoicesPromise = Invoice.find(invoicesQuery).sort({ createdAt: -1 }).lean();
 
     let finalProject = project;
     if (project.endDate && new Date(project.endDate) < new Date() && project.status !== 'Completed' && project.status !== 'Pending') {
@@ -43,7 +48,10 @@ export async function PUT(request, context) {
     const data = await request.json();
     console.log("PUT API data received:", JSON.stringify(data, null, 2));
 
-    const project = await Project.findById(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const project = await Project.findOne(query);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -70,13 +78,19 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const project = await Project.findByIdAndDelete(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const project = await Project.findOne(query);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    await Project.deleteOne({ _id: id, companyId });
+
     // Delete associated invoices
-    await Invoice.deleteMany({ project: id });
+    const invoicesDeleteQuery = { project: id, companyId };
+    await Invoice.deleteMany(invoicesDeleteQuery);
 
     return NextResponse.json({ message: 'Project and associated invoices deleted successfully' });
   } catch (error) {

@@ -27,10 +27,19 @@ const CredentialSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company',
+      required: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-export default mongoose.models.Credential || mongoose.model('Credential', CredentialSchema);
+if (mongoose.models.Credential) {
+  delete mongoose.models.Credential;
+}
+
+export default mongoose.model('Credential', CredentialSchema);

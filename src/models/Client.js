@@ -29,10 +29,19 @@ const ClientSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company',
+      required: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-export default mongoose.models.Client || mongoose.model('Client', ClientSchema);
+if (mongoose.models.Client) {
+  delete mongoose.models.Client;
+}
+
+export default mongoose.model('Client', ClientSchema);

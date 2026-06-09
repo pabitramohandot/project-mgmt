@@ -1,6 +1,8 @@
 import dbConnect from '@/lib/db';
 import Invoice from '@/models/Invoice';
+import Company from '@/models/Company';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 export async function GET(request, context) {
   try {
@@ -8,9 +10,16 @@ export async function GET(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const invoice = await Invoice.findById(id)
+    const { companyId, role } = getRequestSession(request);
+    let query = { _id: id };
+    if (role) {
+      query.companyId = companyId;
+    }
+
+    const invoice = await Invoice.findOne(query)
       .populate('project', 'name description status clientName clientEmail client')
       .populate('client', 'name email company phone address')
+      .populate('companyId')
       .lean();
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -22,17 +31,29 @@ export async function GET(request, context) {
         let clientObj = null;
 
         if (invoice.client) {
-          clientObj = await Client.findById(invoice.client).lean();
+          const clientQuery = { _id: invoice.client };
+          if (role) {
+            clientQuery.companyId = companyId;
+          }
+          clientObj = await Client.findOne(clientQuery).lean();
         } else if (invoice.project?.client) {
-          clientObj = await Client.findById(invoice.project.client).lean();
+          const clientQuery = { _id: invoice.project.client };
+          if (role) {
+            clientQuery.companyId = companyId;
+          }
+          clientObj = await Client.findOne(clientQuery).lean();
         } else {
           // Fallback to name/email matching
-          clientObj = await Client.findOne({
+          const clientQuery = {
             $or: [
               { name: { $regex: new RegExp(`^${invoice.clientName}$`, 'i') } },
               { email: invoice.clientEmail?.toLowerCase().trim() }
             ]
-          }).lean();
+          };
+          if (role) {
+            clientQuery.companyId = companyId;
+          }
+          clientObj = await Client.findOne(clientQuery).lean();
         }
 
         if (clientObj) {
@@ -61,7 +82,10 @@ export async function PUT(request, context) {
 
     const { pdfBase64, ...updateData } = data;
 
-    const invoice = await Invoice.findById(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const invoice = await Invoice.findOne(query);
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
@@ -83,7 +107,7 @@ export async function PUT(request, context) {
 
     const isChangingToSent = updateData.status === 'Sent' && invoice.status !== 'Sent';
 
-    const updatedInvoice = await Invoice.findByIdAndUpdate(id, updateData, {
+    const updatedInvoice = await Invoice.findOneAndUpdate(query, updateData, {
       new: true,
       runValidators: true,
     }).populate('project', 'name').populate('client', 'name email company phone address');
@@ -95,7 +119,9 @@ export async function PUT(request, context) {
     if (isChangingToSent) {
       try {
         const Project = (await import('@/models/Project')).default;
-        const project = await Project.findById(updatedInvoice.project);
+        const projectQuery = { _id: updatedInvoice.project };
+        projectQuery.companyId = companyId;
+        const project = await Project.findOne(projectQuery);
         const { sendInvoiceEmail } = await import('@/lib/email');
         await sendInvoiceEmail(updatedInvoice, project, pdfBase64);
       } catch (emailErr) {
@@ -116,10 +142,15 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const invoice = await Invoice.findByIdAndDelete(id);
+    const { companyId } = getRequestSession(request);
+    let query = { _id: id, companyId };
+
+    const invoice = await Invoice.findOne(query);
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
+
+    await Invoice.deleteOne({ _id: id });
 
     return NextResponse.json({ message: 'Invoice deleted successfully' });
   } catch (error) {

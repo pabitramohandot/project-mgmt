@@ -126,6 +126,13 @@ export default function InvoiceDetailPage() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (invoice?.companyId?.brandColors) {
+      document.documentElement.style.setProperty('--accent-primary', invoice.companyId.brandColors.primary || '#00aeef');
+      document.documentElement.style.setProperty('--accent-secondary', invoice.companyId.brandColors.secondary || '#f26522');
+    }
+  }, [invoice]);
+
   const handleUpdateStatus = async (newStatus) => {
     try {
       setUpdating(true);
@@ -287,10 +294,16 @@ export default function InvoiceDetailPage() {
           {/* Header Section */}
           <div className="invoice-header">
             <div>
-              <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                IONETWEB
-              </h2>
-              <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>Development & Consulting Services</p>
+              {invoice.companyId?.logo ? (
+                <img src={invoice.companyId.logo} alt="Company Logo" style={{ height: '60px', maxWidth: '240px', objectFit: 'contain' }} />
+              ) : (
+                <>
+                  <h2 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a' }}>
+                    {invoice.companyId?.name || 'Workspace'}
+                  </h2>
+                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>Development & Consulting Services</p>
+                </>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <h1 style={{ fontSize: '2.25rem', fontWeight: 300, color: '#64748b', margin: 0 }}>INVOICE</h1>
@@ -301,7 +314,22 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Info Grid */}
-          <div className="invoice-details-grid">
+          <div className="invoice-details-grid" style={{ gridTemplateColumns: '1fr 1fr 1.2fr' }}>
+            <div>
+              <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                Billed From
+              </h4>
+              <div style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.5' }}>
+                <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+                  {invoice.companyId?.name || 'Workspace'}
+                </strong> <br />
+                {invoice.companyId?.contactEmail ? (
+                  <span style={{ color: '#64748b', display: 'block' }}>{invoice.companyId.contactEmail}</span>
+                ) : (
+                  <span style={{ color: '#64748b', display: 'block' }}>Contact email not set</span>
+                )}
+              </div>
+            </div>
             <div>
               <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
                 Billed To

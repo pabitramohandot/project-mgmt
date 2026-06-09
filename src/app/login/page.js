@@ -174,16 +174,16 @@ export default function LoginPage() {
             width: '60px',
             height: '60px',
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(0, 174, 239, 0.2) 0%, rgba(242, 101, 34, 0.2) 100%)',
-            border: '1px solid rgba(0, 174, 239, 0.3)',
+            background: 'rgba(0, 174, 239, 0.08)',
+            border: '1px solid rgba(0, 174, 239, 0.2)',
             color: 'var(--accent-primary)',
             marginBottom: '1rem',
-            boxShadow: '0 0 20px rgba(0, 174, 239, 0.15)'
+            boxShadow: '0 0 20px rgba(0, 174, 239, 0.1)'
           }}>
             <LayoutDashboard size={32} />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #ffffff 0%, #00aeef 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            IONETWEB Manager
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: '#ffffff' }}>
+            Workspace Manager
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
             Enter your credentials to manage local projects.

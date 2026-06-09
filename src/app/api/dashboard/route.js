@@ -2,14 +2,20 @@ import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import Invoice from '@/models/Invoice';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request) {
   try {
     await dbConnect();
+
+    const { companyId } = getRequestSession(request);
+    let projectQuery = { companyId };
+    let invoiceQuery = { companyId };
 
     // Auto-update past-due projects to Pending in the background to avoid blocking the user request
     Project.updateMany(
       {
+        ...projectQuery,
         endDate: { $lt: new Date() },
         status: { $nin: ['Completed', 'Pending'] }
       },
@@ -18,8 +24,8 @@ export async function GET() {
 
     // Fetch all projects and invoices in parallel using lean() for maximum performance
     const [allProjects, allInvoices] = await Promise.all([
-      Project.find({}).sort({ createdAt: -1 }).lean(),
-      Invoice.find({}).sort({ createdAt: -1 }).lean()
+      Project.find(projectQuery).sort({ createdAt: -1 }).lean(),
+      Invoice.find(invoiceQuery).sort({ createdAt: -1 }).lean()
     ]);
 
     // Compute dynamic project status updates for current response (since DB update runs in background)

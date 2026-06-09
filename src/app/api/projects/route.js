@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import Client from '@/models/Client';
 import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/auth';
 
 export async function GET(request) {
   try {
@@ -10,7 +11,9 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
 
-    let query = {};
+    const { companyId } = getRequestSession(request);
+    let query = { companyId };
+
     if (status) {
       query.status = status;
     }
@@ -25,6 +28,7 @@ export async function GET(request) {
     // Auto update past-due projects to Pending in the background to avoid blocking
     Project.updateMany(
       {
+        ...query,
         endDate: { $lt: new Date() },
         status: { $nin: ['Completed', 'Pending'] }
       },
@@ -51,6 +55,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await dbConnect();
+    const { companyId } = getRequestSession(request);
     const data = await request.json();
 
     if (!data.name || !data.clientName) {
@@ -61,6 +66,8 @@ export async function POST(request) {
     if (data.client === '') {
       data.client = null;
     }
+
+    data.companyId = companyId;
 
     const project = await Project.create(data);
     return NextResponse.json(project, { status: 201 });
