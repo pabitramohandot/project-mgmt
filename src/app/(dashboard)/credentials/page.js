@@ -34,6 +34,22 @@ export default function CredentialsPage() {
   const [credentials, setCredentials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
+
+  useEffect(() => {
+    async function getRole() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setRole(data.role);
+        }
+      } catch (err) {
+        console.error('Failed to get user role:', err);
+      }
+    }
+    getRole();
+  }, []);
   
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -488,14 +504,18 @@ export default function CredentialsPage() {
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(cred)} title="Edit Credential">
-                          <Edit size={14} />
-                        </button>
-                        <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }} onClick={() => handleDelete(cred._id)} title="Delete Credential">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {role !== 'company_user' ? (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(cred)} title="Edit Credential">
+                            <Edit size={14} />
+                          </button>
+                          <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }} onClick={() => handleDelete(cred._id)} title="Delete Credential">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

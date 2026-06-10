@@ -33,3 +33,48 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Failed to update branding settings' }, { status: 500 });
   }
 }
+
+export async function POST(request) {
+  try {
+    const { companyId, role } = getRequestSession(request);
+    if (!companyId || (role !== 'company_admin' && role !== 'superadmin')) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const { user, pass } = data;
+
+    if (!user || !pass) {
+      return NextResponse.json({ error: 'Gmail Username and App Password are required' }, { status: 400 });
+    }
+
+    let smtpUser = user.trim();
+    let smtpPass = pass.trim();
+
+    if (smtpPass === '••••••••') {
+      await dbConnect();
+      const company = await Company.findById(companyId).lean();
+      if (company && company.emailSettings?.pass) {
+        smtpPass = company.emailSettings.pass;
+        smtpUser = company.emailSettings.user || smtpUser;
+      } else {
+        return NextResponse.json({ error: 'No saved App Password found' }, { status: 404 });
+      }
+    }
+
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    await transporter.verify();
+    return NextResponse.json({ success: true, message: 'SMTP credentials verified successfully!' });
+  } catch (error) {
+    console.error('SMTP test failed:', error);
+    return NextResponse.json({ error: error.message || 'SMTP verification failed' }, { status: 500 });
+  }
+}

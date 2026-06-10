@@ -96,6 +96,23 @@ export async function GET(request) {
       });
     }
 
+    // 2.5. Domain expiring in less than 1 month and 7 days (37 days)
+    const expiringDomainProjects = processedProjects.filter(proj => 
+      proj.domainExpiry && new Date(proj.domainExpiry) <= thirtySevenDaysFromNow
+    );
+    for (const proj of expiringDomainProjects) {
+      const remainingDays = Math.ceil((new Date(proj.domainExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+      const expStr = remainingDays < 0 ? 'Expired' : `expires in ${remainingDays} days`;
+      pendingTasks.push({
+        id: proj._id,
+        type: 'domain_expiry',
+        title: `Domain expiring: ${proj.name}`,
+        description: `Domain for project ${proj.name} is ${expStr} (${new Date(proj.domainExpiry).toLocaleDateString()}).`,
+        link: `/projects/${proj._id}`,
+        date: proj.domainExpiry,
+      });
+    }
+
     // 3. Projects past due date (Pending status)
     const overdueProjectsList = processedProjects.filter(proj => 
       proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed'

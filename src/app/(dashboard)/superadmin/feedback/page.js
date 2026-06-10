@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useNotification } from '@/components/NotificationProvider';
-import { MessageSquare, Bug, Lightbulb, X, Clock, ExternalLink, ShieldAlert, Loader2 } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, X, Clock, ExternalLink, ShieldAlert, Loader2, Trash2, Search } from 'lucide-react';
 
 export default function SuperAdminFeedbackPage() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all' | 'bug' | 'feature'
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [statusVal, setStatusVal] = useState('');
@@ -78,9 +80,42 @@ export default function SuperAdminFeedbackPage() {
     }
   };
 
+  const handleDeleteFeedback = (id) => {
+    showConfirm({
+      title: 'Delete Feedback',
+      message: 'Are you sure you want to delete this feedback report? This will permanently delete the report and any associated notifications. This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/feedback/${id}`, {
+            method: 'DELETE',
+          });
+          if (res.ok) {
+            showToast('Feedback deleted successfully.', 'success');
+            fetchFeedbacks();
+          } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to delete feedback.', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Error deleting feedback.', 'error');
+        }
+      }
+    });
+  };
+
   const filteredFeedbacks = feedbacks.filter((item) => {
-    if (filter === 'all') return true;
-    return item.type === filter;
+    if (filter !== 'all' && item.type !== filter) return false;
+    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      const descMatch = item.description?.toLowerCase().includes(query);
+      const companyMatch = item.companyId?.name?.toLowerCase().includes(query);
+      const submitterMatch = item.userId?.username?.toLowerCase().includes(query);
+      if (!descMatch && !companyMatch && !submitterMatch) return false;
+    }
+    return true;
   });
 
   const getStatusBadgeClass = (status) => {
@@ -111,11 +146,11 @@ export default function SuperAdminFeedbackPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
+      {/* Type Tabs */}
       <div style={{
         display: 'flex',
         gap: '0.5rem',
-        marginBottom: '1.5rem',
+        marginBottom: '1rem',
         borderBottom: '1px solid var(--border-color)',
         paddingBottom: '0.75rem'
       }}>
@@ -156,6 +191,54 @@ export default function SuperAdminFeedbackPage() {
           <Lightbulb size={14} />
           <span>Features ({feedbacks.filter(f => f.type === 'feature').length})</span>
         </button>
+      </div>
+
+      {/* Search and Filters Bar */}
+      <div style={{
+        display: 'flex',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {/* Search Input */}
+        <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+          <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
+          <input 
+            type="text" 
+            placeholder="Search feedback by description, submitter or company..." 
+            className="form-input"
+            style={{ paddingLeft: '2.75rem', height: '40px', borderRadius: '10px' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Filter Dropdowns on the right */}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            className="form-select"
+            style={{ 
+              minWidth: '150px', 
+              height: '40px', 
+              padding: '0.5rem 0.75rem', 
+              fontSize: '0.875rem', 
+              borderRadius: '10px', 
+              background: 'var(--bg-card)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer'
+            }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
 
       {/* Grid List */}
@@ -214,13 +297,24 @@ export default function SuperAdminFeedbackPage() {
                       {new Date(item.createdAt).toLocaleDateString('en-IN')}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => handleOpenDetail(item)} 
-                        className="btn btn-secondary"
-                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px' }}
-                      >
-                        View
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button 
+                          onClick={() => handleOpenDetail(item)} 
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px' }}
+                        >
+                          View
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteFeedback(item._id)} 
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px', color: 'var(--status-overdue)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="Delete Feedback"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

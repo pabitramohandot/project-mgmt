@@ -104,3 +104,35 @@ export async function PUT(request, context) {
     return NextResponse.json({ error: 'Failed to update feedback' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, context) {
+  try {
+    await dbConnect();
+    const session = getRequestSession(request);
+    
+    // Only superadmin can delete feedback
+    if (!session || session.role !== 'superadmin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const params = await context.params;
+    const { id } = params;
+
+    const feedback = await Feedback.findById(id);
+    if (!feedback) {
+      return NextResponse.json({ error: 'Feedback not found' }, { status: 404 });
+    }
+
+    // Cascade delete any notifications linked to this feedback
+    await Notification.deleteMany({ feedbackId: id });
+
+    // Delete feedback
+    await Feedback.findByIdAndDelete(id);
+
+    return NextResponse.json({ success: true, message: 'Feedback and all related notifications deleted successfully' });
+  } catch (error) {
+    console.error('Feedback DELETE Error:', error);
+    return NextResponse.json({ error: 'Failed to delete feedback' }, { status: 500 });
+  }
+}
+

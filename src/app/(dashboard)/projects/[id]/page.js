@@ -35,6 +35,22 @@ export default function ProjectDetailPage() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [role, setRole] = useState('');
+
+  useEffect(() => {
+    async function getRole() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setRole(data.role);
+        }
+      } catch (err) {
+        console.error('Failed to get user role:', err);
+      }
+    }
+    getRole();
+  }, []);
 
   // Task checklist state
   const [newTaskName, setNewTaskName] = useState('');
@@ -812,14 +828,16 @@ export default function ProjectDetailPage() {
                     </span>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>{project.name}</h2>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button className="btn btn-secondary" style={{ padding: '0.4rem' }} onClick={() => setIsEditing(true)}>
-                      <Edit size={14} />
-                    </button>
-                    <button className="btn btn-danger" style={{ padding: '0.4rem' }} onClick={handleDeleteProject}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {role !== 'company_user' && (
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem' }} onClick={() => setIsEditing(true)}>
+                        <Edit size={14} />
+                      </button>
+                      <button className="btn btn-danger" style={{ padding: '0.4rem' }} onClick={handleDeleteProject}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '1.5rem', fontSize: '0.88rem', whiteSpace: 'pre-wrap' }}>
@@ -1148,13 +1166,15 @@ export default function ProjectDetailPage() {
                       {task.name}
                     </span>
                   </div>
-                  <button 
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                    onClick={() => handleDeleteTask(task._id)}
-                    className="delete-task-btn"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {role !== 'company_user' && (
+                    <button 
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      onClick={() => handleDeleteTask(task._id)}
+                      className="delete-task-btn"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -1202,13 +1222,15 @@ export default function ProjectDetailPage() {
                     <span style={{ fontSize: '0.7rem', color: 'var(--accent-secondary)', fontWeight: 600 }}>
                       {new Date(update.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
-                    <button 
-                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                      onClick={() => handleDeleteStatusUpdate(update._id)}
-                      className="delete-task-btn"
-                    >
-                      <Trash2 size={11} />
-                    </button>
+                    {role !== 'company_user' && (
+                      <button 
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                        onClick={() => handleDeleteStatusUpdate(update._id)}
+                        className="delete-task-btn"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
                   </div>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.35, wordBreak: 'break-word' }}>
                     {update.message}

@@ -50,6 +50,9 @@ export async function PUT(request, context) {
     const data = await request.json();
 
     const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot edit clients' }, { status: 403 });
+    }
     let query = { _id: id };
     if (role !== 'superadmin') {
       query.companyId = companyId;
@@ -85,6 +88,9 @@ export async function DELETE(request, context) {
     const { id } = params;
 
     const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot delete clients' }, { status: 403 });
+    }
     let query = { _id: id };
     if (role !== 'superadmin') {
       query.companyId = companyId;

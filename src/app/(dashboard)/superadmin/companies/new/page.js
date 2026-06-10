@@ -78,7 +78,7 @@ export default function NewCompanyPage() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '800px' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <Link href="/superadmin/companies" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
           <ArrowLeft size={16} />

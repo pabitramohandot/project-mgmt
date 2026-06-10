@@ -95,7 +95,7 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '900px' }}>
       <div className="page-header" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title">Company Branding Settings</h1>

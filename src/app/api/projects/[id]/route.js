@@ -48,12 +48,30 @@ export async function PUT(request, context) {
     const data = await request.json();
     console.log("PUT API data received:", JSON.stringify(data, null, 2));
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
     let query = { _id: id, companyId };
 
     const project = await Project.findOne(query);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    if (role === 'company_user') {
+      const allowedKeys = ['tasks', 'statusUpdates'];
+      const payloadKeys = Object.keys(data);
+      const hasRestrictedKeys = payloadKeys.some(key => !allowedKeys.includes(key));
+      
+      if (hasRestrictedKeys) {
+        return NextResponse.json({ error: 'Forbidden: Company users cannot modify project details' }, { status: 403 });
+      }
+
+      if (data.tasks && data.tasks.length < (project.tasks || []).length) {
+        return NextResponse.json({ error: 'Forbidden: Company users cannot delete tasks' }, { status: 403 });
+      }
+
+      if (data.statusUpdates && data.statusUpdates.length < (project.statusUpdates || []).length) {
+        return NextResponse.json({ error: 'Forbidden: Company users cannot delete status updates' }, { status: 403 });
+      }
     }
 
     // Convert empty string client to null to avoid Mongoose ObjectId CastErrors
@@ -78,7 +96,10 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot delete projects' }, { status: 403 });
+    }
     let query = { _id: id, companyId };
 
     const project = await Project.findOne(query);

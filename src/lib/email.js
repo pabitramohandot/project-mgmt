@@ -9,12 +9,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
-  if (!process.env.EMAIL_PASS) {
-    console.warn('WARNING: EMAIL_PASS is not configured in .env.local. Email send skipped.');
-    return { skipped: true, reason: 'EMAIL_PASS not configured' };
-  }
-
-  const clientEmail = invoice.clientEmail;
+  const clientEmail = invoice.clientEmail || invoice.client?.email;
   if (!clientEmail) {
     console.warn('WARNING: Client email is missing. Email send skipped.');
     return { skipped: true, reason: 'Client email missing' };
@@ -24,21 +19,52 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   let companyName = 'IONETWEB';
   let companyLogo = null;
   let brandColors = { primary: '#00aeef', secondary: '#f26522' };
+  let companyEmailSettings = null;
 
   try {
     if (invoice.companyId) {
+      const companyIdVal = invoice.companyId._id || invoice.companyId;
       const Company = (await import('@/models/Company')).default;
-      const company = await Company.findById(invoice.companyId).lean();
+      const company = await Company.findById(companyIdVal).lean();
       if (company) {
         companyName = company.name || 'IONETWEB';
         companyLogo = company.logo;
         if (company.brandColors) {
           brandColors = company.brandColors;
         }
+        if (company.emailSettings?.user && company.emailSettings?.pass) {
+          companyEmailSettings = company.emailSettings;
+        }
       }
     }
   } catch (e) {
     console.error('Failed to load company details for invoice email:', e);
+  }
+
+  if (companyLogo && !companyLogo.startsWith('http://') && !companyLogo.startsWith('https://') && !companyLogo.startsWith('data:')) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    companyLogo = `${baseUrl}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}`;
+  }
+
+  // Resolve transporter to use
+  let activeTransporter = transporter;
+  let fromAddress = `"${companyName} Invoicing" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`;
+
+  if (companyEmailSettings) {
+    activeTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: companyEmailSettings.user,
+        pass: companyEmailSettings.pass,
+      },
+    });
+    fromAddress = `"${companyName} Invoicing" <${companyEmailSettings.user}>`;
+  } else {
+    // If no custom SMTP credentials, check if system-wide EMAIL_PASS is present
+    if (!process.env.EMAIL_PASS) {
+      console.warn('WARNING: System EMAIL_PASS is not configured. Custom connection not set. Email send skipped.');
+      return { skipped: true, reason: 'No SMTP credentials configured' };
+    }
   }
 
   const invoiceUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/invoices/${invoice._id}?download=true`;
@@ -166,7 +192,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   `;
 
   const mailOptions = {
-    from: `"${companyName} Invoicing" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
+    from: fromAddress,
     to: clientEmail,
     subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
     html: htmlContent,
@@ -183,17 +209,12 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
     ];
   }
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await activeTransporter.sendMail(mailOptions);
   console.log(`Email sent successfully: ${info.messageId}`);
   return info;
 }
 
 export async function sendAnnouncementEmail(clientEmail, clientName, subject, body, companyId = null) {
-  if (!process.env.EMAIL_PASS) {
-    console.warn('WARNING: EMAIL_PASS is not configured in .env.local. Email send skipped.');
-    return { skipped: true, reason: 'EMAIL_PASS not configured' };
-  }
-
   if (!clientEmail) {
     console.warn('WARNING: Client email is missing. Email send skipped.');
     return { skipped: true, reason: 'Client email missing' };
@@ -203,21 +224,52 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   let companyName = 'IONETWEB';
   let companyLogo = null;
   let brandColors = { primary: '#00aeef', secondary: '#f26522' };
+  let companyEmailSettings = null;
 
   try {
     if (companyId) {
+      const companyIdVal = companyId._id || companyId;
       const Company = (await import('@/models/Company')).default;
-      const company = await Company.findById(companyId).lean();
+      const company = await Company.findById(companyIdVal).lean();
       if (company) {
         companyName = company.name || 'IONETWEB';
         companyLogo = company.logo;
         if (company.brandColors) {
           brandColors = company.brandColors;
         }
+        if (company.emailSettings?.user && company.emailSettings?.pass) {
+          companyEmailSettings = company.emailSettings;
+        }
       }
     }
   } catch (e) {
     console.error('Failed to load company details for announcement email:', e);
+  }
+
+  if (companyLogo && !companyLogo.startsWith('http://') && !companyLogo.startsWith('https://') && !companyLogo.startsWith('data:')) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    companyLogo = `${baseUrl}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}`;
+  }
+
+  // Resolve transporter to use
+  let activeTransporter = transporter;
+  let fromAddress = `"${companyName} Broadcast" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`;
+
+  if (companyEmailSettings) {
+    activeTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: companyEmailSettings.user,
+        pass: companyEmailSettings.pass,
+      },
+    });
+    fromAddress = `"${companyName} Broadcast" <${companyEmailSettings.user}>`;
+  } else {
+    // If no custom SMTP credentials, check if system-wide EMAIL_PASS is present
+    if (!process.env.EMAIL_PASS) {
+      console.warn('WARNING: System EMAIL_PASS is not configured. Custom connection not set. Email send skipped.');
+      return { skipped: true, reason: 'No SMTP credentials configured' };
+    }
   }
 
   const emailSubject = subject || `Broadcast from ${companyName}`;
@@ -257,13 +309,13 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   `;
 
   const mailOptions = {
-    from: `"${companyName} Broadcast" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`,
+    from: fromAddress,
     to: clientEmail,
     subject: emailSubject,
     html: htmlContent,
   };
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await activeTransporter.sendMail(mailOptions);
   console.log(`Announcement Email sent successfully to ${clientEmail}: ${info.messageId}`);
   return info;
 }

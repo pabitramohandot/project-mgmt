@@ -31,6 +31,22 @@ function InvoicesContent() {
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('project'); // 'project' or 'client'
+  const [role, setRole] = useState('');
+
+  useEffect(() => {
+    async function getRole() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setRole(data.role);
+        }
+      } catch (err) {
+        console.error('Failed to get user role:', err);
+      }
+    }
+    getRole();
+  }, []);
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -307,33 +323,37 @@ function InvoicesContent() {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {inv.status !== 'Paid' && (
+                    {role !== 'company_user' ? (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {inv.status !== 'Paid' && (
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' }}
+                            onClick={() => handleStatusChange(inv._id, 'Paid')}
+                          >
+                            <Check size={12} style={{ marginRight: '2px' }} /> Paid
+                          </button>
+                        )}
+                        {inv.status === 'Draft' && (
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                            onClick={() => router.push(`/invoices/${inv._id}?send=true`)}
+                          >
+                            Send Mail
+                          </button>
+                        )}
                         <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' }}
-                          onClick={() => handleStatusChange(inv._id, 'Paid')}
+                          className="btn btn-danger" 
+                          style={{ padding: '0.35rem', borderRadius: '8px' }}
+                          onClick={() => handleDeleteInvoice(inv._id)}
                         >
-                          <Check size={12} style={{ marginRight: '2px' }} /> Paid
+                          <Trash2 size={12} />
                         </button>
-                      )}
-                      {inv.status === 'Draft' && (
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                          onClick={() => router.push(`/invoices/${inv._id}?send=true`)}
-                        >
-                          Send Mail
-                        </button>
-                      )}
-                      <button 
-                        className="btn btn-danger" 
-                        style={{ padding: '0.35rem', borderRadius: '8px' }}
-                        onClick={() => handleDeleteInvoice(inv._id)}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                    )}
                   </td>
                 </tr>
               ))}

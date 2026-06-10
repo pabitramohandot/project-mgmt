@@ -152,7 +152,16 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'radial-gradient(circle at center, #0c1c2e 0%, #03070b 100%)',
-      padding: '1.5rem'
+      padding: '1.5rem',
+      '--text-primary': '#ffffff',
+      '--text-secondary': '#cbd5e1',
+      '--text-muted': '#94a3b8',
+      '--border-color': 'rgba(255, 255, 255, 0.12)',
+      '--border-color-hover': 'rgba(0, 174, 239, 0.4)',
+      '--accent-primary': '#00aeef',
+      '--accent-primary-glow': 'rgba(0, 174, 239, 0.25)',
+      '--bg-card': 'rgba(12, 21, 32, 0.5)',
+      '--bg-card-hover': 'rgba(16, 28, 44, 0.7)'
     }}>
       <div className="card" style={{
         maxWidth: '420px',
@@ -199,6 +208,18 @@ export default function LoginPage() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        .form-input::placeholder {
+          color: rgba(255, 255, 255, 0.3) !important;
+        }
+        .form-input:-webkit-autofill,
+        .form-input:-webkit-autofill:hover, 
+        .form-input:-webkit-autofill:focus, 
+        .form-input:-webkit-autofill:active {
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: #ffffff !important;
+          transition: background-color 5000s ease-in-out 0s !important;
+          box-shadow: inset 0 0 20px 20px rgba(255, 255, 255, 0.01) !important;
         }
       `}</style>
     </div>

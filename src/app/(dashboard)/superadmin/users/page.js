@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Users, Building, X, Clock } from 'lucide-react';
+import { Plus, Users, Building, X, Clock, Trash2 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function UsersPage() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Form modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,9 +48,47 @@ export default function UsersPage() {
     }
   };
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchCurrentUser();
   }, []);
+
+  const handleDeleteUser = (id, username) => {
+    showConfirm({
+      title: 'Delete User',
+      message: `Are you sure you want to delete user "${username}"? This will permanently delete the user account and their authored feedback. This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/superadmin/users/${id}`, {
+            method: 'DELETE',
+          });
+          if (res.ok) {
+            showToast('User deleted successfully', 'success');
+            fetchData();
+          } else {
+            const data = await res.json();
+            showToast(data.error || 'Failed to delete user', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Error deleting user', 'error');
+        }
+      }
+    });
+  };
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -127,6 +166,7 @@ export default function UsersPage() {
                     <th>Assigned Company</th>
                     <th>Access Role</th>
                     <th>Registration Date</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,6 +202,21 @@ export default function UsersPage() {
                           <Clock size={12} />
                           <span>{new Date(u.createdAt).toLocaleDateString()}</span>
                         </div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {currentUser && currentUser.userId !== u._id ? (
+                          <button
+                            onClick={() => handleDeleteUser(u._id, u.username)}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px', color: 'var(--status-overdue)' }}
+                            title="Delete User"
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Active Session</span>
+                        )}
                       </td>
                     </tr>
                   ))}

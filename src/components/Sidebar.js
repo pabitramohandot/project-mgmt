@@ -9,10 +9,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
     setTheme(activeTheme);
   }, []);
 
@@ -252,7 +252,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
       {!isCollapsed && (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          v1.0.0 • Localhost Mode
+          v2.1.0 • You are using BETA version
         </div>
       )}
 

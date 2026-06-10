@@ -54,10 +54,26 @@ const maskPhone = (phone) => {
 
 export default function ClientsPage() {
   const { showToast, showConfirm } = useNotification();
+  const [role, setRole] = useState('');
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    async function getRole() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setRole(data.role);
+        }
+      } catch (err) {
+        console.error('Failed to load user role', err);
+      }
+    }
+    getRole();
+  }, []);
 
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -353,9 +369,11 @@ export default function ClientsPage() {
                       <button className="btn btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleViewDetails(client._id)}>
                         <Eye size={14} /> Profile
                       </button>
-                      <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(client)}>
-                        <Edit size={14} />
-                      </button>
+                      {role !== 'company_user' && (
+                        <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(client)}>
+                          <Edit size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -479,7 +497,7 @@ export default function ClientsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2>Client Profile Detail</h2>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {selectedClientData && (
+                {selectedClientData && role !== 'company_user' && (
                   <button className="btn btn-danger" style={{ padding: '0.35rem 0.65rem', borderRadius: '8px', fontSize: '0.8rem' }} onClick={() => handleDeleteClient(selectedClientData.client._id)}>
                     <Trash2 size={14} style={{ marginRight: '4px' }} /> Delete
                   </button>

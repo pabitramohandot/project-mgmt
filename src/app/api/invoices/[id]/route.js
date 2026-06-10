@@ -82,7 +82,10 @@ export async function PUT(request, context) {
 
     const { pdfBase64, ...updateData } = data;
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot edit invoices' }, { status: 403 });
+    }
     let query = { _id: id, companyId };
 
     const invoice = await Invoice.findOne(query);
@@ -105,27 +108,37 @@ export async function PUT(request, context) {
       updateData.total = total;
     }
 
-    const isChangingToSent = updateData.status === 'Sent' && invoice.status !== 'Sent';
+    const isSendingEmail = updateData.status === 'Sent' && !!pdfBase64;
 
     const updatedInvoice = await Invoice.findOneAndUpdate(query, updateData, {
       new: true,
       runValidators: true,
-    }).populate('project', 'name').populate('client', 'name email company phone address');
+    })
+      .populate('project', 'name')
+      .populate('client', 'name email company phone address')
+      .populate('companyId');
 
     if (!updatedInvoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    if (isChangingToSent) {
+    if (isSendingEmail) {
       try {
-        const Project = (await import('@/models/Project')).default;
-        const projectQuery = { _id: updatedInvoice.project };
-        projectQuery.companyId = companyId;
-        const project = await Project.findOne(projectQuery);
+        const projectId = updatedInvoice.project?._id || updatedInvoice.project;
+        let project = null;
+        if (projectId) {
+          const Project = (await import('@/models/Project')).default;
+          const projectQuery = { _id: projectId, companyId };
+          project = await Project.findOne(projectQuery);
+        }
         const { sendInvoiceEmail } = await import('@/lib/email');
-        await sendInvoiceEmail(updatedInvoice, project, pdfBase64);
+        const emailResult = await sendInvoiceEmail(updatedInvoice, project, pdfBase64);
+        if (emailResult && emailResult.skipped) {
+          return NextResponse.json({ error: `Invoice updated, but email skipped: ${emailResult.reason}` }, { status: 400 });
+        }
       } catch (emailErr) {
         console.error('Error sending invoice email:', emailErr);
+        return NextResponse.json({ error: `Invoice updated, but failed to send email: ${emailErr.message}` }, { status: 500 });
       }
     }
 
@@ -142,7 +155,10 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot delete invoices' }, { status: 403 });
+    }
     let query = { _id: id, companyId };
 
     const invoice = await Invoice.findOne(query);

@@ -16,6 +16,7 @@ export default function InvoiceDetailPage() {
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState('');
   const [hasAutoSent, setHasAutoSent] = useState(false);
 
   const fetchInvoice = async () => {
@@ -113,9 +114,11 @@ export default function InvoiceDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setIsAdmin(data.loggedIn);
+        setUserRole(data.role || '');
       }
     } catch (e) {
       setIsAdmin(false);
+      setUserRole('');
     }
   };
 
@@ -257,7 +260,7 @@ export default function InvoiceDetailPage() {
                 <span>Processing...</span>
               </span>
             )}
-            {isAdmin && invoice.status !== 'Paid' && (
+            {isAdmin && userRole !== 'company_user' && invoice.status !== 'Paid' && (
               <button 
                 className="btn btn-secondary" 
                 style={{ color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' }}
@@ -268,14 +271,14 @@ export default function InvoiceDetailPage() {
                 <span>Mark as Paid</span>
               </button>
             )}
-            {isAdmin && invoice.status === 'Draft' && (
+            {isAdmin && userRole !== 'company_user' && (invoice.status === 'Draft' || invoice.status === 'Sent') && (
               <button 
                 className="btn btn-secondary" 
                 style={{ color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                 onClick={() => handleUpdateStatus('Sent')}
                 disabled={updating}
               >
-                <span>Send Email</span>
+                <span>{invoice.status === 'Sent' ? 'Resend Email' : 'Send Email'}</span>
               </button>
             )}
             <button className="btn btn-secondary" onClick={handlePrint}>
@@ -295,7 +298,16 @@ export default function InvoiceDetailPage() {
           <div className="invoice-header">
             <div>
               {invoice.companyId?.logo ? (
-                <img src={invoice.companyId.logo} alt="Company Logo" style={{ height: '60px', maxWidth: '240px', objectFit: 'contain' }} />
+                <img 
+                  src={
+                    invoice.companyId.logo.startsWith('data:')
+                      ? invoice.companyId.logo
+                      : `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(invoice.companyId.logo)}`
+                  }
+                  alt="Company Logo" 
+                  crossOrigin="anonymous"
+                  style={{ height: '60px', maxWidth: '240px', objectFit: 'contain' }} 
+                />
               ) : (
                 <>
                   <h2 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a' }}>

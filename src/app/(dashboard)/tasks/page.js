@@ -10,7 +10,8 @@ import {
   CheckCircle,
   Briefcase, 
   ArrowRight,
-  Filter
+  Filter,
+  Globe
 } from 'lucide-react';
 
 export default function PendingTasksPage() {
@@ -40,6 +41,7 @@ export default function PendingTasksPage() {
     if (filter === 'all') return true;
     if (filter === 'invoice_draft') return task.type === 'invoice_draft';
     if (filter === 'hosting_expiry') return task.type === 'hosting_expiry';
+    if (filter === 'domain_expiry') return task.type === 'domain_expiry';
     if (filter === 'project_pending') return task.type === 'project_pending';
     return true;
   });
@@ -52,6 +54,13 @@ export default function PendingTasksPage() {
           color: '#ec4899',
           bgLight: 'rgba(236, 72, 153, 0.1)',
           badgeText: 'HOSTING EXPIRY'
+        };
+      case 'domain_expiry':
+        return {
+          icon: Globe,
+          color: '#8b5cf6',
+          bgLight: 'rgba(139, 92, 246, 0.1)',
+          badgeText: 'DOMAIN EXPIRY'
         };
       case 'project_pending':
         return {
@@ -109,6 +118,13 @@ export default function PendingTasksPage() {
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
             Hosting Expiry ({tasks.filter(t => t.type === 'hosting_expiry').length})
+          </button>
+          <button 
+            onClick={() => setFilter('domain_expiry')} 
+            className={`btn ${filter === 'domain_expiry' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            Domain Expiry ({tasks.filter(t => t.type === 'domain_expiry').length})
           </button>
           <button 
             onClick={() => setFilter('project_pending')} 

@@ -20,8 +20,12 @@ export async function GET(request) {
     }
 
     let company = null;
+    let companyUsers = [];
     if (user.companyId) {
       company = await Company.findById(user.companyId).lean();
+      if (user.role === 'company_admin' || user.role === 'superadmin') {
+        companyUsers = await User.find({ companyId: user.companyId }).select('username role email whatsapp createdAt').sort({ username: 1 }).lean();
+      }
     }
 
     return NextResponse.json({
@@ -36,8 +40,20 @@ export async function GET(request) {
         name: company.name,
         slug: company.slug,
         logo: company.logo,
-        brandColors: company.brandColors
-      } : null
+        brandColors: company.brandColors,
+        emailSettings: {
+          user: company.emailSettings?.user || '',
+          hasPassword: !!company.emailSettings?.pass
+        }
+      } : null,
+      companyUsers: companyUsers.map(u => ({
+        id: u._id.toString(),
+        username: u.username,
+        role: u.role,
+        email: u.email || '',
+        whatsapp: u.whatsapp || '',
+        createdAt: u.createdAt
+      }))
     });
   } catch (error) {
     console.error('Me API Error:', error);
@@ -61,7 +77,7 @@ export async function PUT(request) {
     }
 
     const data = await request.json();
-    const { password, email, whatsapp } = data;
+    const { password, email, whatsapp, companyEmailUser, companyEmailPass } = data;
 
     if (email !== undefined) user.email = email.trim();
     if (whatsapp !== undefined) user.whatsapp = whatsapp.trim();
@@ -71,6 +87,26 @@ export async function PUT(request) {
     }
 
     await user.save();
+
+    // If company admin or super admin, save custom email settings
+    if (user.companyId && (user.role === 'company_admin' || user.role === 'superadmin')) {
+      const company = await Company.findById(user.companyId);
+      if (company) {
+        if (!company.emailSettings) {
+          company.emailSettings = { user: '', pass: '' };
+        }
+        if (companyEmailUser !== undefined) {
+          company.emailSettings.user = companyEmailUser.trim();
+        }
+        if (companyEmailPass !== undefined) {
+          const trimmedPass = companyEmailPass.trim();
+          if (trimmedPass !== '' && trimmedPass !== '••••••••') {
+            company.emailSettings.pass = trimmedPass;
+          }
+        }
+        await company.save();
+      }
+    }
 
     return NextResponse.json({
       success: true,

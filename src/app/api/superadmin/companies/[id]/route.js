@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Company from '@/models/Company';
 import User from '@/models/User';
+import Project from '@/models/Project';
+import Client from '@/models/Client';
+import Invoice from '@/models/Invoice';
+import Credential from '@/models/Credential';
+import Notification from '@/models/Notification';
+import Feedback from '@/models/Feedback';
 import { getRequestSession } from '@/lib/auth';
 
 export async function GET(request, context) {
@@ -75,3 +81,39 @@ export async function PUT(request, context) {
     return NextResponse.json({ error: 'Failed to update company' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, context) {
+  try {
+    const { role } = getRequestSession(request);
+    if (role !== 'superadmin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await dbConnect();
+    const params = await context.params;
+    const { id } = params;
+
+    const company = await Company.findById(id);
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+
+    // Cascade delete everything related to the company
+    await Promise.all([
+      User.deleteMany({ companyId: id }),
+      Project.deleteMany({ companyId: id }),
+      Client.deleteMany({ companyId: id }),
+      Invoice.deleteMany({ companyId: id }),
+      Credential.deleteMany({ companyId: id }),
+      Notification.deleteMany({ companyId: id }),
+      Feedback.deleteMany({ companyId: id }),
+      Company.findByIdAndDelete(id)
+    ]);
+
+    return NextResponse.json({ success: true, message: 'Company and all associated records deleted successfully' });
+  } catch (error) {
+    console.error('Superadmin Company detail DELETE API Error:', error);
+    return NextResponse.json({ error: 'Failed to delete company' }, { status: 500 });
+  }
+}
+

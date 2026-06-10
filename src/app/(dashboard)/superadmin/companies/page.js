@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, ToggleLeft, ToggleRight, Building, Clock, Pencil } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Building, Clock, Pencil, Trash2 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function CompaniesPage() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +50,31 @@ export default function CompaniesPage() {
       console.error(e);
       showToast('Error updating company status', 'error');
     }
+  };
+
+  const handleDeleteCompany = (id, name) => {
+    showConfirm({
+      title: 'Delete Company',
+      message: `Are you sure you want to delete company "${name}"? This will permanently delete the company and all its associated users, projects, clients, invoices, and credentials. This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/superadmin/companies/${id}`, {
+            method: 'DELETE',
+          });
+          if (res.ok) {
+            showToast('Company and all associated data deleted successfully', 'success');
+            fetchCompanies();
+          } else {
+            const data = await res.json();
+            showToast(data.error || 'Failed to delete company', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Error deleting company', 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -144,6 +169,15 @@ export default function CompaniesPage() {
                           <Pencil size={12} />
                           <span>Edit</span>
                         </Link>
+                        <button
+                          onClick={() => handleDeleteCompany(comp._id, comp.name)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px', color: 'var(--status-overdue)' }}
+                          title="Delete Company"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -35,6 +35,19 @@ const CompanySchema = new mongoose.Schema(
       lowercase: true,
       default: '',
     },
+    emailSettings: {
+      user: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: '',
+      },
+      pass: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,

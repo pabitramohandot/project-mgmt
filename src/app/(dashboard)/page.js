@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [companyName, setCompanyName] = useState('Workspace');
+  const [username, setUsername] = useState('User');
   const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
@@ -42,6 +43,9 @@ export default function Dashboard() {
           }
           if (meData.role) {
             setUserRole(meData.role);
+          }
+          if (meData.username) {
+            setUsername(meData.username);
           }
         }
       } catch (err) {
@@ -86,7 +90,7 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Welcome to {companyName}</h1>
+          <h1 className="page-title">Welcome, {username.charAt(0).toUpperCase() + username.slice(1)}</h1>
           <p className="page-subtitle">Here is the latest status of your client projects and billing.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', position: 'relative' }}>
@@ -99,7 +103,9 @@ export default function Dashboard() {
           </Link>
           <Link href="/invoices" className="btn btn-secondary">
             <FileText size={18} />
-            <span>Create Invoice</span>
+            <span style={{ textAlign: 'left', lineHeight: '1.2' }}>
+              Create<br className="show-mobile" /> Invoice
+            </span>
           </Link>
         </div>
       </div>
@@ -190,6 +196,8 @@ export default function Dashboard() {
               let borderLeftColor = 'var(--accent-primary)';
               if (task.type === 'hosting_expiry') {
                 borderLeftColor = '#ec4899';
+              } else if (task.type === 'domain_expiry') {
+                borderLeftColor = '#8b5cf6';
               } else if (task.type === 'project_pending') {
                 borderLeftColor = '#f59e0b';
               } else if (task.type === 'invoice_draft') {

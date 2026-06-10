@@ -20,7 +20,10 @@ export async function PUT(request, context) {
     const { id } = params;
     const data = await request.json();
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot edit credentials' }, { status: 403 });
+    }
     let query = { _id: id, companyId };
 
     const credential = await Credential.findOne(query);
@@ -52,7 +55,10 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, role } = getRequestSession(request);
+    if (role === 'company_user') {
+      return NextResponse.json({ error: 'Forbidden: Company users cannot delete credentials' }, { status: 403 });
+    }
     let query = { _id: id, companyId };
 
     const credential = await Credential.findOne(query);
