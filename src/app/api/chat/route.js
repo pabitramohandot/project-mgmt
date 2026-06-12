@@ -445,17 +445,18 @@ export async function POST(request) {
 
     await dbConnect();
 
-    // Read the platform-wide AI config (managed by superadmin only)
+    // Read the platform-wide AI config (managed by superadmin)
+    // Falls back to environment variable if not yet configured in DB
     let settings = await GlobalSettings.findOne({ key: "platform" }).lean();
-    if (!settings) {
-      return NextResponse.json(
-        { error: "The AI assistant has not been configured yet. Please contact the platform administrator." },
-        { status: 503 }
-      );
-    }
 
-    const selectedProvider = settings.activeProvider || "gemini";
-    const apiKey = settings.aiKeys?.[selectedProvider];
+    let selectedProvider = settings?.activeProvider || "gemini";
+    let apiKey = settings?.aiKeys?.[selectedProvider];
+
+    // Fallback: use GEMINI_API_KEY from environment if DB not configured yet
+    if (!apiKey && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+      selectedProvider = "gemini";
+    }
 
     if (!apiKey) {
       return NextResponse.json(
@@ -495,6 +496,7 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
+
 
 async function reqBody(req) {
   try { return await req.json(); } catch { return {}; }
