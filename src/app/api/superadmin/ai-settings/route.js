@@ -290,31 +290,19 @@ async function testClaudeKey(apiKey) {
 
 async function testNvidiaKey(apiKey) {
   try {
-    const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({
-      baseURL: "https://integrate.api.nvidia.com/v1",
-      apiKey,
-    });
+    const { default: OpenAI } = await import('openai');
+    const client = new OpenAI({ baseURL: 'https://integrate.api.nvidia.com/v1', apiKey });
     const completion = await client.chat.completions.create({
-      model: "nvidia/nemotron-3-ultra-550b-a55b",
-      messages: [{ role: "user", content: "Reply with: OK" }],
+      model: 'meta/llama-3.1-70b-instruct',
+      messages: [{ role: 'user', content: 'Reply with: OK' }],
       max_tokens: 20,
       temperature: 0.5,
       top_p: 0.7,
       stream: false,
     });
-    const text = completion.choices?.[0]?.message?.content || "";
-    return {
-      success: true,
-      provider: "nvidia",
-      message: "NVIDIA NIM API key is valid and working.",
-      response: text.substring(0, 100),
-    };
+    const text = completion.choices?.[0]?.message?.content || '';
+    return { success: true, provider: 'nvidia', message: 'NVIDIA NIM API key is valid and working.', response: text.substring(0, 100) };
   } catch (err) {
-    return {
-      success: false,
-      provider: "nvidia",
-      message: sanitizeProviderError(err, "NVIDIA"),
-    };
+    return { success: false, provider: 'nvidia', message: sanitizeProviderError(err, 'NVIDIA') };
   }
 }

@@ -305,8 +305,10 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
   const { default: OpenAI } = await import("openai");
   const client = new OpenAI({ baseURL: "https://integrate.api.nvidia.com/v1", apiKey });
 
-  // Current NVIDIA NIM model with tool-calling support
-  const NVIDIA_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1";
+  // meta/llama-3.1-70b-instruct is available on all NVIDIA NIM tiers including free
+  // and has strong tool-calling support. Switch to nvidia/llama-3.1-nemotron-ultra-253b-v1
+  // for paid/enterprise accounts with Nemotron access.
+  const NVIDIA_MODEL = "meta/llama-3.1-70b-instruct";
 
   const messages = [
     { role: "system", content: systemInstruction },
