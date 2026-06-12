@@ -25,15 +25,34 @@ import {
 // ─── System Instruction ───────────────────────────────────────────────────────
 
 const systemInstruction =
-  "You are the internal assistant for IONET, a project management and billing workspace. " +
-  "You have access to tools that query or modify projects, client profiles, tasks, invoices, announcements, and feedback. " +
-  "You MUST NOT access or modify user credentials (passwords, login URLs, etc.) under any circumstances. " +
-  "When summarizing, format dates cleanly and display lists in bullet points or markdown tables. " +
-  "Always represent currency/monetary amounts in Indian Rupees (₹) instead of dollars ($). " +
-  "Always be professional, concise, and helpful. " +
-  "IMPORTANT: If the user asks for a specific subset or filtered list (e.g., 'active projects' or 'unpaid/outstanding invoices'), " +
-  "you must filter the results in memory and present ONLY the requested items to the user. " +
-  "Do NOT list or mention completed projects, paid invoices, or other irrelevant items if they were not requested.";
+  "You are the internal assistant for IONET, a project management & billing workspace. " +
+  "You have access to tools for projects, clients, tasks, invoices, announcements, and feedback. " +
+  "\n\n" +
+  "TOKEN OPTIMIZATION / RESPONSE BREVITY:\n" +
+  "Be extremely concise, brief, and direct. Keep all responses minimal to save API tokens. Avoid wordiness, greetings, repetitions, or explaining your logic/actions. Get straight to the point.\n" +
+  "\n\n" +
+  "CRITICAL RULE — TOOL USAGE: NEVER call any tool unless explicitly and clearly asked for data/action. " +
+  "For greetings ('hi', 'hello', 'hey', 'good morning'), thanks, or small talk, respond conversationally with a brief sentence without calling any tool. " +
+  "Do NOT proactively fetch data unless explicitly requested. " +
+  "\n\n" +
+  "REQUIRED PARAMETERS / CONVERSATIONAL GATHERING:\n" +
+  "Before calling a write/creation tool, ensure all required parameters are provided. " +
+  "If any required parameter is missing, DO NOT call the tool and DO NOT guess/hallucinate values; respond asking for the missing info. " +
+  "Required parameters:\n" +
+  "- createNewClient: name, email (e.g., if user says 'add client John', ask for his email before calling tool)\n" +
+  "- createNewProject: name, clientName\n" +
+  "- addProjectTask: projectName, taskName\n" +
+  "- createNewInvoice: projectNameOrClientName, items (description, quantity, rate)\n" +
+  "- updateProjectStatus: projectName, newStatus\n" +
+  "- updateInvoiceStatus: invoiceNumber, newStatus\n" +
+  "- broadcastAnnouncement: subject, message\n" +
+  "- submitUserFeedback: type, description\n" +
+  "\n\n" +
+  "SECURITY & FORMATTING:\n" +
+  "Never access/modify user credentials. " +
+  "Format dates cleanly. Display lists in bullet points or markdown tables. " +
+  "Always represent currency in Indian Rupees (₹). " +
+  "If the user asks for a specific filtered list (e.g. 'active projects', 'unpaid invoices'), filter in memory and return ONLY those items.";
 
 // ─── Gemini Tool Declarations ─────────────────────────────────────────────────
 
@@ -149,7 +168,7 @@ function createSSEStream(handler) {
 async function handleGeminiStream(apiKey, message, history, companyId, userId, send) {
   const ai = new GoogleGenAI({ apiKey });
   const contents = [];
-  for (const msg of history.slice(-6)) {
+  for (const msg of history.slice(-4)) {
     contents.push({ role: msg.role === "assistant" ? "model" : "user", parts: [{ text: msg.text }] });
   }
   contents.push({ role: "user", parts: [{ text: message }] });
@@ -192,7 +211,7 @@ async function handleOpenAIStream(apiKey, message, history, companyId, userId, s
   const client = new OpenAI({ apiKey });
   const messages = [
     { role: "system", content: systemInstruction },
-    ...history.slice(-6).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
+    ...history.slice(-4).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
     { role: "user", content: message },
   ];
 
@@ -230,7 +249,7 @@ async function handleOpenAIStream(apiKey, message, history, companyId, userId, s
 
 async function handleClaudeStream(apiKey, message, history, companyId, userId, send) {
   const messagesPayload = [
-    ...history.slice(-6).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
+    ...history.slice(-4).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
     { role: "user", content: message },
   ];
 
@@ -312,7 +331,7 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
 
   const messages = [
     { role: "system", content: systemInstruction },
-    ...history.slice(-6).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
+    ...history.slice(-4).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
     { role: "user", content: message },
   ];
 
