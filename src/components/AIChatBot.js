@@ -745,7 +745,7 @@ export default function AIChatBot() {
               </span>
             </div>
           </div>
-
+        </div>
 
         {/* Message Log */}
         <div style={{
