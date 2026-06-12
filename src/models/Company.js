@@ -48,6 +48,12 @@ const CompanySchema = new mongoose.Schema(
         default: '',
       },
     },
+    aiKeys: {
+      gemini: { type: String, trim: true, default: '' },
+      openai: { type: String, trim: true, default: '' },
+      claude: { type: String, trim: true, default: '' },
+      nvidia: { type: String, trim: true, default: '' },
+    },
     isActive: {
       type: Boolean,
       default: true,

@@ -7,12 +7,11 @@ function bufToHex(buf) {
   return Array.prototype.map.call(new Uint8Array(buf), x => ('00' + x.toString(16)).slice(-2)).join('');
 }
 
-// Convert Hex String to ArrayBuffer
+// Convert Hex String to Uint8Array (Edge runtime requires Uint8Array, not ArrayBuffer)
 function hexToBuf(hex) {
   const matched = hex.match(/.{1,2}/g);
-  if (!matched) return new ArrayBuffer(0);
-  const bytes = new Uint8Array(matched.map(byte => parseInt(byte, 16)));
-  return bytes.buffer;
+  if (!matched) return new Uint8Array(0);
+  return new Uint8Array(matched.map(byte => parseInt(byte, 16)));
 }
 
 export async function signToken(payload) {

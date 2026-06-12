@@ -63,7 +63,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   if (user?.role === 'company_admin' || user?.role === 'superadmin') {
     menuItems.push(
-      { name: 'Branding', path: '/settings/branding', icon: Palette }
+      { name: 'Branding', path: '/settings/branding', icon: Palette },
+      { name: 'AI Integrations', path: '/settings/ai-keys', icon: Key }
     );
   }
 
@@ -102,7 +103,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         )}
         {!isCollapsed && <span>{company?.name || 'Workspace'}</span>}
       </div>
-      <nav style={{ flex: 1 }}>
+      <nav style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <ul className="menu-list">
           {menuItems.map((item) => {
             const Icon = item.icon;

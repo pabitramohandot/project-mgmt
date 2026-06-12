@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X, ChevronDown } from 'lucide-react';
 
 export default function AIChatBot() {
   const [sessions, setSessions] = useState([]);
@@ -16,6 +16,8 @@ export default function AIChatBot() {
   const [editingTitleText, setEditingTitleText] = useState('');
   const [companyId, setCompanyId] = useState(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState('auto');
+  const [configuredProviders, setConfiguredProviders] = useState([]);
   
   const chatEndRef = useRef(null);
 
@@ -26,7 +28,15 @@ export default function AIChatBot() {
     { label: '📝 Project Status Template', text: 'Generate 30-day status report of project ', autoSend: false }
   ];
 
-  // 0. Fetch company context on mount
+  const PROVIDER_META = {
+    auto: { label: 'Auto Select', color: '#a855f7' },
+    gemini: { label: 'Google Gemini', color: '#4285F4' },
+    openai: { label: 'OpenAI GPT', color: '#10a37f' },
+    claude: { label: 'Claude', color: '#D97757' },
+    nvidia: { label: 'NVIDIA NIM', color: '#76B900' },
+  };
+
+  // 0. Fetch company context + configured providers on mount
   useEffect(() => {
     async function loadCompany() {
       try {
@@ -46,7 +56,24 @@ export default function AIChatBot() {
         setCompanyId('global');
       }
     }
+
+    async function loadProviders() {
+      try {
+        const res = await fetch('/api/settings/ai-keys');
+        if (res.ok) {
+          const data = await res.json();
+          const configured = Object.entries(data.providers || {})
+            .filter(([, v]) => v.configured)
+            .map(([k]) => k);
+          setConfiguredProviders(configured);
+        }
+      } catch (e) {
+        console.error('Failed to load AI providers:', e);
+      }
+    }
+
     loadCompany();
+    loadProviders();
   }, []);
 
   // 1. Initial Load: Retrieve sessions from localStorage
@@ -239,7 +266,7 @@ export default function AIChatBot() {
     setEditingSessionId(null);
   };
 
-  // 7. Send Message
+  // 7. Send Message (SSE Streaming)
   const handleSendMessage = async (textToSend) => {
     const text = (textToSend || inputValue).trim();
     if (!text) return;
@@ -258,23 +285,90 @@ export default function AIChatBot() {
 
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: text,
-          history
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history, provider: selectedProvider }),
       });
 
-      const data = await res.json();
+      // Non-streaming error (400, 401, etc.)
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to get a response.');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server error (${res.status})`);
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', text: data.text }]);
+      // SSE streaming response
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+
+      // Add a placeholder assistant message that we'll update incrementally
+      setMessages((prev) => [...prev, { role: 'assistant', text: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const eventType = line.slice(7).trim();
+            // Next line should be data
+            continue;
+          }
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            try {
+              const data = JSON.parse(dataStr);
+
+              if (data.text) {
+                // Token event — append text
+                fullText += data.text;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'assistant', text: fullText };
+                  return updated;
+                });
+              } else if (data.error) {
+                throw new Error(data.error);
+              } else if (data.name) {
+                // Tool call indicator — show thinking status
+                fullText += `\n🔧 *Executing: ${data.name}...*\n`;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'assistant', text: fullText };
+                  return updated;
+                });
+              }
+            } catch (parseErr) {
+              if (parseErr.message && !parseErr.message.includes('JSON')) {
+                throw parseErr; // Re-throw actual errors, not JSON parse issues
+              }
+            }
+          }
+        }
+      }
+
+      // If no text was streamed at all (empty response), set fallback
+      if (!fullText.trim()) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', text: 'No response was generated. Please try again.' };
+          return updated;
+        });
+      }
     } catch (err) {
       setError(err.message);
+      // Remove the empty assistant placeholder if error occurred
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.text) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
     } finally {
       setLoading(false);
     }
@@ -667,6 +761,47 @@ export default function AIChatBot() {
               </span>
             </div>
           </div>
+
+          {/* Model Selector */}
+          <div style={{ position: 'relative' }}>
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value)}
+              id="ai-model-selector"
+              style={{
+                appearance: 'none',
+                background: 'var(--bg-primary)',
+                border: `1px solid ${PROVIDER_META[selectedProvider]?.color || 'var(--border-color)'}44`,
+                color: PROVIDER_META[selectedProvider]?.color || 'var(--text-primary)',
+                padding: '0.4rem 2rem 0.4rem 0.75rem',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                minWidth: '140px',
+              }}
+            >
+              <option value="auto">⚡ Auto Select</option>
+              {configuredProviders.map((p) => (
+                <option key={p} value={p}>
+                  {p === 'gemini' ? '✦ Google Gemini' : p === 'openai' ? '◉ OpenAI GPT' : p === 'claude' ? '◈ Claude' : p === 'nvidia' ? '▲ NVIDIA NIM' : p}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                color: PROVIDER_META[selectedProvider]?.color || 'var(--text-muted)',
+              }}
+            />
+          </div>
         </div>
 
         {/* Message Log */}
@@ -740,7 +875,7 @@ export default function AIChatBot() {
             }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontWeight: 600 }}>
                 <AlertCircle size={16} style={{ flexShrink: 0 }} />
-                <span>There is a technical issue. Kindly contact the admin.</span>
+                <span>{error}</span>
               </div>
               <a 
                 href="mailto:ionetweb@gmail.com" 
