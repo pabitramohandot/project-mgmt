@@ -10,6 +10,7 @@ export default function AIChatBot() {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [toolStatus, setToolStatus] = useState(null); // Transient tool-call status
   const [sidebarOpen, setSidebarOpen] = useState(true); // Default open on desktop
   
   const [editingSessionId, setEditingSessionId] = useState(null);
@@ -324,7 +325,8 @@ export default function AIChatBot() {
               const data = JSON.parse(dataStr);
 
               if (data.text) {
-                // Token event — append text
+                // Token event — append text and clear any transient tool status
+                setToolStatus(null);
                 fullText += data.text;
                 setMessages((prev) => {
                   const updated = [...prev];
@@ -334,13 +336,26 @@ export default function AIChatBot() {
               } else if (data.error) {
                 throw new Error(data.error);
               } else if (data.name) {
-                // Tool call indicator — show thinking status
-                fullText += `\n🔧 *Executing: ${data.name}...*\n`;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', text: fullText };
-                  return updated;
-                });
+                // Tool call indicator — show transient professional status (not persisted)
+                const toolLabels = {
+                  listProjects: 'Retrieving projects...',
+                  listInvoices: 'Retrieving invoices...',
+                  listExpiringItems: 'Checking expiry records...',
+                  getProjectStatus: 'Fetching project status...',
+                  sendInvoiceToClient: 'Preparing invoice email...',
+                  createNewClient: 'Registering client profile...',
+                  createNewProject: 'Creating new project...',
+                  addProjectTask: 'Adding task to project...',
+                  completeProjectTask: 'Marking task as complete...',
+                  updateProjectStatus: 'Updating project status...',
+                  createNewInvoice: 'Generating invoice draft...',
+                  updateInvoiceStatus: 'Updating invoice status...',
+                  broadcastAnnouncement: 'Broadcasting announcement...',
+                  submitUserFeedback: 'Submitting feedback...',
+                  listAllFeedbacks: 'Retrieving feedback records...',
+                  listAllClients: 'Retrieving client directory...',
+                };
+                setToolStatus(toolLabels[data.name] || 'Processing your request...');
               }
             } catch (parseErr) {
               if (parseErr.message && !parseErr.message.includes('JSON')) {
@@ -352,6 +367,7 @@ export default function AIChatBot() {
       }
 
       // If no text was streamed at all (empty response), set fallback
+      setToolStatus(null);
       if (!fullText.trim()) {
         setMessages((prev) => {
           const updated = [...prev];
@@ -361,6 +377,7 @@ export default function AIChatBot() {
       }
     } catch (err) {
       setError(err.message);
+      setToolStatus(null);
       // Remove the empty assistant placeholder if error occurred
       setMessages((prev) => {
         const last = prev[prev.length - 1];
@@ -853,9 +870,21 @@ export default function AIChatBot() {
           })}
 
           {loading && (
-            <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-secondary)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div style={{
+              alignSelf: 'flex-start',
+              display: 'flex',
+              gap: '0.65rem',
+              alignItems: 'center',
+              background: 'var(--bg-secondary)',
+              padding: '0.75rem 1.1rem',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              maxWidth: '320px'
+            }}>
               <span className="dot-pulse" />
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Working...</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                {toolStatus || 'Analysing your request...'}
+              </span>
             </div>
           )}
 
