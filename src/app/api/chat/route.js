@@ -73,7 +73,10 @@ export async function POST(request) {
       "You MUST NOT access or modify user credentials (passwords, login URLs, etc.) under any circumstances. " +
       "When summarizing, format dates cleanly and display lists in bullet points or markdown tables. " +
       "Always represent currency/monetary amounts in Indian Rupees (₹) instead of dollars ($). " +
-      "Always be professional, concise, and helpful.";
+      "Always be professional, concise, and helpful. " +
+      "IMPORTANT: If the user asks for a specific subset or filtered list (e.g., 'active projects' or 'unpaid/outstanding invoices'), " +
+      "you must filter the results in memory and present ONLY the requested items to the user. " +
+      "Do NOT list or mention completed projects, paid invoices, or other irrelevant items if they were not requested.";
 
     // Function declarations for all AI-enabled workspace actions
     const tools = [
