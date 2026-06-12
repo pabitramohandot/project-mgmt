@@ -1,20 +1,20 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Company from '@/models/Company';
-import User from '@/models/User';
-import Project from '@/models/Project';
-import Client from '@/models/Client';
-import Invoice from '@/models/Invoice';
-import Credential from '@/models/Credential';
-import Notification from '@/models/Notification';
-import Feedback from '@/models/Feedback';
-import { getRequestSession } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import dbConnect from "@/lib/db";
+import Company from "@/models/Company";
+import User from "@/models/User";
+import Project from "@/models/Project";
+import Client from "@/models/Client";
+import Invoice from "@/models/Invoice";
+import Credential from "@/models/Credential";
+import Notification from "@/models/Notification";
+import Feedback from "@/models/Feedback";
+import { getRequestSession } from "@/lib/auth";
 
 export async function GET(request, context) {
   try {
     const { role } = getRequestSession(request);
-    if (role !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (role !== "superadmin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await dbConnect();
@@ -23,23 +23,28 @@ export async function GET(request, context) {
 
     const company = await Company.findById(id).lean();
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    const users = await User.find({ companyId: id }).sort({ username: 1 }).lean();
+    const users = await User.find({ companyId: id })
+      .sort({ username: 1 })
+      .lean();
 
     return NextResponse.json({ company, users });
   } catch (error) {
-    console.error('Superadmin Company detail GET API Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch company details' }, { status: 500 });
+    console.error("Superadmin Company detail GET API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch company details" },
+      { status: 500 },
+    );
   }
 }
 
 export async function PUT(request, context) {
   try {
     const { role } = getRequestSession(request);
-    if (role !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (role !== "superadmin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await dbConnect();
@@ -49,7 +54,7 @@ export async function PUT(request, context) {
 
     const company = await Company.findById(id);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     if (data.name !== undefined) company.name = data.name.trim();
@@ -59,7 +64,10 @@ export async function PUT(request, context) {
         // check unique slug
         const existing = await Company.findOne({ slug: slugVal });
         if (existing) {
-          return NextResponse.json({ error: 'A company with this slug already exists' }, { status: 400 });
+          return NextResponse.json(
+            { error: "A company with this slug already exists" },
+            { status: 400 },
+          );
         }
         company.slug = slugVal;
       }
@@ -71,22 +79,26 @@ export async function PUT(request, context) {
         secondary: data.brandColors.secondary || company.brandColors.secondary,
       };
     }
-    if (data.contactEmail !== undefined) company.contactEmail = data.contactEmail.trim();
+    if (data.contactEmail !== undefined)
+      company.contactEmail = data.contactEmail.trim();
     if (data.isActive !== undefined) company.isActive = data.isActive;
 
     const saved = await company.save();
     return NextResponse.json(saved);
   } catch (error) {
-    console.error('Superadmin Company detail PUT API Error:', error);
-    return NextResponse.json({ error: 'Failed to update company' }, { status: 500 });
+    console.error("Superadmin Company detail PUT API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to update company" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(request, context) {
   try {
     const { role } = getRequestSession(request);
-    if (role !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (role !== "superadmin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await dbConnect();
@@ -95,7 +107,7 @@ export async function DELETE(request, context) {
 
     const company = await Company.findById(id);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     // Cascade delete everything related to the company
@@ -107,13 +119,18 @@ export async function DELETE(request, context) {
       Credential.deleteMany({ companyId: id }),
       Notification.deleteMany({ companyId: id }),
       Feedback.deleteMany({ companyId: id }),
-      Company.findByIdAndDelete(id)
+      Company.findByIdAndDelete(id),
     ]);
 
-    return NextResponse.json({ success: true, message: 'Company and all associated records deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: "Company and all associated records deleted successfully",
+    });
   } catch (error) {
-    console.error('Superadmin Company detail DELETE API Error:', error);
-    return NextResponse.json({ error: 'Failed to delete company' }, { status: 500 });
+    console.error("Superadmin Company detail DELETE API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete company" },
+      { status: 500 },
+    );
   }
 }
-

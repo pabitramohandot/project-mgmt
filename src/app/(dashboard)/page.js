@@ -11,7 +11,10 @@ import {
   ArrowRight,
   TrendingUp,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Bot,
+  Sparkles,
+  Brain
 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 import NotificationBell from '@/components/NotificationBell';
@@ -241,6 +244,44 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* AI Agents Dashboard Section */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', color: '#8b5cf6' }}>
+          <Sparkles size={24} style={{ color: 'var(--accent-primary)', strokeWidth: 2 }} />
+          <span>IONETWEB AI Copilot</span>
+        </h2>
+        <div 
+          className="card" 
+          style={{
+            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(6, 182, 212, 0.04) 100%)',
+            border: '1px solid rgba(139, 92, 246, 0.15)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1.5rem',
+            boxShadow: '0 10px 30px rgba(139, 92, 246, 0.05)'
+          }}
+        >
+          <div style={{ flex: '1 1 500px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Need a fast update or invoice lookup?
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 0 }}>
+              Use our AI Agent to generate 30-day client status reports, locate outstanding invoices, or email them directly to your contacts via conversational prompts.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <Link href="/ai-agents" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #7c3aed 100%)', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.25)' }}>
+              <Brain size={18} style={{ color: '#ffffff' }} />
+              <span>Launch AI Agent</span>
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* Recent Activity Grid */}
       <div className="grid-2col">

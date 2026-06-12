@@ -1,13 +1,16 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Company from '@/models/Company';
-import { getRequestSession } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import dbConnect from "@/lib/db";
+import Company from "@/models/Company";
+import { getRequestSession } from "@/lib/auth";
 
 export async function PUT(request) {
   try {
     const { companyId, role } = getRequestSession(request);
-    if (!companyId || (role !== 'company_admin' && role !== 'superadmin')) {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!companyId || (role !== "company_admin" && role !== "superadmin")) {
+      return NextResponse.json(
+        { error: "Forbidden: Admin access required" },
+        { status: 403 },
+      );
     }
 
     await dbConnect();
@@ -15,7 +18,7 @@ export async function PUT(request) {
 
     const company = await Company.findById(companyId);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     if (data.logo !== undefined) company.logo = data.logo;
@@ -29,42 +32,54 @@ export async function PUT(request) {
     const saved = await company.save();
     return NextResponse.json(saved);
   } catch (error) {
-    console.error('Settings Branding PUT API Error:', error);
-    return NextResponse.json({ error: 'Failed to update branding settings' }, { status: 500 });
+    console.error("Settings Branding PUT API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to update branding settings" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(request) {
   try {
     const { companyId, role } = getRequestSession(request);
-    if (!companyId || (role !== 'company_admin' && role !== 'superadmin')) {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!companyId || (role !== "company_admin" && role !== "superadmin")) {
+      return NextResponse.json(
+        { error: "Forbidden: Admin access required" },
+        { status: 403 },
+      );
     }
 
     const data = await request.json();
     const { user, pass } = data;
 
     if (!user || !pass) {
-      return NextResponse.json({ error: 'Gmail Username and App Password are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Gmail Username and App Password are required" },
+        { status: 400 },
+      );
     }
 
     let smtpUser = user.trim();
     let smtpPass = pass.trim();
 
-    if (smtpPass === '••••••••') {
+    if (smtpPass === "••••••••") {
       await dbConnect();
       const company = await Company.findById(companyId).lean();
       if (company && company.emailSettings?.pass) {
         smtpPass = company.emailSettings.pass;
         smtpUser = company.emailSettings.user || smtpUser;
       } else {
-        return NextResponse.json({ error: 'No saved App Password found' }, { status: 404 });
+        return NextResponse.json(
+          { error: "No saved App Password found" },
+          { status: 404 },
+        );
       }
     }
 
-    const nodemailer = (await import('nodemailer')).default;
+    const nodemailer = (await import("nodemailer")).default;
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: smtpUser,
         pass: smtpPass,
@@ -72,9 +87,15 @@ export async function POST(request) {
     });
 
     await transporter.verify();
-    return NextResponse.json({ success: true, message: 'SMTP credentials verified successfully!' });
+    return NextResponse.json({
+      success: true,
+      message: "SMTP credentials verified successfully!",
+    });
   } catch (error) {
-    console.error('SMTP test failed:', error);
-    return NextResponse.json({ error: error.message || 'SMTP verification failed' }, { status: 500 });
+    console.error("SMTP test failed:", error);
+    return NextResponse.json(
+      { error: error.message || "SMTP verification failed" },
+      { status: 500 },
+    );
   }
 }

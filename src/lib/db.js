@@ -25,10 +25,19 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4 // Prefer IPv4 (prevents slow DNS resolutions in cloud instances)
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      // Run migrations asynchronously to avoid blocking connection promise
+      // Run migrations once per node process lifetime to save MongoDB round-trips
+      if (global.migrationDone) {
+        return mongooseInstance;
+      }
+      global.migrationDone = true;
+
       import('./migration').then(({ runClientMigration, runMultiTenancyMigration }) => {
         runClientMigration()
           .then(() => runMultiTenancyMigration())

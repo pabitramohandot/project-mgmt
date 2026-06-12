@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -44,6 +44,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'AI Agent', path: '/ai-agents', icon: Brain, tag: 'Featured' },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Clients', path: '/clients', icon: Users },
     { name: 'Invoices', path: '/invoices', icon: FileSpreadsheet },
@@ -112,7 +113,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             return (
               <li key={item.name} className={`menu-item ${isActive ? 'active' : ''}`}>
                 <Link 
-                  href={item.path} 
+                   href={item.path} 
                   onClick={onClose} 
                   style={{ 
                     display: 'flex', 
@@ -124,7 +125,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   title={isCollapsed ? item.name : undefined}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', position: 'relative' }}>
-                    <Icon size={20} />
+                    {item.path === '/ai-agents' ? (
+                      <Brain 
+                        size={20} 
+                        style={{ 
+                          color: '#ef4444', 
+                          filter: 'drop-shadow(0 0 3px rgba(239, 68, 68, 0.45))'
+                        }} 
+                      />
+                    ) : (
+                      <Icon size={20} />
+                    )}
                     {isCollapsed && item.badge > 0 && (
                       <span style={{
                         position: 'absolute',
@@ -137,7 +148,40 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         border: '1.5px solid var(--bg-secondary)'
                       }} />
                     )}
-                    {!isCollapsed && <span>{item.name}</span>}
+                    {isCollapsed && item.tag && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-2px',
+                        right: '-4px',
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+                        border: '1.5px solid var(--bg-secondary)',
+                        boxShadow: '0 0 6px var(--accent-primary)'
+                      }} />
+                    )}
+                    {!isCollapsed && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>{item.name}</span>
+                        {item.tag && (
+                          <span style={{
+                            background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+                            color: '#ffffff',
+                            fontSize: '0.58rem',
+                            fontWeight: '800',
+                            padding: '0.15rem 0.35rem',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.02em',
+                            lineHeight: 1,
+                            boxShadow: '0 0 8px rgba(0, 174, 239, 0.4)'
+                          }}>
+                            {item.tag}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {!isCollapsed && item.badge > 0 && (
                     <span style={{
