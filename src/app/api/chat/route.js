@@ -22,7 +22,7 @@ import {
   listAllClients,
 } from "@/lib/aiTools";
 
-// ─── System Instruction (shared across all providers) ────────────────────────
+// ─── System Instruction ───────────────────────────────────────────────────────
 
 const systemInstruction =
   "You are the internal assistant for IONET, a project management and billing workspace. " +
@@ -35,42 +35,22 @@ const systemInstruction =
   "you must filter the results in memory and present ONLY the requested items to the user. " +
   "Do NOT list or mention completed projects, paid invoices, or other irrelevant items if they were not requested.";
 
-// ─── Gemini Tool Declarations ────────────────────────────────────────────────
+// ─── Gemini Tool Declarations ─────────────────────────────────────────────────
 
 const geminiToolDeclarations = [
   {
     functionDeclarations: [
-      {
-        name: "getProjectStatus",
-        description: "Retrieve status reports, tasks completed, timeline dates, and status updates for a project.",
-        parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "The name of the project to look up." }, daysCount: { type: "INTEGER", description: "Number of days back to filter status updates (default is 30)." } }, required: ["projectName"] },
-      },
-      {
-        name: "sendInvoiceToClient",
-        description: "Search for an invoice and email it to the client. Uses Nodemailer.",
-        parameters: { type: "OBJECT", properties: { clientNameOrEmail: { type: "STRING", description: "The name or email of the client to search invoices for." }, invoiceNumber: { type: "STRING", description: "The invoice number (e.g. INV-001) to search for directly." } } },
-      },
+      { name: "getProjectStatus", description: "Retrieve status reports, tasks completed, timeline dates, and status updates for a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "The name of the project to look up." }, daysCount: { type: "INTEGER", description: "Number of days back to filter status updates (default is 30)." } }, required: ["projectName"] } },
+      { name: "sendInvoiceToClient", description: "Search for an invoice and email it to the client. Uses Nodemailer.", parameters: { type: "OBJECT", properties: { clientNameOrEmail: { type: "STRING", description: "The name or email of the client to search invoices for." }, invoiceNumber: { type: "STRING", description: "The invoice number (e.g. INV-001) to search for directly." } } } },
       { name: "listProjects", description: "Retrieve a list of all projects in the workspace (including both active and completed ones).", parameters: { type: "OBJECT", properties: {} } },
       { name: "listInvoices", description: "Retrieve a list of all invoices in the workspace (including draft, sent, paid, and overdue statuses) with client name and associated project name.", parameters: { type: "OBJECT", properties: {} } },
       { name: "listExpiringItems", description: "Retrieve a list of domains or hosting services expiring in the next 60 days.", parameters: { type: "OBJECT", properties: {} } },
-      {
-        name: "createNewClient",
-        description: "Register a new client contact profile.",
-        parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Client name." }, email: { type: "STRING", description: "Client email." }, phone: { type: "STRING", description: "Client phone number (optional)." }, company: { type: "STRING", description: "Client company name (optional)." }, address: { type: "STRING", description: "Client address (optional)." } }, required: ["name", "email"] },
-      },
-      {
-        name: "createNewProject",
-        description: "Create a new project in the workspace.",
-        parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Project name." }, description: { type: "STRING", description: "Project scope details." }, clientName: { type: "STRING", description: "Client contact name." }, clientEmail: { type: "STRING", description: "Client contact email (optional)." }, budget: { type: "NUMBER", description: "Project budget allocation (optional)." }, startDate: { type: "STRING", description: "Start date in YYYY-MM-DD format (optional)." }, endDate: { type: "STRING", description: "End date in YYYY-MM-DD format (optional)." } }, required: ["name", "clientName"] },
-      },
+      { name: "createNewClient", description: "Register a new client contact profile.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Client name." }, email: { type: "STRING", description: "Client email." }, phone: { type: "STRING", description: "Client phone number (optional)." }, company: { type: "STRING", description: "Client company name (optional)." }, address: { type: "STRING", description: "Client address (optional)." } }, required: ["name", "email"] } },
+      { name: "createNewProject", description: "Create a new project in the workspace.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Project name." }, description: { type: "STRING", description: "Project scope details." }, clientName: { type: "STRING", description: "Client contact name." }, clientEmail: { type: "STRING", description: "Client contact email (optional)." }, budget: { type: "NUMBER", description: "Project budget allocation (optional)." }, startDate: { type: "STRING", description: "Start date in YYYY-MM-DD format (optional)." }, endDate: { type: "STRING", description: "End date in YYYY-MM-DD format (optional)." } }, required: ["name", "clientName"] } },
       { name: "addProjectTask", description: "Add a new task item to a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "Project name." }, taskName: { type: "STRING", description: "Name of the task to add." } }, required: ["projectName", "taskName"] } },
       { name: "completeProjectTask", description: "Mark a task item as completed in a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "Project name." }, taskName: { type: "STRING", description: "Name of the task to mark as completed." } }, required: ["projectName", "taskName"] } },
       { name: "updateProjectStatus", description: "Update project status and message timeline.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "Project name." }, newStatus: { type: "STRING", description: "New status: Planning, In Progress, Under Review, Completed, or Pending." }, updateMessage: { type: "STRING", description: "Chronology update note message (optional)." } }, required: ["projectName", "newStatus"] } },
-      {
-        name: "createNewInvoice",
-        description: "Generate a new invoice draft in the workspace.",
-        parameters: { type: "OBJECT", properties: { projectNameOrClientName: { type: "STRING", description: "Associated project name or client name." }, items: { type: "ARRAY", description: "List of invoice line items.", items: { type: "OBJECT", properties: { description: { type: "STRING", description: "Item description." }, quantity: { type: "NUMBER", description: "Item quantity." }, rate: { type: "NUMBER", description: "Item billing rate." } }, required: ["description", "quantity", "rate"] } }, taxRate: { type: "NUMBER", description: "Tax percentage (optional)." }, discountRate: { type: "NUMBER", description: "Discount percentage (optional)." }, dueDate: { type: "STRING", description: "Due date in YYYY-MM-DD format (optional)." }, notes: { type: "STRING", description: "Payment terms or invoice notes (optional)." } }, required: ["projectNameOrClientName", "items"] },
-      },
+      { name: "createNewInvoice", description: "Generate a new invoice draft in the workspace.", parameters: { type: "OBJECT", properties: { projectNameOrClientName: { type: "STRING", description: "Associated project name or client name." }, items: { type: "ARRAY", description: "List of invoice line items.", items: { type: "OBJECT", properties: { description: { type: "STRING", description: "Item description." }, quantity: { type: "NUMBER", description: "Item quantity." }, rate: { type: "NUMBER", description: "Item billing rate." } }, required: ["description", "quantity", "rate"] } }, taxRate: { type: "NUMBER", description: "Tax percentage (optional)." }, discountRate: { type: "NUMBER", description: "Discount percentage (optional)." }, dueDate: { type: "STRING", description: "Due date in YYYY-MM-DD format (optional)." }, notes: { type: "STRING", description: "Payment terms or invoice notes (optional)." } }, required: ["projectNameOrClientName", "items"] } },
       { name: "updateInvoiceStatus", description: "Update the payment status of an invoice.", parameters: { type: "OBJECT", properties: { invoiceNumber: { type: "STRING", description: "Invoice number (e.g. INV-1001)." }, newStatus: { type: "STRING", description: "New status: Draft, Sent, Paid, or Overdue." } }, required: ["invoiceNumber", "newStatus"] } },
       { name: "broadcastAnnouncement", description: "Broadcast an announcement email to all client contacts.", parameters: { type: "OBJECT", properties: { subject: { type: "STRING", description: "Announcement subject line." }, message: { type: "STRING", description: "Body text content of the announcement." } }, required: ["subject", "message"] } },
       { name: "submitUserFeedback", description: "Submit bug reports or feature request tickets.", parameters: { type: "OBJECT", properties: { type: { type: "STRING", description: "Feedback type: 'bug' or 'feature'." }, description: { type: "STRING", description: "Feedback description details." }, pageUrl: { type: "STRING", description: "Page reference URL (optional)." } }, required: ["type", "description"] } },
@@ -105,7 +85,7 @@ const claudeToolDeclarations = geminiToolDeclarations[0].functionDeclarations.ma
   input_schema: convertGeminiParamsToJsonSchema(fn.parameters),
 }));
 
-// ─── Tool Executor (shared across all providers) ─────────────────────────────
+// ─── Tool Executor ────────────────────────────────────────────────────────────
 
 async function executeToolCall(name, args, companyId, userId) {
   switch (name) {
@@ -129,58 +109,45 @@ async function executeToolCall(name, args, companyId, userId) {
   }
 }
 
-// ─── SSE Helper ──────────────────────────────────────────────────────────────
+// ─── SSE Helper ───────────────────────────────────────────────────────────────
 
 function createSSEStream(handler) {
   const encoder = new TextEncoder();
-
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event, data) => {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
-
       try {
         await handler(send);
         send("done", {});
       } catch (err) {
         console.error("SSE stream error:", err);
         let errorMsg = err.message || "Internal server error";
-
-        // Parse Google API JSON error if possible
         try {
           if (errorMsg.startsWith("{") || errorMsg.includes('"error"')) {
-            const jsonStart = errorMsg.indexOf("{");
-            const parsed = JSON.parse(errorMsg.substring(jsonStart));
-            if (parsed.error && parsed.error.message) errorMsg = parsed.error.message;
+            const parsed = JSON.parse(errorMsg.substring(errorMsg.indexOf("{")));
+            if (parsed.error?.message) errorMsg = parsed.error.message;
           }
-        } catch (e) { /* ignore */ }
-
+        } catch { /* ignore */ }
         if (errorMsg.includes("high demand") || errorMsg.includes("503") || errorMsg.includes("UNAVAILABLE")) {
           errorMsg = "The AI model is currently experiencing high demand. Please try again in a few seconds.";
         }
-
         send("error", { error: errorMsg });
       } finally {
         controller.close();
       }
     },
   });
-
   return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
+    headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" },
   });
 }
 
-// ─── Provider: Gemini (Streaming) ────────────────────────────────────────────
+// ─── Provider: Gemini ─────────────────────────────────────────────────────────
 
 async function handleGeminiStream(apiKey, message, history, companyId, userId, send) {
   const ai = new GoogleGenAI({ apiKey });
-
   const contents = [];
   for (const msg of history.slice(-6)) {
     contents.push({ role: msg.role === "assistant" ? "model" : "user", parts: [{ text: msg.text }] });
@@ -188,21 +155,15 @@ async function handleGeminiStream(apiKey, message, history, companyId, userId, s
   contents.push({ role: "user", parts: [{ text: message }] });
 
   let loopCount = 0;
-
   while (loopCount < 3) {
     loopCount++;
-
-    // First, do a non-streaming call to check for tool calls
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents,
       config: { systemInstruction, tools: geminiToolDeclarations },
     });
-
-    const candidate = response.candidates?.[0];
-    const parts = candidate?.content?.parts || [];
+    const parts = response.candidates?.[0]?.content?.parts || [];
     const functionCallPart = parts.find((p) => p.functionCall);
-
     if (functionCallPart) {
       const { name, args } = functionCallPart.functionCall;
       send("tool", { name });
@@ -211,14 +172,11 @@ async function handleGeminiStream(apiKey, message, history, companyId, userId, s
       contents.push({ role: "tool", parts: [{ functionResponse: { name, response: { result: toolResult } } }] });
       continue;
     }
-
-    // No tool call — stream the final response
     const streamResponse = await ai.models.generateContentStream({
       model: "gemini-2.5-flash",
       contents,
       config: { systemInstruction },
     });
-
     for await (const chunk of streamResponse) {
       const text = chunk.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
       if (text) send("token", { text });
@@ -227,12 +185,11 @@ async function handleGeminiStream(apiKey, message, history, companyId, userId, s
   }
 }
 
-// ─── Provider: OpenAI (Streaming) ────────────────────────────────────────────
+// ─── Provider: OpenAI ─────────────────────────────────────────────────────────
 
 async function handleOpenAIStream(apiKey, message, history, companyId, userId, send) {
   const { default: OpenAI } = await import("openai");
   const client = new OpenAI({ apiKey });
-
   const messages = [
     { role: "system", content: systemInstruction },
     ...history.slice(-6).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
@@ -240,20 +197,15 @@ async function handleOpenAIStream(apiKey, message, history, companyId, userId, s
   ];
 
   let loopCount = 0;
-
   while (loopCount < 3) {
     loopCount++;
-
-    // Check for tool calls with non-streaming first
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages,
       tools: openaiToolDeclarations,
       tool_choice: "auto",
     });
-
     const choice = completion.choices[0];
-
     if (choice.finish_reason === "tool_calls" && choice.message.tool_calls) {
       messages.push(choice.message);
       for (const toolCall of choice.message.tool_calls) {
@@ -265,14 +217,7 @@ async function handleOpenAIStream(apiKey, message, history, companyId, userId, s
       }
       continue;
     }
-
-    // Stream the final response
-    const stream = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-      stream: true,
-    });
-
+    const stream = await client.chat.completions.create({ model: "gpt-4o-mini", messages, stream: true });
     for await (const chunk of stream) {
       const text = chunk.choices?.[0]?.delta?.content;
       if (text) send("token", { text });
@@ -281,7 +226,7 @@ async function handleOpenAIStream(apiKey, message, history, companyId, userId, s
   }
 }
 
-// ─── Provider: Claude (Streaming) ────────────────────────────────────────────
+// ─── Provider: Claude ─────────────────────────────────────────────────────────
 
 async function handleClaudeStream(apiKey, message, history, companyId, userId, send) {
   const messagesPayload = [
@@ -290,10 +235,8 @@ async function handleClaudeStream(apiKey, message, history, companyId, userId, s
   ];
 
   let loopCount = 0;
-
   while (loopCount < 3) {
     loopCount++;
-
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
@@ -306,60 +249,44 @@ async function handleClaudeStream(apiKey, message, history, companyId, userId, s
         stream: true,
       }),
     });
-
-    if (!response.ok) throw new Error(`Claude API returned HTTP ${response.status}`);
-
-    // Parse SSE stream from Claude
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Claude API error ${response.status}`);
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buf = "";
     let hasToolUse = false;
-    let toolUseBlocks = [];
-    let fullContent = [];
+    const toolUseBlocks = [];
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
       for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") continue;
-
         try {
-          const event = JSON.parse(data);
-
-          if (event.type === "content_block_start" && event.content_block?.type === "tool_use") {
-            hasToolUse = true;
-            toolUseBlocks.push({ id: event.content_block.id, name: event.content_block.name, input: "" });
-            send("tool", { name: event.content_block.name });
-          } else if (event.type === "content_block_delta") {
-            if (event.delta?.type === "text_delta" && event.delta.text) {
-              send("token", { text: event.delta.text });
-            } else if (event.delta?.type === "input_json_delta" && toolUseBlocks.length > 0) {
+          if (line.startsWith("data: ")) {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === "content_block_start" && event.content_block?.type === "tool_use") {
+              toolUseBlocks.push({ id: event.content_block.id, name: event.content_block.name, input: "" });
+              send("tool", { name: event.content_block.name });
+            } else if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+              if (!hasToolUse) send("token", { text: event.delta.text });
+            } else if (event.type === "content_block_delta" && event.delta?.type === "input_json_delta" && toolUseBlocks.length > 0) {
               toolUseBlocks[toolUseBlocks.length - 1].input += event.delta.partial_json || "";
+            } else if (event.type === "message_delta" && event.delta?.stop_reason === "tool_use") {
+              hasToolUse = true;
             }
-          } else if (event.type === "message_delta" && event.delta?.stop_reason === "tool_use") {
-            hasToolUse = true;
           }
-        } catch (e) { /* skip unparsable lines */ }
+        } catch { /* skip */ }
       }
     }
 
     if (hasToolUse && toolUseBlocks.length > 0) {
-      // Build the assistant content from tool use blocks
-      const assistantContent = toolUseBlocks.map((tb) => ({
-        type: "tool_use",
-        id: tb.id,
-        name: tb.name,
-        input: JSON.parse(tb.input || "{}"),
-      }));
+      const assistantContent = toolUseBlocks.map((tb) => ({ type: "tool_use", id: tb.id, name: tb.name, input: JSON.parse(tb.input || "{}") }));
       messagesPayload.push({ role: "assistant", content: assistantContent });
-
       const toolResults = [];
       for (const tb of toolUseBlocks) {
         const toolResult = await executeToolCall(tb.name, JSON.parse(tb.input || "{}"), companyId, userId);
@@ -368,18 +295,17 @@ async function handleClaudeStream(apiKey, message, history, companyId, userId, s
       messagesPayload.push({ role: "user", content: toolResults });
       continue;
     }
-
     break;
   }
 }
 
-// ─── Provider: NVIDIA (Streaming) ────────────────────────────────────────────
+// ─── Provider: NVIDIA NIM ─────────────────────────────────────────────────────
 
 async function handleNvidiaStream(apiKey, message, history, companyId, userId, send) {
   const { default: OpenAI } = await import("openai");
   const client = new OpenAI({ baseURL: "https://integrate.api.nvidia.com/v1", apiKey });
 
-  // Use a model that reliably supports tool calling on NVIDIA NIM
+  // Current NVIDIA NIM model with tool-calling support
   const NVIDIA_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1";
 
   const messages = [
@@ -389,11 +315,8 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
   ];
 
   let loopCount = 0;
-
   while (loopCount < 3) {
     loopCount++;
-
-    // Non-streaming call to check for tool calls first
     const completion = await client.chat.completions.create({
       model: NVIDIA_MODEL,
       messages,
@@ -403,9 +326,7 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
       top_p: 0.9,
       max_tokens: 4096,
     });
-
     const choice = completion.choices[0];
-
     if (choice.finish_reason === "tool_calls" && choice.message.tool_calls) {
       messages.push(choice.message);
       for (const toolCall of choice.message.tool_calls) {
@@ -417,8 +338,6 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
       }
       continue;
     }
-
-    // Stream the final response
     const stream = await client.chat.completions.create({
       model: NVIDIA_MODEL,
       messages,
@@ -427,7 +346,6 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
       top_p: 0.9,
       max_tokens: 4096,
     });
-
     for await (const chunk of stream) {
       const text = chunk.choices?.[0]?.delta?.content;
       if (text) send("token", { text });
@@ -436,27 +354,25 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
   }
 }
 
-
-// ─── Main POST Handler (SSE Streaming) ──────────────────────────────────────
+// ─── Main POST Handler ────────────────────────────────────────────────────────
 
 export async function POST(request) {
   try {
     const { companyId, userId } = getRequestSession(request);
-
     if (!companyId) {
       return NextResponse.json({ error: "Unauthorized. Company session is required." }, { status: 401 });
     }
 
     await dbConnect();
 
-    // Read the platform-wide AI config (managed by superadmin)
-    // Falls back to environment variable if not yet configured in DB
-    let settings = await GlobalSettings.findOne({ key: "platform" }).lean();
+    // Read the platform-wide AI config set by the superadmin
+    const settings = await GlobalSettings.findOne({ key: "platform" }).lean();
 
+    // Resolve provider and key — DB config takes priority, env var is fallback only
     let selectedProvider = settings?.activeProvider || "gemini";
-    let apiKey = settings?.aiKeys?.[selectedProvider];
+    let apiKey = settings?.aiKeys?.[selectedProvider] || "";
 
-    // Fallback: use GEMINI_API_KEY from environment if DB not configured yet
+    // Fallback to GEMINI_API_KEY env var if DB has no key yet
     if (!apiKey && process.env.GEMINI_API_KEY) {
       apiKey = process.env.GEMINI_API_KEY;
       selectedProvider = "gemini";
@@ -474,10 +390,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
     }
 
-    // Return SSE stream
     return createSSEStream(async (send) => {
       send("start", { provider: selectedProvider });
-
       switch (selectedProvider) {
         case "gemini":
           await handleGeminiStream(apiKey, message, history, companyId, userId, send);
@@ -500,7 +414,6 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
-
 
 async function reqBody(req) {
   try { return await req.json(); } catch { return {}; }
