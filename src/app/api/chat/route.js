@@ -379,6 +379,9 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
   const { default: OpenAI } = await import("openai");
   const client = new OpenAI({ baseURL: "https://integrate.api.nvidia.com/v1", apiKey });
 
+  // Use a model that reliably supports tool calling on NVIDIA NIM
+  const NVIDIA_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1";
+
   const messages = [
     { role: "system", content: systemInstruction },
     ...history.slice(-6).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
@@ -392,7 +395,7 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
 
     // Non-streaming call to check for tool calls first
     const completion = await client.chat.completions.create({
-      model: "nvidia/nemotron-3-ultra-550b-a55b",
+      model: NVIDIA_MODEL,
       messages,
       tools: openaiToolDeclarations,
       tool_choice: "auto",
@@ -417,7 +420,7 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
 
     // Stream the final response
     const stream = await client.chat.completions.create({
-      model: "nvidia/nemotron-3-ultra-550b-a55b",
+      model: NVIDIA_MODEL,
       messages,
       stream: true,
       temperature: 0.6,
@@ -432,6 +435,7 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
     break;
   }
 }
+
 
 // ─── Main POST Handler (SSE Streaming) ──────────────────────────────────────
 

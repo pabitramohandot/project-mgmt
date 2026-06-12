@@ -207,7 +207,7 @@ async function testNvidiaKey(apiKey) {
     const { default: OpenAI } = await import('openai');
     const client = new OpenAI({ baseURL: 'https://integrate.api.nvidia.com/v1', apiKey });
     const completion = await client.chat.completions.create({
-      model: 'nvidia/nemotron-3-ultra-550b-a55b',
+      model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
       messages: [{ role: 'user', content: 'Reply with: OK' }],
       max_tokens: 20,
       temperature: 0.5,
@@ -220,3 +220,4 @@ async function testNvidiaKey(apiKey) {
     return { success: false, provider: 'nvidia', message: sanitizeProviderError(err, 'NVIDIA') };
   }
 }
+
