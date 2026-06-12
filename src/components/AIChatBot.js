@@ -301,9 +301,7 @@ export default function AIChatBot() {
       const decoder = new TextDecoder();
       let buffer = '';
       let fullText = '';
-
-      // Add a placeholder assistant message that we'll update incrementally
-      setMessages((prev) => [...prev, { role: 'assistant', text: '' }]);
+      let messageAdded = false; // Only add message bubble when first text token arrives
 
       while (true) {
         const { done, value } = await reader.read();
@@ -328,11 +326,17 @@ export default function AIChatBot() {
                 // Token event — append text and clear any transient tool status
                 setToolStatus(null);
                 fullText += data.text;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', text: fullText };
-                  return updated;
-                });
+                if (!messageAdded) {
+                  // Add the assistant bubble only on the first real token
+                  messageAdded = true;
+                  setMessages((prev) => [...prev, { role: 'assistant', text: fullText }]);
+                } else {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'assistant', text: fullText };
+                    return updated;
+                  });
+                }
               } else if (data.error) {
                 throw new Error(data.error);
               } else if (data.name) {
@@ -369,23 +373,11 @@ export default function AIChatBot() {
       // If no text was streamed at all (empty response), set fallback
       setToolStatus(null);
       if (!fullText.trim()) {
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', text: 'No response was generated. Please try again.' };
-          return updated;
-        });
+        setMessages((prev) => [...prev, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
       }
     } catch (err) {
       setError(err.message);
       setToolStatus(null);
-      // Remove the empty assistant placeholder if error occurred
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === 'assistant' && !last.text) {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
     } finally {
       setLoading(false);
     }
