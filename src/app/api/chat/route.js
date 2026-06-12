@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getRequestSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import Company from "@/models/Company";
+import GlobalSettings from "@/models/GlobalSettings";
 import {
   getProjectStatusReport,
   sendInvoiceToClient,
@@ -444,29 +444,29 @@ export async function POST(request) {
     }
 
     await dbConnect();
-    const company = await Company.findById(companyId).select("aiKeys").lean();
-    const aiKeys = company?.aiKeys || {};
 
-    const { message, history = [], provider = "auto" } = await reqBody(request);
+    // Read the platform-wide AI config (managed by superadmin only)
+    let settings = await GlobalSettings.findOne({ key: "platform" }).lean();
+    if (!settings) {
+      return NextResponse.json(
+        { error: "The AI assistant has not been configured yet. Please contact the platform administrator." },
+        { status: 503 }
+      );
+    }
+
+    const selectedProvider = settings.activeProvider || "gemini";
+    const apiKey = settings.aiKeys?.[selectedProvider];
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "The AI assistant is not configured yet. Please contact the platform administrator." },
+        { status: 503 }
+      );
+    }
+
+    const { message, history = [] } = await reqBody(request);
     if (!message) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
-    }
-
-    // Determine provider
-    let selectedProvider = provider;
-    if (selectedProvider === "auto") {
-      if (aiKeys.gemini) selectedProvider = "gemini";
-      else if (aiKeys.openai) selectedProvider = "openai";
-      else if (aiKeys.nvidia) selectedProvider = "nvidia";
-      else if (aiKeys.claude) selectedProvider = "claude";
-      else {
-        return NextResponse.json({ error: "No AI API keys are configured. Please ask your admin to add one in Settings → AI Integrations." }, { status: 400 });
-      }
-    }
-
-    const apiKey = aiKeys[selectedProvider];
-    if (!apiKey) {
-      return NextResponse.json({ error: `No API key configured for ${selectedProvider}. Please add it in Settings → AI Integrations.` }, { status: 400 });
     }
 
     // Return SSE stream

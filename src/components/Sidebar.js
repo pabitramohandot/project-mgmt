@@ -57,14 +57,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     menuItems.push(
       { name: 'Companies', path: '/superadmin/companies', icon: Building },
       { name: 'Users', path: '/superadmin/users', icon: ShieldCheck },
-      { name: 'Feedback', path: '/superadmin/feedback', icon: MessageSquare }
+      { name: 'Feedback', path: '/superadmin/feedback', icon: MessageSquare },
+      { name: 'AI Settings', path: '/superadmin/ai-settings', icon: Key }
     );
   }
 
   if (user?.role === 'company_admin' || user?.role === 'superadmin') {
     menuItems.push(
-      { name: 'Branding', path: '/settings/branding', icon: Palette },
-      { name: 'AI Integrations', path: '/settings/ai-keys', icon: Key }
+      { name: 'Branding', path: '/settings/branding', icon: Palette }
     );
   }
 

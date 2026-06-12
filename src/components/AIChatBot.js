@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X, ChevronDown } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X } from 'lucide-react';
 
 export default function AIChatBot() {
   const [sessions, setSessions] = useState([]);
@@ -17,8 +17,6 @@ export default function AIChatBot() {
   const [editingTitleText, setEditingTitleText] = useState('');
   const [companyId, setCompanyId] = useState(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState('auto');
-  const [configuredProviders, setConfiguredProviders] = useState([]);
   
   const chatEndRef = useRef(null);
 
@@ -29,13 +27,6 @@ export default function AIChatBot() {
     { label: '📝 Project Status Template', text: 'Generate 30-day status report of project ', autoSend: false }
   ];
 
-  const PROVIDER_META = {
-    auto: { label: 'Auto Select', color: '#a855f7' },
-    gemini: { label: 'Google Gemini', color: '#4285F4' },
-    openai: { label: 'OpenAI GPT', color: '#10a37f' },
-    claude: { label: 'Claude', color: '#D97757' },
-    nvidia: { label: 'NVIDIA NIM', color: '#76B900' },
-  };
 
   // 0. Fetch company context + configured providers on mount
   useEffect(() => {
@@ -58,23 +49,7 @@ export default function AIChatBot() {
       }
     }
 
-    async function loadProviders() {
-      try {
-        const res = await fetch('/api/settings/ai-keys');
-        if (res.ok) {
-          const data = await res.json();
-          const configured = Object.entries(data.providers || {})
-            .filter(([, v]) => v.configured)
-            .map(([k]) => k);
-          setConfiguredProviders(configured);
-        }
-      } catch (e) {
-        console.error('Failed to load AI providers:', e);
-      }
-    }
-
     loadCompany();
-    loadProviders();
   }, []);
 
   // 1. Initial Load: Retrieve sessions from localStorage
@@ -287,7 +262,7 @@ export default function AIChatBot() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, provider: selectedProvider }),
+        body: JSON.stringify({ message: text, history }),
       });
 
       // Non-streaming error (400, 401, etc.)
@@ -771,47 +746,6 @@ export default function AIChatBot() {
             </div>
           </div>
 
-          {/* Model Selector */}
-          <div style={{ position: 'relative' }}>
-            <select
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value)}
-              id="ai-model-selector"
-              style={{
-                appearance: 'none',
-                background: 'var(--bg-primary)',
-                border: `1px solid ${PROVIDER_META[selectedProvider]?.color || 'var(--border-color)'}44`,
-                color: PROVIDER_META[selectedProvider]?.color || 'var(--text-primary)',
-                padding: '0.4rem 2rem 0.4rem 0.75rem',
-                borderRadius: '8px',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                minWidth: '140px',
-              }}
-            >
-              <option value="auto">⚡ Auto Select</option>
-              {configuredProviders.map((p) => (
-                <option key={p} value={p}>
-                  {p === 'gemini' ? '✦ Google Gemini' : p === 'openai' ? '◉ OpenAI GPT' : p === 'claude' ? '◈ Claude' : p === 'nvidia' ? '▲ NVIDIA NIM' : p}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'none',
-                color: PROVIDER_META[selectedProvider]?.color || 'var(--text-muted)',
-              }}
-            />
-          </div>
-        </div>
 
         {/* Message Log */}
         <div style={{
