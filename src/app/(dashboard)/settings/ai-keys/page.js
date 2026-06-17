@@ -15,6 +15,7 @@ import {
   Brain,
   Cloud,
   Cpu,
+  Terminal,
 } from "lucide-react";
 import { useNotification } from "@/components/NotificationProvider";
 
@@ -63,6 +64,17 @@ const PROVIDERS = [
     placeholder: "e.g. nvapi-...",
     docsUrl: "https://build.nvidia.com/",
   },
+  {
+    id: "grok",
+    name: "xAI Grok",
+    description: "Grok 4.3 — Chat completions API",
+    icon: Terminal,
+    color: "#8B5CF6",
+    gradient: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)",
+    glowColor: "rgba(139, 92, 246, 0.25)",
+    placeholder: "e.g. xai-...",
+    docsUrl: "https://console.x.ai/",
+  },
 ];
 
 export default function AIKeysSettingsPage() {
@@ -77,6 +89,7 @@ export default function AIKeysSettingsPage() {
     openai: "",
     claude: "",
     nvidia: "",
+    grok: "",
   });
 
   // Server-side provider status
@@ -88,6 +101,7 @@ export default function AIKeysSettingsPage() {
     openai: false,
     claude: false,
     nvidia: false,
+    grok: false,
   });
 
   // Testing state per provider

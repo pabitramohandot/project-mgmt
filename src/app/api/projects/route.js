@@ -3,6 +3,7 @@ import Project from '@/models/Project';
 import Client from '@/models/Client';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { processProjectStatus } from '@/lib/projectUtils';
 
 export async function GET(request) {
   try {
@@ -25,25 +26,42 @@ export async function GET(request) {
       ];
     }
 
-    // Auto update past-due projects to Pending in the background to avoid blocking
+    const now = new Date();
+    // Background update category statuses to Pending if overdue
     Project.updateMany(
       {
-        ...query,
-        endDate: { $lt: new Date() },
-        status: { $nin: ['Completed', 'Pending'] }
+        companyId,
+        projectType: 'Development',
+        devEndDate: { $lt: now },
+        devStatus: { $nin: ['Completed', 'Pending'] }
       },
-      { $set: { status: 'Pending' } }
-    ).catch(err => console.error('Error auto-updating projects in GET:', err));
+      { $set: { devStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating devStatus in GET:', err));
+
+    Project.updateMany(
+      {
+        companyId,
+        projectType: '360 Deg Digital Marketing',
+        marketingEndDate: { $lt: now },
+        marketingStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { marketingStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating marketingStatus in GET:', err));
+
+    Project.updateMany(
+      {
+        companyId,
+        projectType: 'Meta / Google Ads',
+        adsDate: { $lt: now },
+        adsStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { adsStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating adsStatus in GET:', err));
 
     const projects = await Project.find(query).populate('client').sort({ createdAt: -1 }).lean();
     
-    // Map status dynamically to Pending for any overdue project not yet saved in DB
-    const processedProjects = projects.map(proj => {
-      if (proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed' && proj.status !== 'Pending') {
-        return { ...proj, status: 'Pending' };
-      }
-      return proj;
-    });
+    // Map status dynamically checking for any overdue project categories
+    const processedProjects = projects.map(proj => processProjectStatus(proj));
 
     return NextResponse.json(processedProjects);
   } catch (error) {

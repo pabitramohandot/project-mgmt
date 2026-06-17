@@ -59,7 +59,7 @@ const systemInstruction =
 const geminiToolDeclarations = [
   {
     functionDeclarations: [
-      { name: "getProjectStatus", description: "Retrieve status reports, tasks completed, timeline dates, and status updates for a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "The name of the project to look up." }, daysCount: { type: "INTEGER", description: "Number of days back to filter status updates (default is 30)." } }, required: ["projectName"] } },
+      { name: "getProjectStatus", description: "Retrieve status reports, budget, quote and final pricing, tasks completed, timeline dates, and status updates for a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "The name of the project to look up." }, daysCount: { type: "INTEGER", description: "Number of days back to filter status updates (default is 30)." } }, required: ["projectName"] } },
       { name: "sendInvoiceToClient", description: "Search for an invoice and email it to the client. Uses Nodemailer.", parameters: { type: "OBJECT", properties: { clientNameOrEmail: { type: "STRING", description: "The name or email of the client to search invoices for." }, invoiceNumber: { type: "STRING", description: "The invoice number (e.g. INV-001) to search for directly." } } } },
       { name: "listProjects", description: "Retrieve a list of all projects in the workspace (including both active and completed ones).", parameters: { type: "OBJECT", properties: {} } },
       { name: "listInvoices", description: "Retrieve a list of all invoices in the workspace (including draft, sent, paid, and overdue statuses) with client name and associated project name.", parameters: { type: "OBJECT", properties: {} } },
@@ -375,6 +375,58 @@ async function handleNvidiaStream(apiKey, message, history, companyId, userId, s
   }
 }
 
+// ─── Provider: xAI Grok ─────────────────────────────────────────────────────
+
+async function handleGrokStream(apiKey, message, history, companyId, userId, send) {
+  const { default: OpenAI } = await import("openai");
+  const client = new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey });
+
+  const GROK_MODEL = "grok-4.3";
+
+  const messages = [
+    { role: "system", content: systemInstruction },
+    ...history.slice(-4).map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text })),
+    { role: "user", content: message },
+  ];
+
+  let loopCount = 0;
+  while (loopCount < 3) {
+    loopCount++;
+    const completion = await client.chat.completions.create({
+      model: GROK_MODEL,
+      messages,
+      tools: openaiToolDeclarations,
+      tool_choice: "auto",
+      temperature: 0.6,
+      max_tokens: 4096,
+    });
+    const choice = completion.choices[0];
+    if (choice.finish_reason === "tool_calls" && choice.message.tool_calls) {
+      messages.push(choice.message);
+      for (const toolCall of choice.message.tool_calls) {
+        const name = toolCall.function.name;
+        const args = JSON.parse(toolCall.function.arguments || "{}");
+        send("tool", { name });
+        const toolResult = await executeToolCall(name, args, companyId, userId);
+        messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(toolResult) });
+      }
+      continue;
+    }
+    const stream = await client.chat.completions.create({
+      model: GROK_MODEL,
+      messages,
+      stream: true,
+      temperature: 0.6,
+      max_tokens: 4096,
+    });
+    for await (const chunk of stream) {
+      const text = chunk.choices?.[0]?.delta?.content;
+      if (text) send("token", { text });
+    }
+    break;
+  }
+}
+
 // ─── Main POST Handler ────────────────────────────────────────────────────────
 
 export async function POST(request) {
@@ -425,6 +477,9 @@ export async function POST(request) {
           break;
         case "nvidia":
           await handleNvidiaStream(apiKey, message, history, companyId, userId, send);
+          break;
+        case "grok":
+          await handleGrokStream(apiKey, message, history, companyId, userId, send);
           break;
         default:
           send("error", { error: `Unknown provider: "${selectedProvider}"` });

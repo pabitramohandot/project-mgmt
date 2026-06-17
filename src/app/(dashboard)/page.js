@@ -14,7 +14,9 @@ import {
   AlertTriangle,
   Bot,
   Sparkles,
-  Brain
+  Brain,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 import NotificationBell from '@/components/NotificationBell';
@@ -27,6 +29,26 @@ export default function Dashboard() {
   const [companyName, setCompanyName] = useState('Workspace');
   const [username, setUsername] = useState('User');
   const [userRole, setUserRole] = useState('');
+  const [showPrices, setShowPrices] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('show_prices');
+    if (saved !== null) {
+      setShowPrices(saved === 'true');
+    }
+  }, []);
+
+  const toggleShowPrices = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowPrices(prev => {
+      const newVal = !prev;
+      localStorage.setItem('show_prices', String(newVal));
+      return newVal;
+    });
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -89,6 +111,10 @@ export default function Dashboard() {
     }).format(value);
   };
 
+  const displayPrice = (value) => {
+    return showPrices ? formatCurrency(value) : 'xxx';
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="page-header">
@@ -130,9 +156,18 @@ export default function Dashboard() {
 
         <div className="card stat-card">
           <div className="stat-info">
-            <span className="stat-title">Total Project Value</span>
+            <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Total Project Value
+              <button 
+                onClick={toggleShowPrices} 
+                className="eye-toggle-btn"
+                title={showPrices ? "Hide prices" : "Show prices"}
+              >
+                {showPrices ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </span>
             <span className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
-              {formatCurrency(stats.projects.totalBudget)}
+              {displayPrice(stats.projects.totalBudget)}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Total budget allocated
@@ -145,9 +180,18 @@ export default function Dashboard() {
 
         <div className="card stat-card">
           <div className="stat-info">
-            <span className="stat-title">Total Earnings</span>
+            <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Total Earnings
+              <button 
+                onClick={toggleShowPrices} 
+                className="eye-toggle-btn"
+                title={showPrices ? "Hide prices" : "Show prices"}
+              >
+                {showPrices ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </span>
             <span className="stat-value" style={{ color: '#10b981' }}>
-              {formatCurrency(stats.invoices.totalEarnings)}
+              {displayPrice(stats.invoices.totalEarnings)}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               From paid invoices
@@ -160,9 +204,18 @@ export default function Dashboard() {
 
         <div className="card stat-card">
           <div className="stat-info">
-            <span className="stat-title">Outstanding Amount</span>
+            <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Outstanding Amount
+              <button 
+                onClick={toggleShowPrices} 
+                className="eye-toggle-btn"
+                title={showPrices ? "Hide prices" : "Show prices"}
+              >
+                {showPrices ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </span>
             <span className="stat-value" style={{ color: '#f59e0b' }}>
-              {formatCurrency(stats.invoices.totalPendingAmount)}
+              {displayPrice(stats.invoices.totalPendingAmount)}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Across {stats.invoices.pendingCount} unpaid
@@ -320,7 +373,16 @@ export default function Dashboard() {
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{project.clientName}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formatCurrency(project.budget)}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {displayPrice(project.budget)}
+                      <button 
+                        onClick={toggleShowPrices} 
+                        className="eye-toggle-btn-small"
+                        title={showPrices ? "Hide prices" : "Show prices"}
+                      >
+                        {showPrices ? <EyeOff size={11} /> : <Eye size={11} />}
+                      </button>
+                    </span>
                     <span className={`badge badge-${project.status.toLowerCase().replace(' ', '')}`}>
                       {project.status}
                     </span>
@@ -365,7 +427,16 @@ export default function Dashboard() {
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{invoice.clientName}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formatCurrency(invoice.total)}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {displayPrice(invoice.total)}
+                      <button 
+                        onClick={toggleShowPrices} 
+                        className="eye-toggle-btn-small"
+                        title={showPrices ? "Hide prices" : "Show prices"}
+                      >
+                        {showPrices ? <EyeOff size={11} /> : <Eye size={11} />}
+                      </button>
+                    </span>
                     <span className={`badge badge-${invoice.status.toLowerCase()}`}>
                       {invoice.status}
                     </span>
@@ -382,6 +453,40 @@ export default function Dashboard() {
         .project-row:hover, .card a:hover {
           background: rgba(255, 255, 255, 0.03);
           transform: translateX(4px);
+        }
+        .eye-toggle-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          padding: 2px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+        }
+        .eye-toggle-btn:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .eye-toggle-btn-small {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          padding: 1px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 3px;
+          opacity: 0.6;
+          transition: all 0.2s ease;
+        }
+        .eye-toggle-btn-small:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.08);
+          opacity: 1;
         }
       `}</style>
     </div>

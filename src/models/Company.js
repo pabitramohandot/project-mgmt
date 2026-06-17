@@ -53,6 +53,7 @@ const CompanySchema = new mongoose.Schema(
       openai: { type: String, trim: true, default: '' },
       claude: { type: String, trim: true, default: '' },
       nvidia: { type: String, trim: true, default: '' },
+      grok: { type: String, trim: true, default: '' },
     },
     isActive: {
       type: Boolean,

@@ -3,6 +3,7 @@ import Project from '@/models/Project';
 import Invoice from '@/models/Invoice';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { processProjectStatus } from '@/lib/projectUtils';
 
 export async function GET(request, context) {
   try {
@@ -22,15 +23,7 @@ export async function GET(request, context) {
     const invoicesQuery = { project: id, companyId };
     const invoicesPromise = Invoice.find(invoicesQuery).sort({ createdAt: -1 }).lean();
 
-    let finalProject = project;
-    if (project.endDate && new Date(project.endDate) < new Date() && project.status !== 'Completed' && project.status !== 'Pending') {
-      // Dynamic update for the response object
-      finalProject = { ...project, status: 'Pending' };
-      // Database update in background
-      Project.updateOne({ _id: id }, { $set: { status: 'Pending' } })
-        .catch(err => console.error('Error auto-updating project status in GET [id]:', err));
-    }
-
+    const finalProject = processProjectStatus(project);
     const invoices = await invoicesPromise;
 
     return NextResponse.json({ project: finalProject, invoices });
@@ -57,7 +50,7 @@ export async function PUT(request, context) {
     }
 
     if (role === 'company_user') {
-      const allowedKeys = ['tasks', 'statusUpdates'];
+      const allowedKeys = ['tasks', 'statusUpdates', 'contentCalendar'];
       const payloadKeys = Object.keys(data);
       const hasRestrictedKeys = payloadKeys.some(key => !allowedKeys.includes(key));
       

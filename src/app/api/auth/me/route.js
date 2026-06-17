@@ -23,6 +23,11 @@ export async function GET(request) {
     let companyUsers = [];
     if (user.companyId) {
       company = await Company.findById(user.companyId).lean();
+      if (company && company.isActive === false && user.role !== "superadmin") {
+        const response = NextResponse.json({ error: "Company suspended", suspended: true }, { status: 403 });
+        response.cookies.delete("admin_token");
+        return response;
+      }
       if (user.role === "company_admin" || user.role === "superadmin") {
         companyUsers = await User.find({ companyId: user.companyId })
           .select("username role email whatsapp createdAt")

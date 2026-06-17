@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   KeyRound, Save, CheckCircle2, XCircle, Eye, EyeOff, RefreshCw,
-  Sparkles, Zap, Brain, Cpu, Radio, Shield,
+  Sparkles, Zap, Brain, Cpu, Radio, Shield, Terminal,
 } from "lucide-react";
 import { useNotification } from "@/components/NotificationProvider";
 
@@ -40,6 +40,14 @@ const PROVIDERS = [
     glowColor: "rgba(118, 185, 0, 0.25)", placeholder: "e.g. nvapi-...",
     docsUrl: "https://build.nvidia.com/",
   },
+  {
+    id: "grok", name: "xAI Grok",
+    description: "Grok 4.3 — Chat completions API",
+    icon: Terminal, color: "#8B5CF6",
+    gradient: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)",
+    glowColor: "rgba(139, 92, 246, 0.25)", placeholder: "e.g. xai-...",
+    docsUrl: "https://console.x.ai/",
+  },
 ];
 
 export default function SuperAdminAISettingsPage() {
@@ -47,9 +55,9 @@ export default function SuperAdminAISettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeProvider, setActiveProvider] = useState("gemini");
-  const [keys, setKeys] = useState({ gemini: "", openai: "", claude: "", nvidia: "" });
+  const [keys, setKeys] = useState({ gemini: "", openai: "", claude: "", nvidia: "", grok: "" });
   const [providerStatus, setProviderStatus] = useState({});
-  const [visibility, setVisibility] = useState({ gemini: false, openai: false, claude: false, nvidia: false });
+  const [visibility, setVisibility] = useState({ gemini: false, openai: false, claude: false, nvidia: false, grok: false });
   const [testing, setTesting] = useState({});
   const [testResults, setTestResults] = useState({});
   const [switchingTo, setSwitchingTo] = useState(null);

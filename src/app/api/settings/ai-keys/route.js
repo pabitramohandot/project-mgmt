@@ -109,6 +109,10 @@ export async function GET(request) {
           configured: !!aiKeys.nvidia,
           maskedKey: maskKey(aiKeys.nvidia),
         },
+        grok: {
+          configured: !!aiKeys.grok,
+          maskedKey: maskKey(aiKeys.grok),
+        },
       },
     });
   } catch (error) {
@@ -136,7 +140,7 @@ export async function PUT(request) {
     }
 
     const data = await request.json();
-    const allowedProviders = ["gemini", "openai", "claude", "nvidia"];
+    const allowedProviders = ["gemini", "openai", "claude", "nvidia", "grok"];
 
     if (!company.aiKeys) {
       company.aiKeys = {};
@@ -195,7 +199,7 @@ export async function POST(request) {
       );
     }
 
-    const allowedProviders = ["gemini", "openai", "claude", "nvidia"];
+    const allowedProviders = ["gemini", "openai", "claude", "nvidia", "grok"];
     if (!allowedProviders.includes(provider)) {
       return NextResponse.json(
         { error: `Unknown provider: "${provider}"` },
@@ -231,6 +235,9 @@ export async function POST(request) {
         break;
       case "nvidia":
         result = await testNvidiaKey(apiKey);
+        break;
+      case "grok":
+        result = await testGrokKey(apiKey);
         break;
       default:
         return NextResponse.json(
@@ -389,6 +396,38 @@ async function testNvidiaKey(apiKey) {
       success: false,
       provider: "nvidia",
       message: sanitizeProviderError(err, "NVIDIA"),
+    };
+  }
+}
+
+async function testGrokKey(apiKey) {
+  try {
+    const { default: OpenAI } = await import("openai");
+    const client = new OpenAI({
+      baseURL: "https://api.x.ai/v1",
+      apiKey,
+    });
+
+    const completion = await client.chat.completions.create({
+      model: "grok-4.3",
+      messages: [{ role: "user", content: "Reply with: OK" }],
+      max_tokens: 20,
+      temperature: 0.5,
+      stream: false,
+    });
+
+    const text = completion.choices?.[0]?.message?.content || "";
+    return {
+      success: true,
+      provider: "grok",
+      message: "Grok API key is valid and working.",
+      response: text.substring(0, 100),
+    };
+  } catch (err) {
+    return {
+      success: false,
+      provider: "grok",
+      message: sanitizeProviderError(err, "Grok"),
     };
   }
 }

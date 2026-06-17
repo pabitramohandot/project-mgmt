@@ -40,6 +40,60 @@ const CredentialSchema = new mongoose.Schema({
   },
 });
 
+const ContentCalendarSchema = new mongoose.Schema({
+  month: {
+    type: String,
+    required: true,
+  },
+  scheduledDate: {
+    type: Date,
+    required: true,
+  },
+  postType: {
+    type: String,
+    enum: ['Static', 'Motion', 'Reel', 'Carousel', 'Motion Graphic Wish Post', 'Wish post'],
+    default: 'Static',
+  },
+  topic: {
+    type: String,
+    trim: true,
+  },
+  content: {
+    type: String,
+    trim: true,
+  },
+  hashtags: {
+    type: String,
+    trim: true,
+  },
+  visual: {
+    type: String,
+    trim: true,
+  },
+  platforms: {
+    type: [String],
+    default: [],
+  },
+  status: {
+    type: String,
+    enum: ['Pending', 'Design Done', 'Design Approved', 'Posted', 'Draft', 'Approved'],
+    default: 'Pending',
+  },
+  // Legacy fields for backward compatibility
+  ideation: {
+    type: String,
+    trim: true,
+  },
+  caption: {
+    type: String,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+});
+
 const ProjectSchema = new mongoose.Schema(
   {
     name: {
@@ -75,6 +129,29 @@ const ProjectSchema = new mongoose.Schema(
       enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
       default: 'Planning',
     },
+    devStatus: {
+      type: String,
+      enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
+      default: 'Planning',
+    },
+    marketingStatus: {
+      type: String,
+      enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
+      default: 'Planning',
+    },
+    adsStatus: {
+      type: String,
+      enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
+      default: 'Planning',
+    },
+    projectType: {
+      type: [String],
+      default: [],
+    },
+    subcategories: {
+      type: [String],
+      default: [],
+    },
     quotePrice: {
       type: Number,
       default: null,
@@ -101,6 +178,21 @@ const ProjectSchema = new mongoose.Schema(
     endDate: {
       type: Date,
     },
+    devStartDate: {
+      type: Date,
+    },
+    devEndDate: {
+      type: Date,
+    },
+    marketingStartDate: {
+      type: Date,
+    },
+    marketingEndDate: {
+      type: Date,
+    },
+    adsDate: {
+      type: Date,
+    },
     tasks: [TaskSchema],
     hostingExpiry: {
       type: Date,
@@ -109,6 +201,7 @@ const ProjectSchema = new mongoose.Schema(
       type: Date,
     },
     credentials: [CredentialSchema],
+    contentCalendar: [ContentCalendarSchema],
     statusUpdates: [
       new mongoose.Schema({
         message: {

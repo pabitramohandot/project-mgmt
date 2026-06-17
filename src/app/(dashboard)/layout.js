@@ -10,6 +10,7 @@ export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [user, setUser] = useState(null);
+  const [isSuspended, setIsSuspended] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar_collapsed') === 'true';
@@ -20,6 +21,13 @@ export default function DashboardLayout({ children }) {
     async function loadUser() {
       try {
         const res = await fetch('/api/auth/me');
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data.suspended) {
+            setIsSuspended(true);
+            return;
+          }
+        }
         if (res.ok) {
           const data = await res.json();
           setUser(data);
@@ -37,6 +45,28 @@ export default function DashboardLayout({ children }) {
     }
     loadUser();
   }, []);
+
+  // Periodic polling check to detect real-time suspension
+  useEffect(() => {
+    if (!user || user.role === 'superadmin' || isSuspended) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data.suspended) {
+            setIsSuspended(true);
+            clearInterval(interval);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to run periodic session validation:', e);
+      }
+    }, 15000); // Check every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [user, isSuspended]);
 
   const handleToggleCollapse = () => {
     const newValue = !isCollapsed;
@@ -79,6 +109,88 @@ export default function DashboardLayout({ children }) {
       </main>
 
       {user?.role && user.role !== 'superadmin' && <FooterFeedback />}
+
+      {/* Glassmorphic Non-dismissible Warning Modal overlay */}
+      {isSuspended && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 99999,
+          background: 'rgba(3, 7, 11, 0.75)',
+          backdropFilter: 'blur(20px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+        }}>
+          <div style={{
+            maxWidth: '480px',
+            width: '100%',
+            padding: '2.5rem',
+            background: 'rgba(12, 21, 32, 0.85)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(239, 68, 68, 0.1)',
+            borderRadius: '24px',
+            textAlign: 'center',
+            color: '#ffffff'
+          }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '64px',
+              height: '64px',
+              borderRadius: '20px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              marginBottom: '1.5rem',
+              boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+            }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 0.75rem 0', color: '#ffffff' }}>
+              Workspace Suspended
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.6', margin: '0 0 2rem 0' }}>
+              Your company account has been suspended by the platform administrator. Access to projects, invoices, and operations is locked. Please contact support or your company administrator for details.
+            </p>
+            <button
+              onClick={() => window.location.href = '/login?suspended=true'}
+              style={{
+                width: '100%',
+                padding: '0.85rem',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                borderRadius: '12px',
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = 'brightness(1.1)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'brightness(1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Return to Sign In
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

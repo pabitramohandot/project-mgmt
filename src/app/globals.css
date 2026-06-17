@@ -326,11 +326,26 @@ a {
 .badge-review { background: rgba(245, 158, 11, 0.15); color: #fde047; }
 .badge-completed { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
 .badge-pending { background: rgba(249, 115, 22, 0.15); color: #fdba74; }
+.badge-inprogress { background: rgba(0, 174, 239, 0.15); color: #00aeef; }
+.badge-underreview { background: rgba(242, 101, 34, 0.15); color: #f26522; }
 
 .badge-draft { background: rgba(100, 116, 139, 0.15); color: #cbd5e1; }
 .badge-sent { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
 .badge-paid { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
 .badge-overdue { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+/* Light Theme Badge Overrides */
+[data-theme="light"] .badge-planning { background: rgba(100, 116, 139, 0.1); color: #475569; }
+[data-theme="light"] .badge-progress { background: rgba(0, 174, 239, 0.1); color: #0284c7; }
+[data-theme="light"] .badge-inprogress { background: rgba(0, 174, 239, 0.1); color: #0284c7; }
+[data-theme="light"] .badge-review { background: rgba(242, 101, 34, 0.1); color: #c2410c; }
+[data-theme="light"] .badge-underreview { background: rgba(242, 101, 34, 0.1); color: #c2410c; }
+[data-theme="light"] .badge-completed { background: rgba(16, 185, 129, 0.1); color: #047857; }
+[data-theme="light"] .badge-pending { background: rgba(249, 115, 22, 0.1); color: #c2410c; }
+[data-theme="light"] .badge-draft { background: rgba(100, 116, 139, 0.1); color: #475569; }
+[data-theme="light"] .badge-sent { background: rgba(0, 174, 239, 0.1); color: #0284c7; }
+[data-theme="light"] .badge-paid { background: rgba(16, 185, 129, 0.1); color: #047857; }
+[data-theme="light"] .badge-overdue { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
 
 .pending-task-card {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1171,7 +1186,7 @@ input[type="file"]::file-selector-button:hover {
     height: 100vh;
     z-index: 200;
     box-shadow: none;
-    background-color: #06060c;
+    background-color: var(--bg-secondary);
   }
 
   .sidebar.mobile-open {

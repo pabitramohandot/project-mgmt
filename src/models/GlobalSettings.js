@@ -14,7 +14,7 @@ const GlobalSettingsSchema = new mongoose.Schema(
     // Which provider is currently active for all companies
     activeProvider: {
       type: String,
-      enum: ['gemini', 'openai', 'claude', 'nvidia'],
+      enum: ['gemini', 'openai', 'claude', 'nvidia', 'grok'],
       default: 'gemini',
     },
     // API keys for each provider (stored server-side only)
@@ -23,6 +23,7 @@ const GlobalSettingsSchema = new mongoose.Schema(
       openai: { type: String, trim: true, default: '' },
       claude: { type: String, trim: true, default: '' },
       nvidia: { type: String, trim: true, default: '' },
+      grok: { type: String, trim: true, default: '' },
     },
   },
   { timestamps: true }

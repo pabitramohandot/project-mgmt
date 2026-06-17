@@ -3,6 +3,7 @@ import Project from '@/models/Project';
 import Invoice from '@/models/Invoice';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { processProjectStatus } from '@/lib/projectUtils';
 
 export async function GET(request) {
   try {
@@ -12,15 +13,37 @@ export async function GET(request) {
     let projectQuery = { companyId };
     let invoiceQuery = { companyId };
 
-    // Auto-update past-due projects to Pending in the background to avoid blocking the user request
+    const now = new Date();
+    // Background update category statuses to Pending if overdue
     Project.updateMany(
       {
-        ...projectQuery,
-        endDate: { $lt: new Date() },
-        status: { $nin: ['Completed', 'Pending'] }
+        companyId,
+        projectType: 'Development',
+        devEndDate: { $lt: now },
+        devStatus: { $nin: ['Completed', 'Pending'] }
       },
-      { $set: { status: 'Pending' } }
-    ).catch(err => console.error('Dashboard auto-update projects error:', err));
+      { $set: { devStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating devStatus in dashboard:', err));
+
+    Project.updateMany(
+      {
+        companyId,
+        projectType: '360 Deg Digital Marketing',
+        marketingEndDate: { $lt: now },
+        marketingStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { marketingStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating marketingStatus in dashboard:', err));
+
+    Project.updateMany(
+      {
+        companyId,
+        projectType: 'Meta / Google Ads',
+        adsDate: { $lt: now },
+        adsStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { adsStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating adsStatus in dashboard:', err));
 
     // Fetch all projects and invoices in parallel using lean() for maximum performance
     const [allProjects, allInvoices] = await Promise.all([
@@ -29,12 +52,7 @@ export async function GET(request) {
     ]);
 
     // Compute dynamic project status updates for current response (since DB update runs in background)
-    const processedProjects = allProjects.map(proj => {
-      if (proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed' && proj.status !== 'Pending') {
-        return { ...proj, status: 'Pending' };
-      }
-      return proj;
-    });
+    const processedProjects = allProjects.map(proj => processProjectStatus(proj));
 
     // Project stats
     const totalProjects = processedProjects.length;
@@ -118,11 +136,27 @@ export async function GET(request) {
       proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed'
     );
     for (const proj of overdueProjectsList) {
+      const overdueCategories = [];
+      const now = new Date();
+      if (proj.projectType?.includes('Development') && proj.devEndDate && new Date(proj.devEndDate) < now) {
+        overdueCategories.push('Development');
+      }
+      if (proj.projectType?.includes('360 Deg Digital Marketing') && proj.marketingEndDate && new Date(proj.marketingEndDate) < now) {
+        overdueCategories.push('360 Deg Digital Marketing');
+      }
+      if (proj.projectType?.includes('Meta / Google Ads') && proj.adsDate && new Date(proj.adsDate) < now) {
+        overdueCategories.push('Meta / Google Ads');
+      }
+
+      const categoriesLabel = overdueCategories.length > 0 
+        ? `${overdueCategories.join(' & ')}` 
+        : 'Project timeline';
+
       pendingTasks.push({
         id: proj._id,
         type: 'project_pending',
-        title: `Project past due: ${proj.name}`,
-        description: `Project is past its due date (${new Date(proj.endDate).toLocaleDateString()}) and status is Pending.`,
+        title: `Project past due: ${proj.name} (${categoriesLabel})`,
+        description: `${categoriesLabel} due date (${new Date(proj.endDate).toLocaleDateString('en-IN')}) has passed and status is Pending.`,
         link: `/projects/${proj._id}`,
         date: proj.endDate,
       });

@@ -90,6 +90,10 @@ export async function GET(request) {
           configured: !!aiKeys.nvidia,
           maskedKey: maskKey(aiKeys.nvidia),
         },
+        grok: {
+          configured: !!aiKeys.grok,
+          maskedKey: maskKey(aiKeys.grok),
+        },
       },
     });
   } catch (error) {
@@ -111,7 +115,7 @@ export async function PUT(request) {
     await dbConnect();
     const settings = await getOrCreateSettings();
     const data = await request.json();
-    const allowedProviders = ["gemini", "openai", "claude", "nvidia"];
+    const allowedProviders = ["gemini", "openai", "claude", "nvidia", "grok"];
 
     if (!settings.aiKeys) settings.aiKeys = {};
 
@@ -158,7 +162,7 @@ export async function POST(request) {
     if (role !== "superadmin") return forbidden();
 
     const { provider, apiKey: rawApiKey } = await request.json();
-    const allowedProviders = ["gemini", "openai", "claude", "nvidia"];
+    const allowedProviders = ["gemini", "openai", "claude", "nvidia", "grok"];
 
     if (!provider || !allowedProviders.includes(provider)) {
       return NextResponse.json(
@@ -191,6 +195,8 @@ export async function POST(request) {
         return NextResponse.json(await testClaudeKey(apiKey));
       case "nvidia":
         return NextResponse.json(await testNvidiaKey(apiKey));
+      case "grok":
+        return NextResponse.json(await testGrokKey(apiKey));
     }
   } catch (error) {
     console.error("AI Settings POST test error:", error);
@@ -304,5 +310,23 @@ async function testNvidiaKey(apiKey) {
     return { success: true, provider: 'nvidia', message: 'NVIDIA NIM API key is valid and working.', response: text.substring(0, 100) };
   } catch (err) {
     return { success: false, provider: 'nvidia', message: sanitizeProviderError(err, 'NVIDIA') };
+  }
+}
+
+async function testGrokKey(apiKey) {
+  try {
+    const { default: OpenAI } = await import('openai');
+    const client = new OpenAI({ baseURL: 'https://api.x.ai/v1', apiKey });
+    const completion = await client.chat.completions.create({
+      model: 'grok-4.3',
+      messages: [{ role: 'user', content: 'Reply with: OK' }],
+      max_tokens: 20,
+      temperature: 0.5,
+      stream: false,
+    });
+    const text = completion.choices?.[0]?.message?.content || '';
+    return { success: true, provider: 'grok', message: 'Grok API key is valid and working.', response: text.substring(0, 100) };
+  } catch (err) {
+    return { success: false, provider: 'grok', message: sanitizeProviderError(err, 'Grok') };
   }
 }
