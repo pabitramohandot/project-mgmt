@@ -87,9 +87,9 @@ export async function GET(request) {
       pendingTasks.push({
         id: inv._id,
         type: 'invoice_draft',
-        title: `Invoice ${inv.invoiceNumber} not sent`,
-        description: `Draft invoice for client ${inv.clientName} is pending delivery.`,
-        link: `/invoices`,
+        title: `Send Draft Invoice: ${inv.invoiceNumber}`,
+        description: `Draft invoice for ${inv.clientName} has not been sent. Review and email this invoice to collect payment.`,
+        link: `/invoices/${inv._id}`,
         date: inv.createdAt,
       });
     }
@@ -107,8 +107,8 @@ export async function GET(request) {
       pendingTasks.push({
         id: proj._id,
         type: 'hosting_expiry',
-        title: `Hosting expiring: ${proj.name}`,
-        description: `Hosting for project ${proj.name} is ${expStr} (${new Date(proj.hostingExpiry).toLocaleDateString()}).`,
+        title: `Renew Hosting: ${proj.name}`,
+        description: `Hosting for project ${proj.name} is ${expStr} (${new Date(proj.hostingExpiry).toLocaleDateString('en-IN')}). Renew hosting to prevent website downtime.`,
         link: `/projects/${proj._id}`,
         date: proj.hostingExpiry,
       });
@@ -124,42 +124,50 @@ export async function GET(request) {
       pendingTasks.push({
         id: proj._id,
         type: 'domain_expiry',
-        title: `Domain expiring: ${proj.name}`,
-        description: `Domain for project ${proj.name} is ${expStr} (${new Date(proj.domainExpiry).toLocaleDateString()}).`,
+        title: `Renew Domain: ${proj.name}`,
+        description: `Domain registration for project ${proj.name} is ${expStr} (${new Date(proj.domainExpiry).toLocaleDateString('en-IN')}). Renew domain registration to keep website online.`,
         link: `/projects/${proj._id}`,
         date: proj.domainExpiry,
       });
     }
 
-    // 3. Projects past due date (Pending status)
-    const overdueProjectsList = processedProjects.filter(proj => 
-      proj.endDate && new Date(proj.endDate) < new Date() && proj.status !== 'Completed'
-    );
-    for (const proj of overdueProjectsList) {
+    // 3. Projects past due date (Pending status per category)
+    for (const proj of processedProjects) {
       const overdueCategories = [];
-      const now = new Date();
-      if (proj.projectType?.includes('Development') && proj.devEndDate && new Date(proj.devEndDate) < now) {
-        overdueCategories.push('Development');
+      
+      if (proj.projectType?.includes('Development') && proj.devEndDate && new Date(proj.devEndDate) < now && proj.devStatus !== 'Completed') {
+        overdueCategories.push({
+          name: 'Development',
+          dueDate: new Date(proj.devEndDate)
+        });
       }
-      if (proj.projectType?.includes('360 Deg Digital Marketing') && proj.marketingEndDate && new Date(proj.marketingEndDate) < now) {
-        overdueCategories.push('360 Deg Digital Marketing');
+      if (proj.projectType?.includes('360 Deg Digital Marketing') && proj.marketingEndDate && new Date(proj.marketingEndDate) < now && proj.marketingStatus !== 'Completed') {
+        overdueCategories.push({
+          name: '360 Deg Digital Marketing',
+          dueDate: new Date(proj.marketingEndDate)
+        });
       }
-      if (proj.projectType?.includes('Meta / Google Ads') && proj.adsDate && new Date(proj.adsDate) < now) {
-        overdueCategories.push('Meta / Google Ads');
+      if (proj.projectType?.includes('Meta / Google Ads') && proj.adsDate && new Date(proj.adsDate) < now && proj.adsStatus !== 'Completed') {
+        overdueCategories.push({
+          name: 'Meta / Google Ads',
+          dueDate: new Date(proj.adsDate)
+        });
       }
 
-      const categoriesLabel = overdueCategories.length > 0 
-        ? `${overdueCategories.join(' & ')}` 
-        : 'Project timeline';
+      if (overdueCategories.length > 0) {
+        const categoriesLabel = overdueCategories.map(c => c.name).join(' & ');
+        const oldestOverdueDate = new Date(Math.min(...overdueCategories.map(c => c.dueDate)));
+        const detailsStr = overdueCategories.map(c => `${c.name} (due ${c.dueDate.toLocaleDateString('en-IN')})`).join(', ');
 
-      pendingTasks.push({
-        id: proj._id,
-        type: 'project_pending',
-        title: `Project past due: ${proj.name} (${categoriesLabel})`,
-        description: `${categoriesLabel} due date (${new Date(proj.endDate).toLocaleDateString('en-IN')}) has passed and status is Pending.`,
-        link: `/projects/${proj._id}`,
-        date: proj.endDate,
-      });
+        pendingTasks.push({
+          id: proj._id,
+          type: 'project_pending',
+          title: `Resolve Overdue Service: ${proj.name} (${categoriesLabel})`,
+          description: `Timeline has expired for: ${detailsStr}. Please complete the deliverables and mark the category status as Completed in the project details.`,
+          link: `/projects/${proj._id}`,
+          date: oldestOverdueDate,
+        });
+      }
     }
 
     return NextResponse.json({

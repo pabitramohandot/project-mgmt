@@ -20,6 +20,7 @@ export default function EditCompanyPage() {
     name: "",
     slug: "",
     logo: "",
+    tagline: "",
     primaryColor: "#00aeef",
     secondaryColor: "#f26522",
     contactEmail: "",
@@ -38,6 +39,7 @@ export default function EditCompanyPage() {
             name: company.name,
             slug: company.slug,
             logo: company.logo || "",
+            tagline: company.tagline || "",
             primaryColor: company.brandColors?.primary || "#00aeef",
             secondaryColor: company.brandColors?.secondary || "#f26522",
             contactEmail: company.contactEmail || "",
@@ -69,6 +71,7 @@ export default function EditCompanyPage() {
           name: form.name,
           slug: form.slug,
           logo: form.logo,
+          tagline: form.tagline,
           brandColors: {
             primary: form.primaryColor,
             secondary: form.secondaryColor,
@@ -188,6 +191,19 @@ export default function EditCompanyPage() {
                 value={form.logo}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, logo: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Company Tagline / Subtitle</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Development & Consulting Services"
+                value={form.tagline}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, tagline: e.target.value }))
                 }
               />
             </div>

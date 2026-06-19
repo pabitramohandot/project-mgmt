@@ -22,6 +22,7 @@ export async function PUT(request) {
     }
 
     if (data.logo !== undefined) company.logo = data.logo;
+    if (data.tagline !== undefined) company.tagline = data.tagline.trim();
     if (data.brandColors !== undefined) {
       company.brandColors = {
         primary: data.brandColors.primary || company.brandColors.primary,

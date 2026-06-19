@@ -29,6 +29,11 @@ const CompanySchema = new mongoose.Schema(
         default: '#f26522',
       },
     },
+    tagline: {
+      type: String,
+      trim: true,
+      default: 'Development & Consulting Services',
+    },
     contactEmail: {
       type: String,
       trim: true,

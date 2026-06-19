@@ -54,6 +54,7 @@ export async function POST(request) {
       name: data.name.trim(),
       slug: data.slug.trim().toLowerCase(),
       logo: data.logo || "",
+      tagline: data.tagline ? data.tagline.trim() : "Development & Consulting Services",
       brandColors: {
         primary: data.brandColors?.primary || "#00aeef",
         secondary: data.brandColors?.secondary || "#f26522",

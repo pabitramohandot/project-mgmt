@@ -386,7 +386,7 @@ export default function ClientsPage() {
 
       {/* Client Form Modal */}
       {isFormModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsFormModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2>{clientForm._id ? 'Edit Client Profile' : 'Add New Client'}</h2>
@@ -492,20 +492,13 @@ export default function ClientsPage() {
 
       {/* Client Detail Modal */}
       {isDetailModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsDetailModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" style={{ maxWidth: '800px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2>Client Profile Detail</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {selectedClientData && role !== 'company_user' && (
-                  <button className="btn btn-danger" style={{ padding: '0.35rem 0.65rem', borderRadius: '8px', fontSize: '0.8rem' }} onClick={() => handleDeleteClient(selectedClientData.client._id)}>
-                    <Trash2 size={14} style={{ marginRight: '4px' }} /> Delete
-                  </button>
-                )}
-                <button onClick={() => setIsDetailModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <X size={20} />
-                </button>
-              </div>
+              <button onClick={() => setIsDetailModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
             </div>
 
             {loadingDetails ? (
@@ -674,6 +667,16 @@ export default function ClientsPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Modal Footer */}
+                {role !== 'company_user' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                    <button className="btn btn-danger" style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => handleDeleteClient(selectedClientData.client._id)}>
+                      <Trash2 size={16} />
+                      <span>Delete Profile</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

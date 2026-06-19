@@ -527,7 +527,7 @@ export default function CredentialsPage() {
 
       {/* Credential Form Modal */}
       {isFormModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsFormModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>

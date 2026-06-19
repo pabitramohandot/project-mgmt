@@ -31,9 +31,8 @@ const systemInstruction =
   "TOKEN OPTIMIZATION / RESPONSE BREVITY:\n" +
   "Be extremely concise, brief, and direct. Keep all responses minimal to save API tokens. Avoid wordiness, greetings, repetitions, or explaining your logic/actions. Get straight to the point.\n" +
   "\n\n" +
-  "CRITICAL RULE — TOOL USAGE: NEVER call any tool unless explicitly and clearly asked for data/action. " +
+  "CRITICAL RULE — TOOL USAGE: You MUST call the appropriate tool to retrieve data when the user asks about projects, clients, invoices, tasks, or service expiry. Do NOT guess, assume, or hallucinate any pricing, budget, timeline, or task details. " +
   "For greetings ('hi', 'hello', 'hey', 'good morning'), thanks, or small talk, respond conversationally with a brief sentence without calling any tool. " +
-  "Do NOT proactively fetch data unless explicitly requested. " +
   "\n\n" +
   "REQUIRED PARAMETERS / CONVERSATIONAL GATHERING:\n" +
   "Before calling a write/creation tool, ensure all required parameters are provided. " +
@@ -52,7 +51,7 @@ const systemInstruction =
   "Never access/modify user credentials. " +
   "Format dates cleanly. Display lists in bullet points or markdown tables. " +
   "Always represent currency in Indian Rupees (₹). " +
-  "If the user asks for a specific filtered list (e.g. 'active projects', 'unpaid invoices'), filter in memory and return ONLY those items.";
+  "If the user asks for a specific filtered list (e.g. 'active projects', 'unpaid invoices', or projects of a specific category/subcategory), filter in memory and return ONLY those items.";
 
 // ─── Gemini Tool Declarations ─────────────────────────────────────────────────
 
@@ -61,7 +60,7 @@ const geminiToolDeclarations = [
     functionDeclarations: [
       { name: "getProjectStatus", description: "Retrieve status reports, budget, quote and final pricing, tasks completed, timeline dates, and status updates for a project.", parameters: { type: "OBJECT", properties: { projectName: { type: "STRING", description: "The name of the project to look up." }, daysCount: { type: "INTEGER", description: "Number of days back to filter status updates (default is 30)." } }, required: ["projectName"] } },
       { name: "sendInvoiceToClient", description: "Search for an invoice and email it to the client. Uses Nodemailer.", parameters: { type: "OBJECT", properties: { clientNameOrEmail: { type: "STRING", description: "The name or email of the client to search invoices for." }, invoiceNumber: { type: "STRING", description: "The invoice number (e.g. INV-001) to search for directly." } } } },
-      { name: "listProjects", description: "Retrieve a list of all projects in the workspace (including both active and completed ones).", parameters: { type: "OBJECT", properties: {} } },
+      { name: "listProjects", description: "Retrieve a list of all projects in the workspace (including names, client names, statuses, budget, projectType, and subcategories).", parameters: { type: "OBJECT", properties: {} } },
       { name: "listInvoices", description: "Retrieve a list of all invoices in the workspace (including draft, sent, paid, and overdue statuses) with client name and associated project name.", parameters: { type: "OBJECT", properties: {} } },
       { name: "listExpiringItems", description: "Retrieve a list of domains or hosting services expiring in the next 60 days.", parameters: { type: "OBJECT", properties: {} } },
       { name: "createNewClient", description: "Register a new client contact profile.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Client name." }, email: { type: "STRING", description: "Client email." }, phone: { type: "STRING", description: "Client phone number (optional)." }, company: { type: "STRING", description: "Client company name (optional)." }, address: { type: "STRING", description: "Client address (optional)." } }, required: ["name", "email"] } },

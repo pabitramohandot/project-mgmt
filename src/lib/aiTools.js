@@ -123,14 +123,16 @@ export async function listWorkspaceProjects(companyId) {
   
   const projects = await Project.find({
     companyId
-  }).select('name clientName status budget endDate').sort({ updatedAt: -1 }).lean();
+  }).select('name clientName status budget endDate projectType subcategories').sort({ updatedAt: -1 }).lean();
 
   return projects.map(p => ({
     name: p.name,
     clientName: p.clientName,
     status: p.status,
     budget: p.budget,
-    endDate: p.endDate ? new Date(p.endDate).toLocaleDateString('en-IN') : 'N/A'
+    endDate: p.endDate ? new Date(p.endDate).toLocaleDateString('en-IN') : 'N/A',
+    projectType: p.projectType || [],
+    subcategories: p.subcategories || []
   }));
 }
 

@@ -86,6 +86,7 @@ export async function runMultiTenancyMigration() {
         name: 'IONETWEB',
         slug: 'ionetweb',
         logo: '',
+        tagline: 'Development & Consulting Services',
         brandColors: {
           primary: '#00aeef',
           secondary: '#f26522',

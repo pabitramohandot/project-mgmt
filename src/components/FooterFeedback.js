@@ -169,7 +169,7 @@ export default function FooterFeedback() {
 
       {/* Bug Report Modal */}
       {activeModal === 'bug' && (
-        <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem', fontWeight: 700 }}>
@@ -309,7 +309,7 @@ export default function FooterFeedback() {
 
       {/* Feature Request Modal */}
       {activeModal === 'feature' && (
-        <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem', fontWeight: 700 }}>

@@ -365,10 +365,7 @@ function InvoicesContent() {
 
       {/* Invoice Generator Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => {
-          setIsModalOpen(false);
-          router.replace('/invoices');
-        }}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" style={{ maxWidth: '800px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2>Generate Invoice</h2>

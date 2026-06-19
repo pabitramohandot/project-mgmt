@@ -313,7 +313,9 @@ export default function InvoiceDetailPage() {
                   <h2 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a' }}>
                     {invoice.companyId?.name || 'Workspace'}
                   </h2>
-                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>Development & Consulting Services</p>
+                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                    {invoice.companyId?.tagline || 'Development & Consulting Services'}
+                  </p>
                 </>
               )}
             </div>

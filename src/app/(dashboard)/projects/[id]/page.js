@@ -2374,8 +2374,12 @@ export default function ProjectDetailPage() {
                       <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.finalPrice || 0)}</strong>
                     </div>
                     <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #a855f7' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Hosting & Domain</span>
-                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency((project.hostingPrice || 0) + (project.domainPrice || 0))}</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Hosting Price</span>
+                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.hostingPrice || 0)}</strong>
+                    </div>
+                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #06b6d4' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Domain Price</span>
+                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.domainPrice || 0)}</strong>
                     </div>
                     <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #ec4899', background: 'rgba(236, 72, 153, 0.02)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Grand Total</span>
@@ -2855,7 +2859,7 @@ export default function ProjectDetailPage() {
       `}</style>
       {/* Add / Edit Post Modal */}
       {isAddPostModalOpen && (
-        <div className="modal-overlay" onClick={() => { setIsAddPostModalOpen(false); setCurrentPost(null); }}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{currentPost ? 'Edit Post' : 'Schedule Content Post'}</h3>
@@ -2991,7 +2995,7 @@ export default function ProjectDetailPage() {
 
       {/* View Full Calendar Modal */}
       {isViewCalendarOpen && (
-        <div className="modal-overlay" onClick={() => setIsViewCalendarOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1100px', width: '95%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Monthly Calendar Planner</h3>
@@ -3219,7 +3223,7 @@ export default function ProjectDetailPage() {
       )}
       {/* Export Date Range Modal */}
       {isExportModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsExportModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Export Content Calendar</h3>

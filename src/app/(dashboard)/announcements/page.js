@@ -476,7 +476,7 @@ export default function AnnouncementsPage() {
 
       {/* WhatsApp Dispatcher Queue Assistant Modal */}
       {isQueueOpen && (
-        <div className="modal-overlay" onClick={() => setIsQueueOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" style={{ maxWidth: '640px', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

@@ -591,7 +591,7 @@ export default function ProjectsPage() {
 
       {/* New Project Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1000px', width: '90%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Create New Project</h2>

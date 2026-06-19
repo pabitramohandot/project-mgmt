@@ -13,6 +13,7 @@ export default function BrandingSettingsPage() {
   const [form, setForm] = useState({
     name: "",
     logo: "",
+    tagline: "",
     primaryColor: "#00aeef",
     secondaryColor: "#f26522",
   });
@@ -29,6 +30,7 @@ export default function BrandingSettingsPage() {
             setForm({
               name: uData.company.name,
               logo: uData.company.logo || "",
+              tagline: uData.company.tagline || "",
               primaryColor: uData.company.brandColors?.primary || "#00aeef",
               secondaryColor: uData.company.brandColors?.secondary || "#f26522",
             });
@@ -58,6 +60,7 @@ export default function BrandingSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           logo: form.logo,
+          tagline: form.tagline,
           brandColors: {
             primary: form.primaryColor,
             secondary: form.secondaryColor,
@@ -175,6 +178,20 @@ export default function BrandingSettingsPage() {
                 value={form.logo}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, logo: e.target.value }))
+                }
+                disabled={isReadOnly}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Company Tagline / Subtitle</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Development & Consulting Services"
+                value={form.tagline}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, tagline: e.target.value }))
                 }
                 disabled={isReadOnly}
               />

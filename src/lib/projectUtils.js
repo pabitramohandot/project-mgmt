@@ -26,7 +26,7 @@ export function getEffectiveDates(proj) {
   }
   
   const effectiveStartDate = startDates.length > 0 ? new Date(Math.min(...startDates)) : (proj.startDate ? new Date(proj.startDate) : null);
-  const effectiveEndDate = endDates.length > 0 ? new Date(Math.min(...endDates)) : (proj.endDate ? new Date(proj.endDate) : null);
+  const effectiveEndDate = endDates.length > 0 ? new Date(Math.max(...endDates)) : (proj.endDate ? new Date(proj.endDate) : null);
   
   return { effectiveStartDate, effectiveEndDate };
 }

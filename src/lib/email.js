@@ -18,6 +18,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   // Load company details dynamically
   let companyName = 'IONETWEB';
   let companyLogo = null;
+  let companyTagline = 'Development & Consulting Services';
   let brandColors = { primary: '#00aeef', secondary: '#f26522' };
   let companyEmailSettings = null;
 
@@ -29,6 +30,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
       if (company) {
         companyName = company.name || 'IONETWEB';
         companyLogo = company.logo;
+        companyTagline = company.tagline || 'Development & Consulting Services';
         if (company.brandColors) {
           brandColors = company.brandColors;
         }
@@ -92,11 +94,11 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
           <!-- Header -->
           <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px;" />` : ''}
-              <span>${companyName}</span>
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; text-align: center;">
+              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px; display: inline-block;" />` : ''}
+              <span style="display: inline-block; vertical-align: middle;">${companyName}</span>
             </h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Development & Consulting Services</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">${companyTagline}</p>
           </div>
           
           <!-- Content -->
@@ -174,12 +176,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
               </div>
             ` : ''}
 
-            <!-- Call to Action -->
-            <div style="text-align: center; margin-top: 40px;">
-              <a href="${invoiceUrl}" target="_blank" style="display: inline-block; background-color: ${brandColors.primary}; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);">
-                Download PDF
-              </a>
-            </div>
+
           </div>
           
           <!-- Footer -->
@@ -286,9 +283,9 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
         <div style="max-width: 600px; margin: 0 auto; background-color: #0c1520; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);">
           <!-- Header -->
           <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px;" />` : ''}
-              <span>${companyName} Announcement</span>
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; text-align: center;">
+              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px; display: inline-block;" />` : ''}
+              <span style="display: inline-block; vertical-align: middle;">${companyName} Announcement</span>
             </h1>
             <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Official Broadcast Update</p>
           </div>

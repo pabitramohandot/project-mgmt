@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X, RotateCw } from 'lucide-react';
 
 export default function AIChatBot() {
   const [sessions, setSessions] = useState([]);
@@ -349,6 +349,114 @@ export default function AIChatBot() {
       setToolStatus(null);
       if (!fullText.trim()) {
         setMessages((prev) => [...prev, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
+      }
+    } catch (err) {
+      setError(err.message);
+      setToolStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendMessage = async (index) => {
+    if (loading) return;
+    
+    const userMsg = messages[index];
+    if (!userMsg || userMsg.role !== 'user') return;
+    
+    setError(null);
+    setLoading(true);
+    
+    // Truncate messages in state: keep up to the user message being resent
+    const truncated = messages.slice(0, index + 1);
+    setMessages(truncated);
+    
+    // History is everything before this user message
+    const historyBefore = messages.slice(0, index).map(m => ({ role: m.role, text: m.text }));
+    
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg.text, history: historyBefore }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server error (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+      let messageAdded = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            continue;
+          }
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            try {
+              const data = JSON.parse(dataStr);
+
+              if (data.text) {
+                setToolStatus(null);
+                fullText += data.text;
+                if (!messageAdded) {
+                  messageAdded = true;
+                  setMessages([...truncated, { role: 'assistant', text: fullText }]);
+                } else {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'assistant', text: fullText };
+                    return updated;
+                  });
+                }
+              } else if (data.error) {
+                throw new Error(data.error);
+              } else if (data.name) {
+                const toolLabels = {
+                  listProjects: 'Retrieving projects...',
+                  listInvoices: 'Retrieving invoices...',
+                  listExpiringItems: 'Checking expiry records...',
+                  getProjectStatus: 'Fetching project status...',
+                  sendInvoiceToClient: 'Preparing invoice email...',
+                  createNewClient: 'Registering client profile...',
+                  createNewProject: 'Creating new project...',
+                  addProjectTask: 'Adding task to project...',
+                  completeProjectTask: 'Marking task as complete...',
+                  updateProjectStatus: 'Updating project status...',
+                  createNewInvoice: 'Generating invoice draft...',
+                  updateInvoiceStatus: 'Updating invoice status...',
+                  broadcastAnnouncement: 'Broadcasting announcement...',
+                  submitUserFeedback: 'Submitting feedback...',
+                  listAllFeedbacks: 'Retrieving feedback records...',
+                  listAllClients: 'Retrieving client directory...',
+                };
+                setToolStatus(toolLabels[data.name] || 'Processing your request...');
+              }
+            } catch (parseErr) {
+              if (parseErr.message && !parseErr.message.includes('JSON')) {
+                throw parseErr;
+              }
+            }
+          }
+        }
+      }
+
+      setToolStatus(null);
+      if (!fullText.trim()) {
+        setMessages([...truncated, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
       }
     } catch (err) {
       setError(err.message);
@@ -770,19 +878,43 @@ export default function AIChatBot() {
                   gap: '4px',
                 }}
               >
-                <div 
-                  style={{
-                    padding: '0.85rem 1.25rem',
-                    borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                    background: isUser ? 'linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%)' : 'var(--bg-secondary)',
-                    border: isUser ? 'none' : '1px solid var(--border-color)',
-                    color: isUser ? '#ffffff' : 'var(--text-primary)',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.5',
-                    boxShadow: isUser ? '0 4px 12px rgba(0, 174, 239, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
-                  }}
-                  dangerouslySetInnerHTML={{ __html: isUser ? msg.text : formatMarkdown(msg.text) }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', alignSelf: isUser ? 'flex-end' : 'flex-start' }} className="user-message-group">
+                  {isUser && (
+                    <button
+                      onClick={() => handleResendMessage(index)}
+                      disabled={loading}
+                      title="Resend this message"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        opacity: 0.25,
+                      }}
+                      className="resend-message-btn"
+                    >
+                      <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+                    </button>
+                  )}
+                  <div 
+                    style={{
+                      padding: '0.85rem 1.25rem',
+                      borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                      background: isUser ? 'linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%)' : 'var(--bg-secondary)',
+                      border: isUser ? 'none' : '1px solid var(--border-color)',
+                      color: isUser ? '#ffffff' : 'var(--text-primary)',
+                      fontSize: '0.875rem',
+                      lineHeight: '1.5',
+                      boxShadow: isUser ? '0 4px 12px rgba(0, 174, 239, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: isUser ? msg.text : formatMarkdown(msg.text) }}
+                  />
+                </div>
                 <span style={{
                   fontSize: '0.65rem',
                   color: 'var(--text-muted)',
@@ -969,6 +1101,24 @@ export default function AIChatBot() {
       </div>
 
       <style jsx global>{`
+        .resend-message-btn {
+          color: #ffffff !important;
+        }
+        [data-theme="light"] .resend-message-btn {
+          color: #000000 !important;
+        }
+        .user-message-group:hover .resend-message-btn {
+          opacity: 0.7 !important;
+        }
+        .resend-message-btn:hover {
+          opacity: 1 !important;
+          color: #ffffff !important;
+          background: rgba(255, 255, 255, 0.08) !important;
+        }
+        [data-theme="light"] .resend-message-btn:hover {
+          color: #000000 !important;
+          background: rgba(0, 0, 0, 0.05) !important;
+        }
         .session-row:hover {
           background: var(--bg-secondary) !important;
           color: var(--text-primary) !important;
