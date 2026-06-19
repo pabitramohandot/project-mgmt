@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Users, Building, X, Clock, Trash2 } from 'lucide-react';
+import { Plus, Users, Building, X, Clock, Trash2, Search } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function UsersPage() {
@@ -10,6 +10,10 @@ export default function UsersPage() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Search & Filters state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   // Form modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -127,6 +131,25 @@ export default function UsersPage() {
     }
   };
 
+  const filteredUsers = users.filter((u) => {
+    // Role Filter
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+
+
+
+    // Search Query (username, company, role)
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      const usernameMatch = u.username?.toLowerCase().includes(query);
+      const companyNameMatch = u.companyId?.name?.toLowerCase().includes(query);
+      const roleMatch = u.role?.toLowerCase().replace('_', ' ').includes(query);
+      
+      if (!usernameMatch && !companyNameMatch && !roleMatch) return false;
+    }
+
+    return true;
+  });
+
   return (
     <>
       <div className="animate-fade-in">
@@ -140,6 +163,54 @@ export default function UsersPage() {
               <Plus size={18} />
               <span>Create User</span>
             </button>
+          </div>
+        </div>
+
+        {/* Search and Filters Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+            <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
+            <input 
+              type="text" 
+              placeholder="Search users by username, role, or company..." 
+              className="form-input"
+              style={{ paddingLeft: '2.75rem', height: '40px', borderRadius: '10px' }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Role Filter */}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              className="form-select"
+              style={{ 
+                minWidth: '150px', 
+                height: '40px', 
+                padding: '0.5rem 0.75rem', 
+                fontSize: '0.875rem', 
+                borderRadius: '10px', 
+                background: 'var(--bg-card)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer'
+              }}
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="all">All Roles</option>
+              <option value="superadmin">Super Admin</option>
+              <option value="company_admin">Company Admin</option>
+              <option value="company_user">Company User</option>
+            </select>
+
           </div>
         </div>
 
@@ -157,6 +228,12 @@ export default function UsersPage() {
                 Create User
               </button>
             </div>
+          ) : filteredUsers.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Users size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+              <h3>No matching users found</h3>
+              <p>Try refining your search query or filters.</p>
+            </div>
           ) : (
             <div className="table-container" style={{ border: 'none' }}>
               <table className="custom-table">
@@ -170,7 +247,7 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
+                  {filteredUsers.map((u) => (
                     <tr key={u._id}>
                       <td style={{ fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -173,7 +173,7 @@ export default function SuperAdminAISettingsPage() {
   const activeProviderMeta = PROVIDERS.find(p => p.id === activeProvider);
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: "1000px" }}>
+    <div className="animate-fade-in" style={{ maxWidth: "100%", width: "100%" }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: "1.5rem" }}>
         <div>
@@ -199,12 +199,12 @@ export default function SuperAdminAISettingsPage() {
           Currently Active: <span style={{ color: activeProviderMeta?.color }}>{activeProviderMeta?.name}</span>
         </span>
         <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginLeft: "auto" }}>
-          All company AI chats are powered by this provider's key
+          All company AI chats are powered by this provider&apos;s key
         </span>
       </div>
 
       {/* Provider Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
+      <div className="provider-grid" style={{ marginBottom: "2rem" }}>
         {PROVIDERS.map((provider) => {
           const Icon = provider.icon;
           const status = providerStatus[provider.id] || {};
@@ -404,8 +404,20 @@ export default function SuperAdminAISettingsPage() {
       </div>
 
       <style jsx>{`
-        @media (max-width: 520px) {
-          div[style*="gridTemplateColumns"] { grid-template-columns: 1fr !important; }
+        .provider-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.25rem;
+        }
+        @media (max-width: 1100px) {
+          .provider-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 768px) {
+          .provider-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

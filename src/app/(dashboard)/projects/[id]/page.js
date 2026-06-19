@@ -179,6 +179,7 @@ export default function ProjectDetailPage() {
   // Credentials view state
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [copiedKey, setCopiedKey] = useState(null);
+  const [fourDaysThreshold] = useState(() => new Date(Date.now() + 4 * 24 * 60 * 60 * 1000));
 
   const fetchClients = async () => {
     try {
@@ -2728,16 +2729,19 @@ export default function ProjectDetailPage() {
 
                   {/* Upcoming and Completed Posts Summary Rows */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="responsive-grid">
-                    {/* Left Column: 2 Upcoming Posts */}
+                    {/* Left Column: Upcoming Posts (Next 4 Days / Min 4) */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <h4 style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px dashed var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-                        Upcoming Posts (Max 2)
+                        Upcoming Posts (Next 4 Days)
                       </h4>
                       {(() => {
-                        const upcoming = (project.contentCalendar || [])
+                        const upcomingAll = (project.contentCalendar || [])
                           .filter(post => post.status !== 'Posted')
-                          .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
-                          .slice(0, 2);
+                          .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+                        const within4Days = upcomingAll.filter(post => new Date(post.scheduledDate) <= fourDaysThreshold);
+                        
+                        const upcoming = within4Days.length < 4 ? upcomingAll.slice(0, 4) : within4Days;
 
                         if (upcoming.length === 0) {
                           return (
@@ -2751,16 +2755,16 @@ export default function ProjectDetailPage() {
                       })()}
                     </div>
 
-                    {/* Right Column: 2 Completed Posts */}
+                    {/* Right Column: 4 Completed Posts */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <h4 style={{ fontSize: '0.925rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px dashed var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-                        Completed Posts (Max 2)
+                        Completed Posts (Max 4)
                       </h4>
                       {(() => {
                         const completed = (project.contentCalendar || [])
                           .filter(post => post.status === 'Posted')
                           .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
-                          .slice(0, 2);
+                          .slice(0, 4);
 
                         if (completed.length === 0) {
                           return (

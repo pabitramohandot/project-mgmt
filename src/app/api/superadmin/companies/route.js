@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Company from "@/models/Company";
+import User from "@/models/User";
 import { getRequestSession } from "@/lib/auth";
 
 export async function GET(request) {
@@ -12,7 +13,22 @@ export async function GET(request) {
 
     await dbConnect();
     const companies = await Company.find().sort({ createdAt: -1 }).lean();
-    return NextResponse.json(companies);
+    
+    // Fetch all users who are company admins
+    const admins = await User.find({ role: "company_admin" }).select("username companyId").lean();
+
+    // Map company admins to each company
+    const companiesWithAdmins = companies.map((comp) => {
+      const companyAdmins = admins
+        .filter((admin) => admin.companyId && admin.companyId.toString() === comp._id.toString())
+        .map((admin) => admin.username);
+      return {
+        ...comp,
+        admins: companyAdmins,
+      };
+    });
+
+    return NextResponse.json(companiesWithAdmins);
   } catch (error) {
     console.error("Superadmin Companies GET API Error:", error);
     return NextResponse.json(
