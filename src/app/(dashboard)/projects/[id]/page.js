@@ -22,10 +22,17 @@ import {
   Check,
   AlertTriangle,
   ChevronDown,
-  X
+  X,
+  Share2
 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useNotification } from '@/components/NotificationProvider';
+
+const WhatsAppIcon = ({ size = 16, style }) => (
+  <svg style={style} width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.863-9.864.001-2.637-1.03-5.115-2.905-6.99C16.488 1.86 14.013.822 11.38.822c-5.44 0-9.863 4.42-9.866 9.863-.001 1.942.5 3.826 1.48 5.513l-1.011 3.693 3.784-.993zm11.588-6.177c-.297-.148-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.148-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+  </svg>
+);
 
 const getOverallStatus = (proj) => {
   const activeTypes = proj.projectType || [];
@@ -103,6 +110,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [role, setRole] = useState('');
+  const [companyUsers, setCompanyUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
@@ -112,6 +120,7 @@ export default function ProjectDetailPage() {
         if (res.ok) {
           const data = await res.json();
           setRole(data.role);
+          setCompanyUsers(data.companyUsers || []);
         }
       } catch (err) {
         console.error('Failed to get user role:', err);
@@ -475,6 +484,147 @@ export default function ProjectDetailPage() {
     } finally {
       setUpdating(false);
     }
+  };
+
+  // Direct Credentials share logic
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedCreds, setSelectedCreds] = useState([]); // indices of credentials
+  const [shareRecipientType, setShareRecipientType] = useState('client'); // 'client' | 'employee' | 'custom'
+  const [selectedRecipientId, setSelectedRecipientId] = useState(''); // Client ID or Employee ID
+  const [customPhone, setCustomPhone] = useState('');
+  const [customEmail, setCustomEmail] = useState('');
+
+  const handleOpenShareModal = () => {
+    if (!project || !project.credentials || project.credentials.length === 0) return;
+    
+    // Select all indices by default
+    setSelectedCreds(project.credentials.map((_, i) => i));
+    setShareRecipientType('client');
+    
+    // Pre-select project client if available
+    if (project.client) {
+      setSelectedRecipientId(project.client);
+    } else if (clients && clients.length > 0) {
+      setSelectedRecipientId(clients[0]._id);
+    } else {
+      setSelectedRecipientId('');
+    }
+    
+    setCustomPhone('');
+    setCustomEmail('');
+    setShareModalOpen(true);
+  };
+
+  const handleToggleSelectCred = (index) => {
+    setSelectedCreds(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  const handleToggleSelectAllCreds = () => {
+    if (!project || !project.credentials) return;
+    if (selectedCreds.length === project.credentials.length) {
+      setSelectedCreds([]);
+    } else {
+      setSelectedCreds(project.credentials.map((_, i) => i));
+    }
+  };
+
+  const formatCredentialsText = () => {
+    if (!project || selectedCreds.length === 0) return '';
+
+    let text = `🔑 *Project Credentials for ${project.name}*\n\n`;
+    selectedCreds.forEach((idx) => {
+      const cred = project.credentials[idx];
+      if (!cred) return;
+      text += `*${cred.type} - ${cred.label || 'Credentials'}*\n`;
+      if (cred.username) text += `• Username: ${cred.username}\n`;
+      if (cred.password) text += `• Password: ${cred.password}\n`;
+      if (cred.loginUrl) text += `• Login URL: ${cred.loginUrl}\n`;
+      if (cred.notes) text += `• Notes: ${cred.notes}\n`;
+      text += `\n`;
+    });
+    
+    return text.trim();
+  };
+
+  const formatCredentialsEmailBody = () => {
+    if (!project || selectedCreds.length === 0) return '';
+
+    let text = `Project Credentials for ${project.name}\n\n`;
+    selectedCreds.forEach((idx) => {
+      const cred = project.credentials[idx];
+      if (!cred) return;
+      text += `--- ${cred.type} - ${cred.label || 'Credentials'} ---\n`;
+      if (cred.username) text += `Username: ${cred.username}\n`;
+      if (cred.password) text += `Password: ${cred.password}\n`;
+      if (cred.loginUrl) text += `Login URL: ${cred.loginUrl}\n`;
+      if (cred.notes) text += `Notes: ${cred.notes}\n`;
+      text += `\n`;
+    });
+    
+    return text.trim();
+  };
+
+  const getRecipientInfo = () => {
+    let email = '';
+    let phone = '';
+
+    if (shareRecipientType === 'client') {
+      const clientObj = clients.find(c => c._id === selectedRecipientId);
+      if (clientObj) {
+        email = clientObj.email || '';
+        phone = clientObj.phone || clientObj.whatsapp || '';
+      } else {
+        email = project.clientEmail || '';
+      }
+    } else if (shareRecipientType === 'employee') {
+      const emp = companyUsers.find(u => u.id === selectedRecipientId);
+      if (emp) {
+        email = emp.email || '';
+        phone = emp.whatsapp || emp.phone || '';
+      }
+    } else if (shareRecipientType === 'custom') {
+      email = customEmail;
+      phone = customPhone;
+    }
+
+    if (phone) {
+      phone = phone.replace(/[^\d+]/g, '');
+    }
+
+    return { email, phone };
+  };
+
+  const handleShareWhatsApp = () => {
+    const { phone } = getRecipientInfo();
+    const text = formatCredentialsText();
+    if (!text) {
+      showToast("Please select at least one credential to share", "error");
+      return;
+    }
+    
+    const encodedText = encodeURIComponent(text);
+    const url = phone 
+      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}` 
+      : `https://api.whatsapp.com/send?text=${encodedText}`;
+    
+    window.open(url, '_blank');
+  };
+
+  const handleShareEmail = () => {
+    const { email } = getRecipientInfo();
+    const body = formatCredentialsEmailBody();
+    if (!body) {
+      showToast("Please select at least one credential to share", "error");
+      return;
+    }
+
+    const subject = encodeURIComponent(`Credentials for Project: ${project.name}`);
+    const encodedBody = encodeURIComponent(body);
+    const url = `mailto:${email}?subject=${subject}&body=${encodedBody}`;
+    
+    window.location.href = url;
   };
 
   const getExpiryStatus = (dateString) => {
@@ -2290,6 +2440,10 @@ export default function ProjectDetailPage() {
                             <select className="form-select" value={cred.type || 'Other'} onChange={(e) => handleCredentialChange(index, 'type', e.target.value)}>
                               <option value="Hosting">Hosting</option>
                               <option value="Domain">Domain</option>
+                              <option value="Development">Development</option>
+                              <option value="SEO">SEO</option>
+                              <option value="SMO">SMO</option>
+                              <option value="Design">Design</option>
                               <option value="Other">Other</option>
                             </select>
                           </div>
@@ -2671,17 +2825,30 @@ export default function ProjectDetailPage() {
                 <div className="card animate-fade-in">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Project Credentials</h3>
-                    {role !== 'company_user' && (
-                      <button 
-                        type="button" 
-                        className="btn btn-primary" 
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                        onClick={handleOpenAddCredModal}
-                      >
-                        <Plus size={14} />
-                        <span>Add Credential</span>
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {project.credentials && project.credentials.length > 0 && (
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                          onClick={handleOpenShareModal}
+                        >
+                          <Share2 size={14} />
+                          <span>Share</span>
+                        </button>
+                      )}
+                      {role !== 'company_user' && (
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                          onClick={handleOpenAddCredModal}
+                        >
+                          <Plus size={14} />
+                          <span>Add Credential</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {(!project.credentials || project.credentials.length === 0) ? (
                     <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
@@ -3322,6 +3489,11 @@ export default function ProjectDetailPage() {
           border-bottom-color: var(--accent-primary);
           background: rgba(139, 92, 246, 0.05);
         }
+        .credential-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem 1rem;
+        }
         @media (max-width: 768px) {
           .responsive-grid {
             grid-template-columns: 1fr !important;
@@ -3330,6 +3502,15 @@ export default function ProjectDetailPage() {
           .tab-nav-btn {
             padding: 0.55rem 0.9rem;
             font-size: 0.85rem;
+          }
+        }
+        @media (max-width: 576px) {
+          .credential-form-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+          .credential-form-grid > .form-group {
+            grid-column: span 1 !important;
           }
         }
       `}</style>
@@ -3751,8 +3932,8 @@ export default function ProjectDetailPage() {
       {/* Add/Edit Credential Modal */}
       {credModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '850px', width: '95%', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
                 {editingCredIndex !== null ? 'Edit Project Credential' : 'Add Project Credential'}
               </h3>
@@ -3761,78 +3942,84 @@ export default function ProjectDetailPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveCredentialDirect} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Credential Type *</label>
-                <select
-                  className="form-input"
-                  value={credForm.type}
-                  onChange={(e) => setCredForm({ ...credForm, type: e.target.value })}
-                  required
-                >
-                  <option value="Other">Other</option>
-                  <option value="Hosting">Hosting</option>
-                  <option value="Domain">Domain</option>
-                </select>
+            <form onSubmit={handleSaveCredentialDirect} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="credential-form-grid">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Credential Type *</label>
+                  <select
+                    className="form-input"
+                    value={credForm.type}
+                    onChange={(e) => setCredForm({ ...credForm, type: e.target.value })}
+                    required
+                  >
+                    <option value="Other">Other</option>
+                    <option value="Hosting">Hosting</option>
+                    <option value="Domain">Domain</option>
+                    <option value="Development">Development</option>
+                    <option value="SEO">SEO</option>
+                    <option value="SMO">SMO</option>
+                    <option value="Design">Design</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Label / Name *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g., CPanel, Registrar Account"
+                    value={credForm.label}
+                    onChange={(e) => setCredForm({ ...credForm, label: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Username</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Username or email"
+                    value={credForm.username}
+                    onChange={(e) => setCredForm({ ...credForm, username: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Password</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Password"
+                    value={credForm.password}
+                    onChange={(e) => setCredForm({ ...credForm, password: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                  <label className="form-label">Login URL</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g., https://cpanel.domain.com"
+                    value={credForm.loginUrl}
+                    onChange={(e) => setCredForm({ ...credForm, loginUrl: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-input"
+                    style={{ minHeight: '70px', resize: 'vertical' }}
+                    placeholder="Any access notes or extra details..."
+                    value={credForm.notes}
+                    onChange={(e) => setCredForm({ ...credForm, notes: e.target.value })}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Label / Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g., CPanel, Registrar Account"
-                  value={credForm.label}
-                  onChange={(e) => setCredForm({ ...credForm, label: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Username</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Username or email"
-                  value={credForm.username}
-                  onChange={(e) => setCredForm({ ...credForm, username: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Password"
-                  value={credForm.password}
-                  onChange={(e) => setCredForm({ ...credForm, password: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Login URL</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g., https://cpanel.domain.com"
-                  value={credForm.loginUrl}
-                  onChange={(e) => setCredForm({ ...credForm, loginUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea
-                  className="form-input"
-                  style={{ minHeight: '80px', resize: 'vertical' }}
-                  placeholder="Any access notes or extra details..."
-                  value={credForm.notes}
-                  onChange={(e) => setCredForm({ ...credForm, notes: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setCredModalOpen(false)}>
                   Cancel
                 </button>
@@ -3845,6 +4032,234 @@ export default function ProjectDetailPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Share Credential Modal */}
+      {shareModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', width: '90%', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Share2 size={18} style={{ color: 'var(--accent-primary)' }} />
+                <span>Share Credentials</span>
+              </h3>
+              <button onClick={() => setShareModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* 1. Selection Header & List */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    SELECT CREDENTIALS TO SHARE ({selectedCreds.length})
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleToggleSelectAllCreds} 
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                  >
+                    {selectedCreds.length === (project.credentials || []).length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                  {(project.credentials || []).map((cred, index) => {
+                    const isChecked = selectedCreds.includes(index);
+                    return (
+                      <label 
+                        key={index} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked} 
+                          onChange={() => handleToggleSelectCred(index)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                          {cred.type} - {cred.label || 'Credentials'}
+                        </span>
+                        {cred.username && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({cred.username})</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Recipient Selector */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
+                  RECIPIENT TYPE
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    className={`btn ${shareRecipientType === 'client' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setShareRecipientType('client');
+                      if (project.client) {
+                        setSelectedRecipientId(project.client);
+                      } else if (clients && clients.length > 0) {
+                        setSelectedRecipientId(clients[0]._id);
+                      } else {
+                        setSelectedRecipientId('');
+                      }
+                    }}
+                  >
+                    Client
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${shareRecipientType === 'employee' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setShareRecipientType('employee');
+                      if (companyUsers && companyUsers.length > 0) {
+                        setSelectedRecipientId(companyUsers[0].id);
+                      } else {
+                        setSelectedRecipientId('');
+                      }
+                    }}
+                  >
+                    Employee
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${shareRecipientType === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setShareRecipientType('custom');
+                      setSelectedRecipientId('');
+                    }}
+                  >
+                    Custom contact
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Recipient Fields */}
+              <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
+                {shareRecipientType === 'client' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Select Client</label>
+                    <SearchableSelect
+                      options={clients.map(c => ({
+                        value: c._id,
+                        label: c.name,
+                        sublabel: `${c.company ? `${c.company} • ` : ''}${c.email}`,
+                        searchText: `${c.name} ${c.company || ''} ${c.email}`
+                      }))}
+                      placeholder="Search and select client..."
+                      value={selectedRecipientId}
+                      onChange={(clientId) => setSelectedRecipientId(clientId)}
+                    />
+                    {selectedRecipientId && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {(() => {
+                          const client = clients.find(c => c._id === selectedRecipientId);
+                          if (client) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span>📧 Email: {client.email}</span>
+                                <span>📞 WhatsApp/Phone: {client.phone || client.whatsapp || 'N/A'}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {shareRecipientType === 'employee' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Select Employee</label>
+                    <SearchableSelect
+                      options={companyUsers.map(u => ({
+                        value: u.id,
+                        label: u.username || u.name,
+                        sublabel: `${u.role || 'Member'} • ${u.email || ''}`,
+                        searchText: `${u.username || u.name || ''} ${u.email || ''} ${u.role || ''}`
+                      }))}
+                      placeholder="Search and select employee..."
+                      value={selectedRecipientId}
+                      onChange={(empId) => setSelectedRecipientId(empId)}
+                    />
+                    {selectedRecipientId && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {(() => {
+                          const emp = companyUsers.find(u => u.id === selectedRecipientId);
+                          if (emp) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span>📧 Email: {emp.email}</span>
+                                <span>📞 WhatsApp/Phone: {emp.whatsapp || emp.phone || 'N/A'}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {shareRecipientType === 'custom' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Phone Number / WhatsApp (with country code, e.g. +919876543210)</label>
+                      <input 
+                        type="tel"
+                        className="form-input"
+                        placeholder="e.g. +919876543210"
+                        value={customPhone}
+                        onChange={(e) => setCustomPhone(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Email Address</label>
+                      <input 
+                        type="email"
+                        className="form-input"
+                        placeholder="recipient@example.com"
+                        value={customEmail}
+                        onChange={(e) => setCustomEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShareModalOpen(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn"
+                  style={{ background: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={handleShareWhatsApp}
+                >
+                  <WhatsAppIcon size={14} />
+                  <span>Send via WhatsApp</span>
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={handleShareEmail}
+                >
+                  <Mail size={14} />
+                  <span>Send via Email</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

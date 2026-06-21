@@ -41,13 +41,13 @@ export default function SearchableSelect({
   // Sync search input with selected label when closed
   useEffect(() => {
     if (!isOpen) {
-      setSearch(selectedOption ? selectedOption.label : '');
+      setSearch(selectedOption ? (selectedOption.label || '') : '');
     }
   }, [isOpen, selectedOption]);
 
   const handleSelect = (option) => {
     onChange(option.value, option);
-    setSearch(option.label);
+    setSearch(option.label || '');
     setIsOpen(false);
   };
 
@@ -59,7 +59,7 @@ export default function SearchableSelect({
 
   // Filter options based on query
   const filteredOptions = options.filter((opt) => {
-    const term = search.toLowerCase();
+    const term = (search || '').toLowerCase();
     const labelMatch = opt.label?.toLowerCase().includes(term);
     const sublabelMatch = opt.sublabel?.toLowerCase().includes(term);
     const customMatch = opt.searchText?.toLowerCase().includes(term);

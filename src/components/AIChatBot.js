@@ -17,6 +17,8 @@ export default function AIChatBot() {
   const [editingTitleText, setEditingTitleText] = useState('');
   const [companyId, setCompanyId] = useState(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [editingMessageIndex, setEditingMessageIndex] = useState(null);
+  const [editingMessageText, setEditingMessageText] = useState('');
   
   const chatEndRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -539,6 +541,35 @@ export default function AIChatBot() {
     }
   };
 
+  const handleStartEditMessage = (index, text) => {
+    setEditingMessageIndex(index);
+    setEditingMessageText(text);
+  };
+
+  const handleSaveMessageEdit = async (index) => {
+    if (!editingMessageText.trim()) return;
+
+    try {
+      const updatedMessages = [...messages];
+      updatedMessages[index] = { ...updatedMessages[index], text: editingMessageText.trim() };
+      
+      setMessages(updatedMessages);
+      setEditingMessageIndex(null);
+
+      // Save updated messages list to database session
+      await fetch(`/api/chat/sessions/${currentSessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updatedMessages })
+      });
+
+      // Resend
+      await handleResendMessage(index);
+    } catch (e) {
+      console.error("Failed to save message edit:", e);
+    }
+  };
+
   // Markdown & Table parser
   const formatMarkdown = (text) => {
     if (!text) return '';
@@ -951,51 +982,168 @@ export default function AIChatBot() {
                   gap: '4px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', alignSelf: isUser ? 'flex-end' : 'flex-start' }} className="user-message-group">
-                  {isUser && (
-                    <button
-                      onClick={() => handleResendMessage(index)}
-                      disabled={loading}
-                      title="Resend this message"
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                  flexDirection: isUser ? 'row' : 'row-reverse'
+                }} className="user-message-group">
+                  <span style={{
+                    fontSize: '0.68rem',
+                    color: 'var(--text-muted)',
+                    opacity: 0.65,
+                    alignSelf: 'center',
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {msg.createdAt 
+                      ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+                      : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  
+                  {editingMessageIndex === index ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      padding: '0.85rem 1.25rem',
+                      borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--accent-primary)',
+                      minWidth: '250px'
+                    }}>
+                      <textarea
+                        value={editingMessageText}
+                        onChange={(e) => setEditingMessageText(e.target.value)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-primary)',
+                          fontFamily: 'inherit',
+                          fontSize: '0.875rem',
+                          outline: 'none',
+                          resize: 'vertical',
+                          minHeight: '60px',
+                          width: '100%'
+                        }}
+                        autoFocus
+                      />
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setEditingMessageIndex(null)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            padding: '4px 8px'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveMessageEdit(index)}
+                          style={{
+                            background: 'var(--accent-primary)',
+                            border: 'none',
+                            color: '#ffffff',
+                            fontSize: '0.75rem',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            padding: '4px 10px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Save & Resend
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
                       style={{
-                        background: 'transparent',
+                        padding: '0.85rem 1.25rem',
+                        borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                        background: isUser ? 'linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%)' : 'var(--bg-secondary)',
+                        border: isUser ? 'none' : '1px solid var(--border-color)',
+                        color: isUser ? '#ffffff' : 'var(--text-primary)',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.5',
+                        boxShadow: isUser ? '0 4px 12px rgba(0, 174, 239, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: isUser ? msg.text : formatMarkdown(msg.text) }}
+                    />
+                  )}
+                </div>
+                {isUser ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    alignSelf: 'flex-end',
+                    fontSize: '0.65rem',
+                    color: 'var(--text-muted)',
+                    padding: '0 4px',
+                    marginTop: '2px'
+                  }}>
+                    <span>You</span>
+                    <button 
+                      onClick={() => handleStartEditMessage(index, msg.text)}
+                      disabled={loading}
+                      title="Edit message"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.14)',
                         border: 'none',
-                        cursor: 'pointer',
-                        padding: '6px',
+                        color: 'var(--text-primary)',
+                        padding: '5px',
                         borderRadius: '6px',
+                        cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         transition: 'all 0.2s',
-                        opacity: 0.25,
+                        opacity: 0.8
                       }}
-                      className="resend-message-btn"
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
                     >
-                      <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+                      <Edit2 size={12} />
                     </button>
-                  )}
-                  <div 
-                    style={{
-                      padding: '0.85rem 1.25rem',
-                      borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                      background: isUser ? 'linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%)' : 'var(--bg-secondary)',
-                      border: isUser ? 'none' : '1px solid var(--border-color)',
-                      color: isUser ? '#ffffff' : 'var(--text-primary)',
-                      fontSize: '0.875rem',
-                      lineHeight: '1.5',
-                      boxShadow: isUser ? '0 4px 12px rgba(0, 174, 239, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: isUser ? msg.text : formatMarkdown(msg.text) }}
-                  />
-                </div>
-                <span style={{
-                  fontSize: '0.65rem',
-                  color: 'var(--text-muted)',
-                  alignSelf: isUser ? 'flex-end' : 'flex-start',
-                  padding: '0 4px'
-                }}>
-                  {isUser ? 'You' : 'Assistant'}
-                </span>
+                    <button 
+                      onClick={() => handleResendMessage(index)}
+                      disabled={loading}
+                      title="Resend/retry from this message"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.14)',
+                        border: 'none',
+                        color: 'var(--text-primary)',
+                        padding: '5px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        opacity: 0.8
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                    >
+                      <RotateCw size={12} className={loading ? 'animate-spin' : ''} />
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{
+                    fontSize: '0.65rem',
+                    color: 'var(--text-muted)',
+                    alignSelf: 'flex-start',
+                    padding: '0 4px',
+                    marginTop: '2px'
+                  }}>
+                    Assistant
+                  </span>
+                )}
               </div>
             );
           })}

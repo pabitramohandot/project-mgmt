@@ -209,14 +209,19 @@ export async function listExpiringServices(companyId) {
   return expiringList.sort((a, b) => a.daysRemaining - b.daysRemaining);
 }
 
-/**
- * Register a new client profile.
- */
 export async function createNewClient(name, email, phone, company, address, companyId) {
   await dbConnect();
 
   if (!name || !email) {
     return { error: 'Client name and email are required.' };
+  }
+
+  const lowerName = name.toLowerCase().trim();
+  const lowerEmail = email.toLowerCase().trim();
+  const dummyNames = ['client', 'new client', 'test client', 'dummy client', 'john doe', 'jane doe', 'placeholder', 'dummy', 'test'];
+  const dummyEmails = ['client@example.com', 'client@email.com', 'newclient@example.com', 'dummy@example.com', 'email@example.com', 'test@test.com', 'test@example.com', 'placeholder@example.com'];
+  if (dummyNames.includes(lowerName) || lowerName.startsWith('client ') || dummyEmails.includes(lowerEmail) || lowerEmail.includes('placeholder') || lowerEmail.includes('example.com')) {
+    return { error: 'Cannot create client with dummy, guessed, or placeholder details. You must ask the user to provide the actual client name and email address before calling this tool.' };
   }
 
   const existingClient = await Client.findOne({ email: email.toLowerCase(), companyId });
@@ -252,6 +257,14 @@ export async function createNewProject(name, description, clientEmail, clientNam
 
   if (!name || !clientName) {
     return { error: 'Project name and client name are required.' };
+  }
+
+  const lowerProjName = name.toLowerCase().trim();
+  const lowerClientName = clientName.toLowerCase().trim();
+  const dummyProjNames = ['project', 'new project', 'test project', 'dummy project', 'placeholder', 'dummy', 'test'];
+  const dummyClientNames = ['client', 'new client', 'test client', 'dummy client', 'john doe', 'jane doe', 'placeholder', 'dummy', 'test'];
+  if (dummyProjNames.includes(lowerProjName) || lowerProjName.startsWith('project ') || dummyClientNames.includes(lowerClientName) || lowerClientName.startsWith('client ')) {
+    return { error: 'Cannot create project with dummy, guessed, or placeholder details. You must ask the user to provide the actual project name and client name before calling this tool.' };
   }
 
   // Find or create client link
@@ -384,6 +397,12 @@ export async function createNewInvoice(projectNameOrClientName, items, taxRate =
 
   if (!projectNameOrClientName || !items || !Array.isArray(items) || items.length === 0) {
     return { error: 'Project/Client name and a non-empty list of invoice items are required.' };
+  }
+
+  const lowerName = projectNameOrClientName.toLowerCase().trim();
+  const dummyNames = ['client', 'project', 'new client', 'new project', 'dummy', 'placeholder', 'test'];
+  if (dummyNames.includes(lowerName) || lowerName.startsWith('client ') || lowerName.startsWith('project ')) {
+    return { error: 'Cannot create invoice with dummy, guessed, or placeholder project or client names. You must ask the user to provide the actual project or client name before calling this tool.' };
   }
 
   // Find linked Project or Client
@@ -933,7 +952,7 @@ export async function addProjectCredential(projectName, type, label, username, p
   const project = await findProjectFuzzy(projectName, companyId);
   if (!project) return { error: `Project "${projectName}" not found.` };
 
-  const allowedTypes = ['Hosting', 'Domain', 'Other'];
+  const allowedTypes = ['Hosting', 'Domain', 'Development', 'SEO', 'SMO', 'Design', 'Other'];
   const credType = allowedTypes.includes(type) ? type : 'Other';
 
   project.credentials.push({

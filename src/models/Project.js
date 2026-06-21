@@ -15,7 +15,7 @@ const TaskSchema = new mongoose.Schema({
 const CredentialSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['Hosting', 'Domain', 'Other'],
+    enum: ['Hosting', 'Domain', 'Development', 'SEO', 'SMO', 'Design', 'Other'],
     default: 'Other',
   },
   label: {
