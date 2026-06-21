@@ -24,6 +24,13 @@ export function getEffectiveDates(proj) {
       endDates.push(new Date(proj.adsDate));
     }
   }
+  if (proj.projectType?.includes('Design')) {
+    if (proj.designStartDate) startDates.push(new Date(proj.designStartDate));
+    if (proj.designEndDate) {
+      startDates.push(new Date(proj.designEndDate));
+      endDates.push(new Date(proj.designEndDate));
+    }
+  }
   
   const effectiveStartDate = startDates.length > 0 ? new Date(Math.min(...startDates)) : (proj.startDate ? new Date(proj.startDate) : null);
   const effectiveEndDate = endDates.length > 0 ? new Date(Math.max(...endDates)) : (proj.endDate ? new Date(proj.endDate) : null);
@@ -63,6 +70,13 @@ export function getOverallStatus(proj) {
     }
     statuses.push(adsStatus);
   }
+  if (activeTypes.includes('Design')) {
+    let designStatus = proj.designStatus || 'Planning';
+    if (designStatus !== 'Completed' && proj.designEndDate && new Date(proj.designEndDate) < now) {
+      designStatus = 'Pending';
+    }
+    statuses.push(designStatus);
+  }
   
   if (statuses.length === 0) {
     return proj.status || 'Planning';
@@ -82,6 +96,7 @@ export function processProjectStatus(proj) {
   let devStatus = proj.devStatus || 'Planning';
   let marketingStatus = proj.marketingStatus || 'Planning';
   let adsStatus = proj.adsStatus || 'Planning';
+  let designStatus = proj.designStatus || 'Planning';
   let modified = false;
   const now = new Date();
   
@@ -103,12 +118,19 @@ export function processProjectStatus(proj) {
       modified = true;
     }
   }
+  if (proj.projectType?.includes('Design') && proj.designEndDate && new Date(proj.designEndDate) < now && designStatus !== 'Completed') {
+    if (designStatus !== 'Pending') {
+      designStatus = 'Pending';
+      modified = true;
+    }
+  }
   
   const updatedProj = {
     ...proj,
     devStatus,
     marketingStatus,
     adsStatus,
+    designStatus,
     startDate: effectiveStartDate,
     endDate: effectiveEndDate
   };
@@ -126,6 +148,7 @@ export function processProjectStatus(proj) {
           devStatus,
           marketingStatus,
           adsStatus,
+          designStatus,
           status: computedOverallStatus,
           startDate: effectiveStartDate,
           endDate: effectiveEndDate

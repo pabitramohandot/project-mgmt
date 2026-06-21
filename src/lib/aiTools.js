@@ -40,6 +40,10 @@ export async function getProjectStatusReport(projectName, daysCount = 30, compan
     finalPrice: project.finalPrice,
     hostingPrice: project.hostingPrice,
     domainPrice: project.domainPrice,
+    devPrice: project.devPrice,
+    marketingPrice: project.marketingPrice,
+    adsPrice: project.adsPrice,
+    designPrice: project.designPrice,
     startDate: project.startDate,
     endDate: project.endDate,
     hostingExpiry: project.hostingExpiry,
@@ -586,6 +590,50 @@ export async function listAllClients(companyId) {
 }
 
 /**
+ * List all companies registered on the platform. Accessible only by superadmin.
+ */
+export async function listSystemCompanies() {
+  await dbConnect();
+
+  const Company = (await import('../models/Company')).default;
+  const companies = await Company.find().select('name slug isActive').sort({ name: 1 }).lean();
+  return companies.map(c => ({
+    name: c.name,
+    slug: c.slug,
+    isActive: c.isActive === undefined ? true : c.isActive
+  }));
+}
+
+/**
+ * Retrieve current workspace platform details.
+ */
+export async function getWorkspaceDetails(companyId) {
+  await dbConnect();
+
+  if (!companyId) {
+    return { error: 'Company workspace ID is required.' };
+  }
+
+  const Company = (await import('../models/Company')).default;
+  const company = await Company.findById(companyId).select('name slug tagline contactEmail brandColors').lean();
+  if (!company) {
+    return { error: 'Workspace details not found.' };
+  }
+
+  return {
+    name: company.name,
+    slug: company.slug,
+    tagline: company.tagline || '',
+    contactEmail: company.contactEmail || '',
+    brandColors: {
+      primary: company.brandColors?.primary || '#00aeef',
+      secondary: company.brandColors?.secondary || '#f26522',
+    }
+  };
+}
+
+
+/**
  * Fuzzy search for a Project by name (handles typos and substrings)
  */
 async function findProjectFuzzy(projectName, companyId) {
@@ -708,6 +756,312 @@ async function findClientFuzzy(clientNameOrEmail, companyId) {
   }
 
   return client;
+}
+
+/**
+ * Update project details (metadata, type, subcategories, dates)
+ */
+export async function updateProjectDetails(projectName, updates, companyId) {
+  await dbConnect();
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  const allowedFields = ['name', 'description', 'projectType', 'subcategories', 'startDate', 'endDate', 'hostingExpiry', 'domainExpiry'];
+  for (const [key, value] of Object.entries(updates)) {
+    if (allowedFields.includes(key)) {
+      if (['startDate', 'endDate', 'hostingExpiry', 'domainExpiry'].includes(key)) {
+        project[key] = value ? new Date(value) : null;
+      } else {
+        project[key] = value;
+      }
+    }
+  }
+  await project.save();
+  return { success: true, message: `Updated project "${project.name}" details.`, project: { id: project._id, name: project.name } };
+}
+
+/**
+ * Update specific subcategory pricing and calculate final price
+ */
+export async function updateProjectPricingBreakdown(projectName, pricing, companyId) {
+  await dbConnect();
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  const pricingFields = ['hostingPrice', 'domainPrice', 'devPrice', 'marketingPrice', 'adsPrice', 'designPrice'];
+  for (const field of pricingFields) {
+    if (pricing[field] !== undefined) {
+      project[field] = pricing[field] === null ? null : Number(pricing[field]);
+    }
+  }
+  if (pricing.budget !== undefined) {
+    project.budget = Number(pricing.budget);
+  }
+  if (pricing.quotePrice !== undefined) {
+    project.quotePrice = pricing.quotePrice === null ? null : Number(pricing.quotePrice);
+  }
+
+  // Recalculate finalPrice as sum of pricing fields
+  let finalPrice = 0;
+  for (const field of pricingFields) {
+    finalPrice += Number(project[field] || 0);
+  }
+  project.finalPrice = finalPrice;
+
+  await project.save();
+  return {
+    success: true,
+    message: `Updated pricing breakdown for project "${project.name}". Final Price recalculated as ${finalPrice}.`,
+    pricing: {
+      hostingPrice: project.hostingPrice,
+      domainPrice: project.domainPrice,
+      devPrice: project.devPrice,
+      marketingPrice: project.marketingPrice,
+      adsPrice: project.adsPrice,
+      designPrice: project.designPrice,
+      finalPrice: project.finalPrice,
+      quotePrice: project.quotePrice,
+      budget: project.budget
+    }
+  };
+}
+
+/**
+ * Update client profile contact details
+ */
+export async function updateClientDetails(clientNameOrEmail, updates, companyId) {
+  await dbConnect();
+  const client = await findClientFuzzy(clientNameOrEmail, companyId);
+  if (!client) return { error: `Client "${clientNameOrEmail}" not found.` };
+
+  const allowedFields = ['name', 'email', 'phone', 'company', 'address'];
+  for (const [key, value] of Object.entries(updates)) {
+    if (allowedFields.includes(key)) {
+      if (key === 'email' && value) {
+        client.email = value.toLowerCase();
+      } else {
+        client[key] = value;
+      }
+    }
+  }
+  await client.save();
+  return { success: true, message: `Updated details for client "${client.name}".`, client: { id: client._id, name: client.name, email: client.email } };
+}
+
+/**
+ * List standalone credentials in the workspace
+ */
+export async function listWorkspaceCredentials(companyId) {
+  await dbConnect();
+  const Credential = (await import('../models/Credential')).default;
+  const credentials = await Credential.find({ companyId }).sort({ title: 1 }).lean();
+  return credentials.map(c => ({
+    id: c._id,
+    title: c.title,
+    username: c.username || 'N/A',
+    url: c.url || 'N/A',
+    notes: c.notes || 'N/A'
+  }));
+}
+
+/**
+ * Create a new standalone credential in the workspace
+ */
+export async function createWorkspaceCredential(title, username, password, url, notes, companyId) {
+  await dbConnect();
+  if (!title) return { error: 'Credential title is required.' };
+  const Credential = (await import('../models/Credential')).default;
+  const credential = await Credential.create({
+    title,
+    username: username || '',
+    password: password || '',
+    url: url || '',
+    notes: notes || '',
+    companyId
+  });
+  return { success: true, message: `Created standalone credential "${credential.title}".`, credential: { id: credential._id, title: credential.title } };
+}
+
+/**
+ * Update an existing standalone credential in the workspace
+ */
+export async function updateWorkspaceCredential(titleOrId, updates, companyId) {
+  await dbConnect();
+  const Credential = (await import('../models/Credential')).default;
+  let credential = null;
+  if (titleOrId.match(/^[0-9a-fA-F]{24}$/)) {
+    credential = await Credential.findOne({ _id: titleOrId, companyId });
+  }
+  if (!credential) {
+    credential = await Credential.findOne({ title: new RegExp(titleOrId, 'i'), companyId });
+  }
+  if (!credential) return { error: `Credential matching "${titleOrId}" not found.` };
+
+  const allowed = ['title', 'username', 'password', 'url', 'notes'];
+  for (const [key, value] of Object.entries(updates)) {
+    if (allowed.includes(key)) {
+      credential[key] = value;
+    }
+  }
+  await credential.save();
+  return { success: true, message: `Updated standalone credential "${credential.title}".`, credential: { id: credential._id, title: credential.title } };
+}
+
+/**
+ * List project credentials
+ */
+export async function listProjectCredentials(projectName, companyId) {
+  await dbConnect();
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  return (project.credentials || []).map(c => ({
+    id: c._id,
+    type: c.type || 'Other',
+    label: c.label || 'N/A',
+    username: c.username || 'N/A',
+    loginUrl: c.loginUrl || 'N/A',
+    notes: c.notes || 'N/A'
+  }));
+}
+
+/**
+ * Add a credential to a project
+ */
+export async function addProjectCredential(projectName, type, label, username, password, loginUrl, notes, companyId) {
+  await dbConnect();
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  const allowedTypes = ['Hosting', 'Domain', 'Other'];
+  const credType = allowedTypes.includes(type) ? type : 'Other';
+
+  project.credentials.push({
+    type: credType,
+    label: label || '',
+    username: username || '',
+    password: password || '',
+    loginUrl: loginUrl || '',
+    notes: notes || ''
+  });
+
+  await project.save();
+  return { success: true, message: `Added project credential "${label || credType}" to project "${project.name}".` };
+}
+
+/**
+ * List project content calendar
+ */
+export async function listProjectCalendar(projectName, companyId) {
+  await dbConnect();
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  return (project.contentCalendar || []).map(item => ({
+    id: item._id,
+    month: item.month,
+    scheduledDate: item.scheduledDate ? new Date(item.scheduledDate).toLocaleDateString('en-IN') : 'N/A',
+    postType: item.postType || 'Static',
+    topic: item.topic || 'N/A',
+    content: item.content || 'N/A',
+    hashtags: item.hashtags || 'N/A',
+    platforms: item.platforms || [],
+    status: item.status || 'Pending'
+  }));
+}
+
+/**
+ * Add a content calendar item to a project
+ */
+export async function addCalendarItem(projectName, month, scheduledDate, postType, topic, content, hashtags, platforms, status, companyId) {
+  await dbConnect();
+  if (!projectName || !month || !scheduledDate) {
+    return { error: 'Project name, month, and scheduledDate are required.' };
+  }
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  const validPostTypes = ['Static', 'Motion', 'Reel', 'Carousel', 'Motion Graphic Wish Post', 'Wish post'];
+  const validStatuses = ['Pending', 'Design Done', 'Design Approved', 'Posted', 'Draft', 'Approved'];
+
+  const type = validPostTypes.includes(postType) ? postType : 'Static';
+  const postStatus = validStatuses.includes(status) ? status : 'Pending';
+
+  project.contentCalendar.push({
+    month,
+    scheduledDate: new Date(scheduledDate),
+    postType: type,
+    topic: topic || '',
+    content: content || '',
+    hashtags: hashtags || '',
+    platforms: Array.isArray(platforms) ? platforms : (platforms ? [platforms] : []),
+    status: postStatus
+  });
+
+  await project.save();
+  return { success: true, message: `Successfully added calendar item to project "${project.name}".` };
+}
+
+/**
+ * Update an existing content calendar item in a project
+ */
+export async function updateCalendarItem(projectName, itemId, updates, companyId) {
+  await dbConnect();
+  if (!projectName || !itemId) {
+    return { error: 'Project name and itemId are required.' };
+  }
+  const project = await findProjectFuzzy(projectName, companyId);
+  if (!project) return { error: `Project "${projectName}" not found.` };
+
+  const item = project.contentCalendar.id(itemId);
+  if (!item) return { error: `Calendar item with ID "${itemId}" not found in project "${project.name}".` };
+
+  const allowed = ['month', 'scheduledDate', 'postType', 'topic', 'content', 'hashtags', 'platforms', 'status'];
+  const validPostTypes = ['Static', 'Motion', 'Reel', 'Carousel', 'Motion Graphic Wish Post', 'Wish post'];
+  const validStatuses = ['Pending', 'Design Done', 'Design Approved', 'Posted', 'Draft', 'Approved'];
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (allowed.includes(key)) {
+      if (key === 'scheduledDate' && value) {
+        item.scheduledDate = new Date(value);
+      } else if (key === 'postType' && value) {
+        item.postType = validPostTypes.includes(value) ? value : item.postType;
+      } else if (key === 'status' && value) {
+        item.status = validStatuses.includes(value) ? value : item.status;
+      } else if (key === 'platforms' && value) {
+        item.platforms = Array.isArray(value) ? value : [value];
+      } else {
+        item[key] = value;
+      }
+    }
+  }
+
+  await project.save();
+  return { success: true, message: `Successfully updated content calendar item in project "${project.name}".` };
+}
+
+/**
+ * Update current tenant workspace details
+ */
+export async function updateWorkspaceDetails(companyId, updates) {
+  await dbConnect();
+  if (!companyId) return { error: 'Company workspace ID is required.' };
+
+  const Company = (await import('../models/Company')).default;
+  const company = await Company.findById(companyId);
+  if (!company) return { error: 'Workspace details not found.' };
+
+  if (updates.name !== undefined) company.name = updates.name;
+  if (updates.tagline !== undefined) company.tagline = updates.tagline;
+  if (updates.contactEmail !== undefined) company.contactEmail = updates.contactEmail;
+  if (updates.brandColors !== undefined) {
+    if (!company.brandColors) company.brandColors = {};
+    if (updates.brandColors.primary !== undefined) company.brandColors.primary = updates.brandColors.primary;
+    if (updates.brandColors.secondary !== undefined) company.brandColors.secondary = updates.brandColors.secondary;
+  }
+
+  await company.save();
+  return { success: true, message: `Successfully updated workspace profile settings.` };
 }
 
 

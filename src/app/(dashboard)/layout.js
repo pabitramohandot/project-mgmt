@@ -19,6 +19,16 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     async function loadUser() {
+      if (typeof window !== 'undefined' && !sessionStorage.getItem('session_active')) {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+          console.error('Session clearance error:', e);
+        }
+        window.location.href = '/login';
+        return;
+      }
+
       try {
         const res = await fetch('/api/auth/me');
         if (res.status === 403) {

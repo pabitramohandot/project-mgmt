@@ -52,17 +52,21 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    const { user, pass } = data;
+    const { user, pass, host, port, secure, providerType } = data;
 
     if (!user || !pass) {
       return NextResponse.json(
-        { error: "Gmail Username and App Password are required" },
+        { error: "SMTP Username and Password are required" },
         { status: 400 },
       );
     }
 
     let smtpUser = user.trim();
     let smtpPass = pass.trim();
+    let smtpHost = host;
+    let smtpPort = port;
+    let smtpSecure = secure;
+    let smtpProviderType = providerType;
 
     if (smtpPass === "••••••••") {
       await dbConnect();
@@ -70,22 +74,42 @@ export async function POST(request) {
       if (company && company.emailSettings?.pass) {
         smtpPass = company.emailSettings.pass;
         smtpUser = company.emailSettings.user || smtpUser;
+        smtpHost = host || company.emailSettings.host;
+        smtpPort = port !== undefined ? port : company.emailSettings.port;
+        smtpSecure = secure !== undefined ? secure : company.emailSettings.secure;
+        smtpProviderType = providerType || company.emailSettings.providerType;
       } else {
         return NextResponse.json(
-          { error: "No saved App Password found" },
+          { error: "No saved Password found" },
           { status: 404 },
         );
       }
     }
 
     const nodemailer = (await import("nodemailer")).default;
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
+    
+    let smtpConfig;
+    if (smtpProviderType === "custom") {
+      smtpConfig = {
+        host: smtpHost ? smtpHost.trim() : "",
+        port: Number(smtpPort) || 465,
+        secure: smtpSecure !== false,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      };
+    } else {
+      smtpConfig = {
+        service: "gmail",
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      };
+    }
+
+    const transporter = nodemailer.createTransport(smtpConfig);
 
     await transporter.verify();
     return NextResponse.json({

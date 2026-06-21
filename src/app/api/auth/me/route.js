@@ -53,6 +53,10 @@ export async function GET(request) {
             emailSettings: {
               user: company.emailSettings?.user || "",
               hasPassword: !!company.emailSettings?.pass,
+              host: company.emailSettings?.host || "",
+              port: company.emailSettings?.port || 465,
+              secure: company.emailSettings?.secure !== false,
+              providerType: company.emailSettings?.providerType || "gmail",
             },
           }
         : null,
@@ -90,8 +94,17 @@ export async function PUT(request) {
     }
 
     const data = await request.json();
-    const { password, email, whatsapp, companyEmailUser, companyEmailPass } =
-      data;
+    const { 
+      password, 
+      email, 
+      whatsapp, 
+      companyEmailUser, 
+      companyEmailPass,
+      companyEmailHost,
+      companyEmailPort,
+      companyEmailSecure,
+      companyEmailProviderType
+    } = data;
 
     if (email !== undefined) user.email = email.trim();
     if (whatsapp !== undefined) user.whatsapp = whatsapp.trim();
@@ -120,6 +133,18 @@ export async function PUT(request) {
           if (trimmedPass !== "" && trimmedPass !== "••••••••") {
             company.emailSettings.pass = trimmedPass;
           }
+        }
+        if (companyEmailHost !== undefined) {
+          company.emailSettings.host = companyEmailHost.trim();
+        }
+        if (companyEmailPort !== undefined) {
+          company.emailSettings.port = Number(companyEmailPort) || 465;
+        }
+        if (companyEmailSecure !== undefined) {
+          company.emailSettings.secure = !!companyEmailSecure;
+        }
+        if (companyEmailProviderType !== undefined) {
+          company.emailSettings.providerType = companyEmailProviderType;
         }
         await company.save();
       }

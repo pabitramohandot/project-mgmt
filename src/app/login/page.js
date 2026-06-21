@@ -43,6 +43,7 @@ function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
+      sessionStorage.setItem('session_active', 'true');
       router.push(redirect);
     } catch (err) {
       setError(err.message);

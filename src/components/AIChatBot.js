@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X, RotateCw } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Bot, Plus, Trash2, History, Menu, Brain, Edit2, Check, X, RotateCw, Square } from 'lucide-react';
 
 export default function AIChatBot() {
   const [sessions, setSessions] = useState([]);
@@ -19,6 +19,7 @@ export default function AIChatBot() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   
   const chatEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const suggestions = [
     { label: '📊 Active Projects List', text: 'List all active projects in the workspace', autoSend: true },
@@ -50,83 +51,112 @@ export default function AIChatBot() {
     }
 
     loadCompany();
+
+    // Auto-collapse sidebar on smaller screens
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setTimeout(() => {
+        setSidebarOpen(false);
+      }, 0);
+    }
   }, []);
 
-  // 1. Initial Load: Retrieve sessions from localStorage
+  // 1. Initial Load: Retrieve sessions from database
   useEffect(() => {
     if (!companyId) return;
 
-    const storageKey = `ai_chat_sessions_${companyId}`;
-    const saved = localStorage.getItem(storageKey);
-    let parsed = [];
-    try {
-      if (saved) {
-        parsed = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Failed to parse chat sessions:', e);
-    }
-
-    if (parsed.length === 0) {
-      // Create a default initial session
-      const initialSessionId = `session_${Date.now()}`;
-      const defaultSession = {
-        id: initialSessionId,
-        title: 'New Chat Session',
-        messages: [
-          {
-            role: 'assistant',
-            text: 'Hi there! I am your AI Workspace Assistant. I can compile project status reports or email outstanding invoices. Try asking me one of the suggestions below!'
+    async function fetchSessions() {
+      try {
+        const res = await fetch('/api/chat/sessions');
+        if (res.ok) {
+          let data = await res.json();
+          if (data.length === 0) {
+            // Create a default initial session in the database
+            const createRes = await fetch('/api/chat/sessions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: 'New Chat Session' })
+            });
+            if (createRes.ok) {
+              const defaultSession = await createRes.json();
+              data = [defaultSession];
+            }
           }
-        ],
-        timestamp: Date.now()
-      };
-      parsed = [defaultSession];
-      localStorage.setItem(storageKey, JSON.stringify(parsed));
+          setSessions(data);
+          const sorted = [...data].sort((a, b) => new Date(b.updatedAt || b.timestamp) - new Date(a.updatedAt || a.timestamp));
+          setCurrentSessionId(sorted[0].id || sorted[0]._id);
+          setMessages(sorted[0].messages);
+        }
+      } catch (err) {
+        console.error('Failed to fetch chat sessions:', err);
+      } finally {
+        setSessionLoaded(true);
+      }
     }
 
-    setSessions(parsed);
-    const sorted = [...parsed].sort((a, b) => b.timestamp - a.timestamp);
-    setCurrentSessionId(sorted[0].id);
-    setMessages(sorted[0].messages);
-    setSessionLoaded(true);
-    
-    // Auto-collapse sidebar on smaller screens
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
-    }
+    fetchSessions();
   }, [companyId]);
 
-  // 2. Sync active session messages to localStorage whenever messages change
+  // 2. Polling Hook for interrupted/background generations
   useEffect(() => {
-    if (!companyId || !currentSessionId || sessions.length === 0 || !sessionLoaded) return;
+    if (!companyId || !currentSessionId || messages.length === 0 || loading) return;
 
-    const storageKey = `ai_chat_sessions_${companyId}`;
-    const updatedSessions = sessions.map(session => {
-      if (session.id === currentSessionId) {
-        // Update title from the first user message if title is default
-        let title = session.title;
-        if (title === 'New Chat Session') {
-          const firstUserMessage = messages.find(m => m.role === 'user');
-          if (firstUserMessage) {
-            title = firstUserMessage.text.length > 25 
-              ? firstUserMessage.text.substring(0, 22) + '...' 
-              : firstUserMessage.text;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/chat/sessions');
+          if (res.ok) {
+            const latestSessions = await res.json();
+            setSessions(latestSessions);
+            const current = latestSessions.find(s => s.id === currentSessionId || s._id === currentSessionId);
+            if (current && current.messages.length > messages.length) {
+              setMessages(current.messages);
+              clearInterval(interval);
+            }
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+        }
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [messages, currentSessionId, companyId, loading]);
+
+  // 2.5. Tab Focus & Visibility Event Listeners to refresh chat history
+  useEffect(() => {
+    if (!companyId || !currentSessionId) return;
+
+    const refreshChat = async () => {
+      try {
+        const res = await fetch('/api/chat/sessions');
+        if (res.ok) {
+          const latestSessions = await res.json();
+          setSessions(latestSessions);
+          const current = latestSessions.find(s => s.id === currentSessionId || s._id === currentSessionId);
+          if (current) {
+            setMessages(current.messages);
           }
         }
-        return {
-          ...session,
-          title,
-          messages,
-          timestamp: Date.now()
-        };
+      } catch (err) {
+        console.error("Failed to refresh chat on visibility/focus change:", err);
       }
-      return session;
-    });
+    };
 
-    setSessions(updatedSessions);
-    localStorage.setItem(storageKey, JSON.stringify(updatedSessions));
-  }, [messages, currentSessionId, companyId, sessionLoaded]);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshChat();
+      }
+    };
+
+    window.addEventListener('focus', refreshChat);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', refreshChat);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentSessionId, companyId]);
 
   // 3. Scroll to bottom
   useEffect(() => {
@@ -136,35 +166,31 @@ export default function AIChatBot() {
   }, [messages, loading]);
 
   // 4. Create New Chat Session
-  const handleNewChat = () => {
-    const newId = `session_${Date.now()}`;
-    const newSession = {
-      id: newId,
-      title: 'New Chat Session',
-      messages: [
-        {
-          role: 'assistant',
-          text: 'Hi there! I am your AI Workspace Assistant. I can compile project status reports or email outstanding invoices. Try asking me one of the suggestions below!'
+  const handleNewChat = async () => {
+    try {
+      const res = await fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Chat Session' })
+      });
+      if (res.ok) {
+        const newSession = await res.json();
+        setSessions(prev => [newSession, ...prev]);
+        setCurrentSessionId(newSession.id || newSession._id);
+        setMessages(newSession.messages);
+        setError(null);
+        if (window.innerWidth < 768) {
+          setSidebarOpen(false);
         }
-      ],
-      timestamp: Date.now()
-    };
-
-    const updated = [newSession, ...sessions];
-    setSessions(updated);
-    setCurrentSessionId(newId);
-    setMessages(newSession.messages);
-    const key = companyId ? `ai_chat_sessions_${companyId}` : 'ai_chat_sessions_global';
-    localStorage.setItem(key, JSON.stringify(updated));
-    setError(null);
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to create new chat session:', err);
     }
   };
 
   // 5. Select Chat Session
   const handleSelectSession = (id) => {
-    const session = sessions.find(s => s.id === id);
+    const session = sessions.find(s => s.id === id || s._id === id);
     if (session) {
       setCurrentSessionId(id);
       setMessages(session.messages);
@@ -176,38 +202,40 @@ export default function AIChatBot() {
   };
 
   // 6. Delete Chat Session
-  const handleDeleteSession = (e, id) => {
+  const handleDeleteSession = async (e, id) => {
     e.stopPropagation(); // Prevent selecting the session
 
-    const filtered = sessions.filter(s => s.id !== id);
-    setSessions(filtered);
-    const key = companyId ? `ai_chat_sessions_${companyId}` : 'ai_chat_sessions_global';
-    localStorage.setItem(key, JSON.stringify(filtered));
+    try {
+      const res = await fetch(`/api/chat/sessions/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const filtered = sessions.filter(s => s.id !== id && s._id !== id);
+        setSessions(filtered);
 
-    if (currentSessionId === id) {
-      if (filtered.length > 0) {
-        setCurrentSessionId(filtered[0].id);
-        setMessages(filtered[0].messages);
-      } else {
-        // If all sessions deleted, create a fresh one
-        const newId = `session_${Date.now()}`;
-        const fresh = [{
-          id: newId,
-          title: 'New Chat Session',
-          messages: [
-            {
-              role: 'assistant',
-              text: 'Hi there! I am your AI Workspace Assistant. I can compile project status reports or email outstanding invoices. Try asking me one of the suggestions below!'
+        if (currentSessionId === id) {
+          if (filtered.length > 0) {
+            const nextSession = filtered[0];
+            setCurrentSessionId(nextSession.id || nextSession._id);
+            setMessages(nextSession.messages);
+          } else {
+            // If all sessions deleted, create a fresh one in DB
+            const createRes = await fetch('/api/chat/sessions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: 'New Chat Session' })
+            });
+            if (createRes.ok) {
+              const defaultSession = await createRes.json();
+              setSessions([defaultSession]);
+              setCurrentSessionId(defaultSession.id || defaultSession._id);
+              setMessages(defaultSession.messages);
             }
-          ],
-          timestamp: Date.now()
-        }];
-        setSessions(fresh);
-        setCurrentSessionId(newId);
-        setMessages(fresh[0].messages);
-        const key = companyId ? `ai_chat_sessions_${companyId}` : 'ai_chat_sessions_global';
-        localStorage.setItem(key, JSON.stringify(fresh));
+          }
+        }
       }
+    } catch (err) {
+      console.error('Failed to delete session:', err);
     }
   };
 
@@ -218,23 +246,23 @@ export default function AIChatBot() {
     setEditingTitleText(currentTitle);
   };
 
-  const handleSaveTitle = (id) => {
+  const handleSaveTitle = async (id) => {
     if (!editingTitleText.trim()) return;
 
-    const updated = sessions.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          title: editingTitleText.trim()
-        };
+    try {
+      const res = await fetch(`/api/chat/sessions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editingTitleText.trim() })
+      });
+      if (res.ok) {
+        const updatedSession = await res.json();
+        setSessions(prev => prev.map(s => (s.id === id || s._id === id) ? updatedSession : s));
+        setEditingSessionId(null);
       }
-      return s;
-    });
-
-    setSessions(updated);
-    const key = companyId ? `ai_chat_sessions_${companyId}` : 'ai_chat_sessions_global';
-    localStorage.setItem(key, JSON.stringify(updated));
-    setEditingSessionId(null);
+    } catch (err) {
+      console.error('Failed to save title:', err);
+    }
   };
 
   const handleCancelEdit = (e) => {
@@ -242,8 +270,34 @@ export default function AIChatBot() {
     setEditingSessionId(null);
   };
 
+  // 6.75. Stop Generating Answer
+  const handleAbort = async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+    setToolStatus(null);
+
+    const stoppedMessage = { role: 'assistant', text: '_Generation stopped by user._' };
+    const updated = messages.concat(stoppedMessage);
+    setMessages(updated);
+
+    try {
+      await fetch(`/api/chat/sessions/${currentSessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated })
+      });
+    } catch (e) {
+      console.error("Failed to save abort state to DB:", e);
+    }
+
+    return updated;
+  };
+
   // 7. Send Message (SSE Streaming)
-  const handleSendMessage = async (textToSend) => {
+  const handleSendMessage = async (textToSend, overrideMessages) => {
     const text = (textToSend || inputValue).trim();
     if (!text) return;
 
@@ -253,16 +307,19 @@ export default function AIChatBot() {
     setError(null);
 
     const userMessage = { role: 'user', text };
-    setMessages((prev) => [...prev, userMessage]);
+    const baseMessages = [...(overrideMessages || messages), userMessage];
+    setMessages(baseMessages);
     setLoading(true);
 
-    try {
-      const history = messages.map(m => ({ role: m.role, text: m.text }));
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
+    try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ sessionId: currentSessionId, message: text }),
+        signal: controller.signal,
       });
 
       // Non-streaming error (400, 401, etc.)
@@ -276,121 +333,6 @@ export default function AIChatBot() {
       const decoder = new TextDecoder();
       let buffer = '';
       let fullText = '';
-      let messageAdded = false; // Only add message bubble when first text token arrives
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            const eventType = line.slice(7).trim();
-            // Next line should be data
-            continue;
-          }
-          if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6).trim();
-            try {
-              const data = JSON.parse(dataStr);
-
-              if (data.text) {
-                // Token event — append text and clear any transient tool status
-                setToolStatus(null);
-                fullText += data.text;
-                if (!messageAdded) {
-                  // Add the assistant bubble only on the first real token
-                  messageAdded = true;
-                  setMessages((prev) => [...prev, { role: 'assistant', text: fullText }]);
-                } else {
-                  setMessages((prev) => {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: 'assistant', text: fullText };
-                    return updated;
-                  });
-                }
-              } else if (data.error) {
-                throw new Error(data.error);
-              } else if (data.name) {
-                // Tool call indicator — show transient professional status (not persisted)
-                const toolLabels = {
-                  listProjects: 'Retrieving projects...',
-                  listInvoices: 'Retrieving invoices...',
-                  listExpiringItems: 'Checking expiry records...',
-                  getProjectStatus: 'Fetching project status...',
-                  sendInvoiceToClient: 'Preparing invoice email...',
-                  createNewClient: 'Registering client profile...',
-                  createNewProject: 'Creating new project...',
-                  addProjectTask: 'Adding task to project...',
-                  completeProjectTask: 'Marking task as complete...',
-                  updateProjectStatus: 'Updating project status...',
-                  createNewInvoice: 'Generating invoice draft...',
-                  updateInvoiceStatus: 'Updating invoice status...',
-                  broadcastAnnouncement: 'Broadcasting announcement...',
-                  submitUserFeedback: 'Submitting feedback...',
-                  listAllFeedbacks: 'Retrieving feedback records...',
-                  listAllClients: 'Retrieving client directory...',
-                };
-                setToolStatus(toolLabels[data.name] || 'Processing your request...');
-              }
-            } catch (parseErr) {
-              if (parseErr.message && !parseErr.message.includes('JSON')) {
-                throw parseErr; // Re-throw actual errors, not JSON parse issues
-              }
-            }
-          }
-        }
-      }
-
-      // If no text was streamed at all (empty response), set fallback
-      setToolStatus(null);
-      if (!fullText.trim()) {
-        setMessages((prev) => [...prev, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
-      }
-    } catch (err) {
-      setError(err.message);
-      setToolStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendMessage = async (index) => {
-    if (loading) return;
-    
-    const userMsg = messages[index];
-    if (!userMsg || userMsg.role !== 'user') return;
-    
-    setError(null);
-    setLoading(true);
-    
-    // Truncate messages in state: keep up to the user message being resent
-    const truncated = messages.slice(0, index + 1);
-    setMessages(truncated);
-    
-    // History is everything before this user message
-    const historyBefore = messages.slice(0, index).map(m => ({ role: m.role, text: m.text }));
-    
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg.text, history: historyBefore }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Server error (${res.status})`);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
-      let messageAdded = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -412,16 +354,7 @@ export default function AIChatBot() {
               if (data.text) {
                 setToolStatus(null);
                 fullText += data.text;
-                if (!messageAdded) {
-                  messageAdded = true;
-                  setMessages([...truncated, { role: 'assistant', text: fullText }]);
-                } else {
-                  setMessages((prev) => {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: 'assistant', text: fullText };
-                    return updated;
-                  });
-                }
+                setMessages([...baseMessages, { role: 'assistant', text: fullText }]);
               } else if (data.error) {
                 throw new Error(data.error);
               } else if (data.name) {
@@ -456,13 +389,153 @@ export default function AIChatBot() {
 
       setToolStatus(null);
       if (!fullText.trim()) {
-        setMessages([...truncated, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
+        setMessages([...baseMessages, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
+      }
+
+      // Fetch latest sessions to update dynamic title & final history state from database
+      const fetchRes = await fetch('/api/chat/sessions');
+      if (fetchRes.ok) {
+        const latestSessions = await fetchRes.json();
+        setSessions(latestSessions);
+        const current = latestSessions.find(s => s.id === currentSessionId || s._id === currentSessionId);
+        if (current) {
+          setMessages(current.messages);
+        }
       }
     } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Request aborted by user');
+        return;
+      }
       setError(err.message);
       setToolStatus(null);
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleResendMessage = async (index) => {
+    if (loading) return;
+
+    const userMsg = messages[index];
+    if (!userMsg || userMsg.role !== 'user') return;
+
+    setError(null);
+    setLoading(true);
+
+    // Truncate messages: keep everything before this user message
+    const truncated = messages.slice(0, index);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      // Overwrite database messages with the truncated list
+      await fetch(`/api/chat/sessions/${currentSessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: truncated })
+      });
+
+      const baseMessages = truncated.concat({ role: 'user', text: userMsg.text });
+      setMessages(baseMessages);
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSessionId, message: userMsg.text }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server error (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            continue;
+          }
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            try {
+              const data = JSON.parse(dataStr);
+
+              if (data.text) {
+                setToolStatus(null);
+                fullText += data.text;
+                setMessages([...baseMessages, { role: 'assistant', text: fullText }]);
+              } else if (data.error) {
+                throw new Error(data.error);
+              } else if (data.name) {
+                const toolLabels = {
+                  listProjects: 'Retrieving projects...',
+                  listInvoices: 'Retrieving invoices...',
+                  listExpiringItems: 'Checking expiry records...',
+                  getProjectStatus: 'Fetching project status...',
+                  sendInvoiceToClient: 'Preparing invoice email...',
+                  createNewClient: 'Registering client profile...',
+                  createNewProject: 'Creating new project...',
+                  addProjectTask: 'Adding task to project...',
+                  completeProjectTask: 'Marking task as complete...',
+                  updateProjectStatus: 'Updating project status...',
+                  createNewInvoice: 'Generating invoice draft...',
+                  updateInvoiceStatus: 'Updating invoice status...',
+                  broadcastAnnouncement: 'Broadcasting announcement...',
+                  submitUserFeedback: 'Submitting feedback...',
+                  listAllFeedbacks: 'Retrieving feedback records...',
+                  listAllClients: 'Retrieving client directory...',
+                };
+                setToolStatus(toolLabels[data.name] || 'Processing your request...');
+              }
+            } catch (parseErr) {
+              if (parseErr.message && !parseErr.message.includes('JSON')) {
+                throw parseErr;
+              }
+            }
+          }
+        }
+      }
+
+      setToolStatus(null);
+      if (!fullText.trim()) {
+        setMessages([...baseMessages, { role: 'assistant', text: 'No response was generated. Please try again.' }]);
+      }
+
+      // Fetch latest sessions to update dynamic title & final history state from database
+      const fetchRes = await fetch('/api/chat/sessions');
+      if (fetchRes.ok) {
+        const latestSessions = await fetchRes.json();
+        setSessions(latestSessions);
+        const current = latestSessions.find(s => s.id === currentSessionId || s._id === currentSessionId);
+        if (current) {
+          setMessages(current.messages);
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Resend request aborted by user');
+        return;
+      }
+      setError(err.message);
+      setToolStatus(null);
+    } finally {
+      setLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -927,7 +1000,7 @@ export default function AIChatBot() {
             );
           })}
 
-          {loading && (
+          {((messages[messages.length - 1]?.role === 'user' && !loading) || loading) && (
             <div style={{
               alignSelf: 'flex-start',
               display: 'flex',
@@ -941,7 +1014,7 @@ export default function AIChatBot() {
             }}>
               <span className="dot-pulse" />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                {toolStatus || 'Analysing your request...'}
+                {toolStatus || (loading ? 'Analysing your request...' : 'AI is generating response in background...')}
               </span>
             </div>
           )}
@@ -1060,10 +1133,15 @@ export default function AIChatBot() {
             placeholder="Type a message or command (e.g. status report of project X)..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter') {
+                let updated = undefined;
+                if (loading) {
+                  updated = await handleAbort();
+                }
+                handleSendMessage(undefined, updated);
+              }
             }}
-            disabled={loading}
             className="ai-chat-input"
             style={{
               flex: 1,
@@ -1077,26 +1155,56 @@ export default function AIChatBot() {
               transition: 'all 0.2s ease'
             }}
           />
-          <button 
-            onClick={() => handleSendMessage()}
-            disabled={loading || !inputValue.trim()}
-            style={{
-              background: 'var(--accent-primary)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '12px',
-              width: '42px',
-              height: '42px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              opacity: (loading || !inputValue.trim()) ? 0.6 : 1
-            }}
-          >
-            <Send size={18} />
-          </button>
+          {loading && !inputValue.trim() ? (
+            <button 
+              onClick={handleAbort}
+              style={{
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                width: '42px',
+                height: '42px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+              }}
+              title="Stop generating"
+            >
+              <Square size={16} fill="#ffffff" />
+            </button>
+          ) : (
+            <button 
+              onClick={async () => {
+                let updated = undefined;
+                if (loading) {
+                  updated = await handleAbort();
+                }
+                handleSendMessage(undefined, updated);
+              }}
+              disabled={!inputValue.trim()}
+              style={{
+                background: 'var(--accent-primary)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                width: '42px',
+                height: '42px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                opacity: !inputValue.trim() ? 0.6 : 1
+              }}
+              title={loading ? "Stop & Send new message" : "Send message"}
+            >
+              <Send size={18} />
+            </button>
+          )}
         </div>
       </div>
 

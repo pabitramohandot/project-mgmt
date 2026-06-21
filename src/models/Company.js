@@ -52,6 +52,24 @@ const CompanySchema = new mongoose.Schema(
         trim: true,
         default: '',
       },
+      host: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      port: {
+        type: Number,
+        default: 465,
+      },
+      secure: {
+        type: Boolean,
+        default: true,
+      },
+      providerType: {
+        type: String,
+        enum: ['gmail', 'custom'],
+        default: 'gmail',
+      },
     },
     aiKeys: {
       gemini: { type: String, trim: true, default: '' },

@@ -23,7 +23,11 @@ export default function ProfileSettingsPage() {
     confirmPassword: '',
     companyEmailUser: '',
     companyEmailPass: '',
-    companyEmailHasPassword: false
+    companyEmailHasPassword: false,
+    companyEmailHost: '',
+    companyEmailPort: 465,
+    companyEmailSecure: true,
+    companyEmailProviderType: 'gmail'
   });
 
   useEffect(() => {
@@ -45,7 +49,11 @@ export default function ProfileSettingsPage() {
             confirmPassword: '',
             companyEmailUser: data.company?.emailSettings?.user || '',
             companyEmailPass: data.company?.emailSettings?.hasPassword ? '••••••••' : '',
-            companyEmailHasPassword: !!data.company?.emailSettings?.hasPassword
+            companyEmailHasPassword: !!data.company?.emailSettings?.hasPassword,
+            companyEmailHost: data.company?.emailSettings?.host || '',
+            companyEmailPort: data.company?.emailSettings?.port || 465,
+            companyEmailSecure: data.company?.emailSettings?.secure !== false,
+            companyEmailProviderType: data.company?.emailSettings?.providerType || 'gmail'
           });
         }
       } catch (e) {
@@ -83,6 +91,10 @@ export default function ProfileSettingsPage() {
       if (role === 'company_admin' || role === 'superadmin') {
         payload.companyEmailUser = form.companyEmailUser;
         payload.companyEmailPass = form.companyEmailPass;
+        payload.companyEmailHost = form.companyEmailHost;
+        payload.companyEmailPort = Number(form.companyEmailPort) || 465;
+        payload.companyEmailSecure = form.companyEmailSecure;
+        payload.companyEmailProviderType = form.companyEmailProviderType;
       }
 
       const res = await fetch('/api/auth/me', {
@@ -113,11 +125,11 @@ export default function ProfileSettingsPage() {
 
   const handleTestSmtp = async () => {
     if (!form.companyEmailUser) {
-      showToast('Please enter Gmail Username first', 'error');
+      showToast('Please enter Username first', 'error');
       return;
     }
     if (!form.companyEmailPass) {
-      showToast('Please enter Gmail App Password first', 'error');
+      showToast('Please enter Password first', 'error');
       return;
     }
 
@@ -128,7 +140,11 @@ export default function ProfileSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user: form.companyEmailUser,
-          pass: form.companyEmailPass
+          pass: form.companyEmailPass,
+          host: form.companyEmailHost,
+          port: Number(form.companyEmailPort) || 465,
+          secure: form.companyEmailSecure,
+          providerType: form.companyEmailProviderType
         })
       });
 
@@ -312,30 +328,75 @@ export default function ProfileSettingsPage() {
               <div className="animate-fade-in">
                 <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
                   <Mail size={18} style={{ color: 'var(--accent-primary)' }} />
-                  Custom Gmail SMTP Connection
+                  SMTP Mail Integration
                 </h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.75rem', lineHeight: '1.6' }}>
-                  Configure your company's outbound Gmail account and App Password so invoices and announcements are received directly from your email address.
+                  Configure your workspace outbound email account credentials so system alerts, invoice notifications, and broadcast messages are sent directly from your own email.
                 </p>
 
-                <div style={{ 
-                  background: 'rgba(0, 174, 239, 0.04)', 
-                  border: '1px solid rgba(0, 174, 239, 0.15)', 
-                  borderRadius: '12px', 
-                  padding: '1rem', 
-                  marginBottom: '1.5rem', 
-                  fontSize: '0.82rem',
-                  lineHeight: '1.5',
-                  color: 'var(--text-secondary)'
-                }}>
-                  <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '4px' }}>🔒 Security Note & Guide:</strong>
-                  Google requires a 16-character <strong>App Password</strong> rather than your primary Google password. 
-                  To generate one, go to your <em>Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords</em>.
+                <div className="form-group" style={{ marginBottom: '1.75rem' }}>
+                  <label className="form-label">Email Provider Type</label>
+                  <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="providerType" 
+                        value="gmail" 
+                        checked={form.companyEmailProviderType === 'gmail'}
+                        onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'gmail' }))}
+                      />
+                      <span>Gmail / Google Workspace</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="providerType" 
+                        value="custom" 
+                        checked={form.companyEmailProviderType === 'custom'}
+                        onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'custom' }))}
+                      />
+                      <span>Custom SMTP (Zoho, cPanel, etc.)</span>
+                    </label>
+                  </div>
                 </div>
+
+                {form.companyEmailProviderType === 'gmail' ? (
+                  <div style={{ 
+                    background: 'rgba(0, 174, 239, 0.04)', 
+                    border: '1px solid rgba(0, 174, 239, 0.15)', 
+                    borderRadius: '12px', 
+                    padding: '1rem', 
+                    marginBottom: '1.5rem', 
+                    fontSize: '0.82rem',
+                    lineHeight: '1.5',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '4px' }}>🔒 Security Note & Guide:</strong>
+                    Google requires a 16-character <strong>App Password</strong> rather than your primary Google password. 
+                    To generate one, go to your <em>Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords</em>.
+                  </div>
+                ) : (
+                  <div style={{ 
+                    background: 'rgba(16, 185, 129, 0.04)', 
+                    border: '1px solid rgba(16, 185, 129, 0.15)', 
+                    borderRadius: '12px', 
+                    padding: '1rem', 
+                    marginBottom: '1.5rem', 
+                    fontSize: '0.82rem',
+                    lineHeight: '1.5',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <strong style={{ color: '#10b981', display: 'block', marginBottom: '4px' }}>⚙️ Custom SMTP Settings Help:</strong>
+                    Enter the SMTP details provided by your host (e.g. Zoho Mail or cPanel). 
+                    Typically, port <strong>465</strong> requires <strong>SSL/TLS (Secure)</strong> checked, while port <strong>587</strong> or <strong>25</strong> uses standard connections.
+                  </div>
+                )}
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Gmail Username</label>
+                    <label className="form-label">
+                      {form.companyEmailProviderType === 'gmail' ? 'Gmail Username' : 'SMTP Username'}
+                    </label>
                     <input
                       type="email"
                       className="form-input"
@@ -346,18 +407,58 @@ export default function ProfileSettingsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Gmail App Password</label>
+                    <label className="form-label">
+                      {form.companyEmailProviderType === 'gmail' ? 'Gmail App Password' : 'SMTP Password'}
+                    </label>
                     <input
                       type="password"
                       className="form-input"
-                      placeholder={form.companyEmailHasPassword ? '••••••••' : 'Enter 16-character App Password'}
+                      placeholder={form.companyEmailHasPassword ? '••••••••' : 'Enter account password'}
                       value={form.companyEmailPass}
                       onChange={(e) => setForm(prev => ({ ...prev, companyEmailPass: e.target.value }))}
                     />
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.5rem' }}>
+                {form.companyEmailProviderType === 'custom' && (
+                  <div className="form-row" style={{ marginTop: '1rem' }}>
+                    <div className="form-group" style={{ flex: 2 }}>
+                      <label className="form-label">SMTP Host</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="e.g. smtp.zoho.com or mail.yourdomain.com"
+                        value={form.companyEmailHost}
+                        onChange={(e) => setForm(prev => ({ ...prev, companyEmailHost: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">SMTP Port</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        placeholder="465"
+                        value={form.companyEmailPort}
+                        onChange={(e) => setForm(prev => ({ ...prev, companyEmailPort: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <label className="form-label" style={{ marginBottom: '0.5rem' }}>Secure Connection</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={form.companyEmailSecure}
+                          onChange={(e) => setForm(prev => ({ ...prev, companyEmailSecure: e.target.checked }))}
+                        />
+                        <span>SSL / TLS</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1.25rem' }}>
                   <button
                     type="button"
                     className="test-smtp-btn"

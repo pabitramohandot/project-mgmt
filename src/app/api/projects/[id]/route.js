@@ -79,7 +79,7 @@ export async function PUT(request, context) {
     return NextResponse.json(savedProject);
   } catch (error) {
     console.error('Project PUT API Error:', error);
-    return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to update project' }, { status: 500 });
   }
 }
 

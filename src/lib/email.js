@@ -53,13 +53,27 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
   let fromAddress = `"${companyName} Invoicing" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`;
 
   if (companyEmailSettings) {
-    activeTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: companyEmailSettings.user,
-        pass: companyEmailSettings.pass,
-      },
-    });
+    let smtpConfig;
+    if (companyEmailSettings.providerType === 'custom') {
+      smtpConfig = {
+        host: companyEmailSettings.host ? companyEmailSettings.host.trim() : '',
+        port: Number(companyEmailSettings.port) || 465,
+        secure: companyEmailSettings.secure !== false,
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    } else {
+      smtpConfig = {
+        service: 'gmail',
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    }
+    activeTransporter = nodemailer.createTransport(smtpConfig);
     fromAddress = `"${companyName} Invoicing" <${companyEmailSettings.user}>`;
   } else {
     // If no custom SMTP credentials, check if system-wide EMAIL_PASS is present
@@ -253,13 +267,27 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   let fromAddress = `"${companyName} Broadcast" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`;
 
   if (companyEmailSettings) {
-    activeTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: companyEmailSettings.user,
-        pass: companyEmailSettings.pass,
-      },
-    });
+    let smtpConfig;
+    if (companyEmailSettings.providerType === 'custom') {
+      smtpConfig = {
+        host: companyEmailSettings.host ? companyEmailSettings.host.trim() : '',
+        port: Number(companyEmailSettings.port) || 465,
+        secure: companyEmailSettings.secure !== false,
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    } else {
+      smtpConfig = {
+        service: 'gmail',
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    }
+    activeTransporter = nodemailer.createTransport(smtpConfig);
     fromAddress = `"${companyName} Broadcast" <${companyEmailSettings.user}>`;
   } else {
     // If no custom SMTP credentials, check if system-wide EMAIL_PASS is present

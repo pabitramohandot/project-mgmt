@@ -45,6 +45,16 @@ export async function GET(request) {
       { $set: { adsStatus: 'Pending', status: 'Pending' } }
     ).catch(err => console.error('Error auto-updating adsStatus in dashboard:', err));
 
+    Project.updateMany(
+      {
+        companyId,
+        projectType: 'Design',
+        designEndDate: { $lt: now },
+        designStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { designStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating designStatus in dashboard:', err));
+
     // Fetch all projects and invoices in parallel using lean() for maximum performance
     const [allProjects, allInvoices] = await Promise.all([
       Project.find(projectQuery).sort({ createdAt: -1 }).lean(),
@@ -103,12 +113,12 @@ export async function GET(request) {
     );
     for (const proj of expiringHostingProjects) {
       const remainingDays = Math.ceil((new Date(proj.hostingExpiry) - new Date()) / (1000 * 60 * 60 * 24));
-      const expStr = remainingDays < 0 ? 'Expired' : `expires in ${remainingDays} days`;
+      const expStr = remainingDays < 0 ? 'has expired' : `expires in ${remainingDays} days`;
       pendingTasks.push({
         id: proj._id,
         type: 'hosting_expiry',
         title: `Renew Hosting: ${proj.name}`,
-        description: `Hosting for project ${proj.name} is ${expStr} (${new Date(proj.hostingExpiry).toLocaleDateString('en-IN')}). Renew hosting to prevent website downtime.`,
+        description: `Hosting for project ${proj.name} ${expStr} (${new Date(proj.hostingExpiry).toLocaleDateString('en-IN')}). Renew hosting to prevent website downtime.`,
         link: `/projects/${proj._id}`,
         date: proj.hostingExpiry,
       });
@@ -120,12 +130,12 @@ export async function GET(request) {
     );
     for (const proj of expiringDomainProjects) {
       const remainingDays = Math.ceil((new Date(proj.domainExpiry) - new Date()) / (1000 * 60 * 60 * 24));
-      const expStr = remainingDays < 0 ? 'Expired' : `expires in ${remainingDays} days`;
+      const expStr = remainingDays < 0 ? 'has expired' : `expires in ${remainingDays} days`;
       pendingTasks.push({
         id: proj._id,
         type: 'domain_expiry',
         title: `Renew Domain: ${proj.name}`,
-        description: `Domain registration for project ${proj.name} is ${expStr} (${new Date(proj.domainExpiry).toLocaleDateString('en-IN')}). Renew domain registration to keep website online.`,
+        description: `Domain registration for project ${proj.name} ${expStr} (${new Date(proj.domainExpiry).toLocaleDateString('en-IN')}). Renew domain registration to keep website online.`,
         link: `/projects/${proj._id}`,
         date: proj.domainExpiry,
       });
@@ -153,6 +163,12 @@ export async function GET(request) {
           dueDate: new Date(proj.adsDate)
         });
       }
+      if (proj.projectType?.includes('Design') && proj.designEndDate && new Date(proj.designEndDate) < now && proj.designStatus !== 'Completed') {
+        overdueCategories.push({
+          name: 'Design',
+          dueDate: new Date(proj.designEndDate)
+        });
+      }
 
       if (overdueCategories.length > 0) {
         const categoriesLabel = overdueCategories.map(c => c.name).join(' & ');
@@ -169,6 +185,36 @@ export async function GET(request) {
         });
       }
     }
+
+    // 4. Content Calendar Posts scheduled for today or in the past that are not posted
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    for (const proj of processedProjects) {
+      if (proj.status === 'Completed') continue;
+      if (!proj.contentCalendar || !Array.isArray(proj.contentCalendar)) continue;
+
+      for (const post of proj.contentCalendar) {
+        if (!post.scheduledDate) continue;
+        const postDate = new Date(post.scheduledDate);
+        const postDateStart = new Date(postDate);
+        postDateStart.setHours(0, 0, 0, 0);
+
+        if (postDateStart <= todayStart && post.status !== 'Posted') {
+          pendingTasks.push({
+            id: `${proj._id}-${post._id}`,
+            type: 'calendar_pending',
+            title: `Post Content Pending: ${proj.name}`,
+            description: `Scheduled post for "${post.topic || 'Untitled'}" (${post.postType || 'Static'}) on ${postDate.toLocaleDateString('en-IN')} has status "${post.status}".`,
+            link: `/projects/${proj._id}`,
+            date: post.scheduledDate,
+          });
+        }
+      }
+    }
+
+    // Sort pending tasks by date ascending (oldest/most urgent first)
+    pendingTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     return NextResponse.json({
       projects: {

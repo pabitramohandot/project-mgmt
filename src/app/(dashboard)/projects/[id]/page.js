@@ -71,6 +71,13 @@ const getOverallStatus = (proj) => {
   return 'Completed';
 };
 
+const predefinedSubs = [
+  'Education', 'Shopping', 'GYM', 'Wedding', 'Real Estate', 'Healthcare', 'Restaurant/Food', 'Travel', 'Portfolio', 'Corporate',
+  'SEO', 'SMO', 'GBP',
+  'Meta Ads', 'Google Ads',
+  'Static', 'Motion', 'Real', 'Brand Identity', 'UI/UX', 'Print Design'
+];
+
 export default function ProjectDetailPage() {
   const { showToast, showConfirm } = useNotification();
   const getSubcategoriesList = (type) => {
@@ -81,6 +88,8 @@ export default function ProjectDetailPage() {
         return ['SEO', 'SMO', 'GBP'];
       case 'Meta / Google Ads':
         return ['Meta Ads', 'Google Ads'];
+      case 'Design':
+        return ['Static', 'Motion', 'Real', 'Brand Identity', 'UI/UX', 'Print Design'];
       default:
         return [];
     }
@@ -129,11 +138,16 @@ export default function ProjectDetailPage() {
     finalPrice: '',
     hostingPrice: '',
     domainPrice: '',
+    devPrice: '',
+    marketingPrice: '',
+    adsPrice: '',
+    designPrice: '',
     budget: '',
     status: '',
     devStatus: 'Planning',
     marketingStatus: 'Planning',
     adsStatus: 'Planning',
+    designStatus: 'Planning',
     startDate: '',
     endDate: '',
     devStartDate: '',
@@ -141,6 +155,8 @@ export default function ProjectDetailPage() {
     marketingStartDate: '',
     marketingEndDate: '',
     adsDate: '',
+    designStartDate: '',
+    designEndDate: '',
     hostingExpiry: '',
     domainExpiry: '',
     credentials: [],
@@ -148,6 +164,18 @@ export default function ProjectDetailPage() {
     projectType: [],
     subcategories: [],
     contentCalendar: []
+  });
+  const [editCustomSubs, setEditCustomSubs] = useState({
+    'Development': '',
+    '360 Deg Digital Marketing': '',
+    'Meta / Google Ads': '',
+    'Design': ''
+  });
+  const [editShowCustomInput, setEditShowCustomInput] = useState({
+    'Development': false,
+    '360 Deg Digital Marketing': false,
+    'Meta / Google Ads': false,
+    'Design': false
   });
   const [updating, setUpdating] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
@@ -233,6 +261,37 @@ export default function ProjectDetailPage() {
       setInvoices(data.invoices);
       
       // Initialize edit form
+      const customValues = (data.project.subcategories || []).filter(sub => !predefinedSubs.includes(sub));
+
+      const loadedCustomSubs = {
+        'Development': '',
+        '360 Deg Digital Marketing': '',
+        'Meta / Google Ads': '',
+        'Design': ''
+      };
+      const loadedShowCustomInput = {
+        'Development': false,
+        '360 Deg Digital Marketing': false,
+        'Meta / Google Ads': false,
+        'Design': false
+      };
+
+      const activeTypes = Array.isArray(data.project.projectType)
+        ? data.project.projectType
+        : (data.project.projectType ? [data.project.projectType] : []);
+      
+      let customIdx = 0;
+      activeTypes.forEach(type => {
+        if (customIdx < customValues.length) {
+          loadedCustomSubs[type] = customValues[customIdx];
+          loadedShowCustomInput[type] = true;
+          customIdx++;
+        }
+      });
+
+      setEditCustomSubs(loadedCustomSubs);
+      setEditShowCustomInput(loadedShowCustomInput);
+
       setEditForm({
         name: data.project.name,
         description: data.project.description ?? '',
@@ -243,11 +302,16 @@ export default function ProjectDetailPage() {
         finalPrice: data.project.finalPrice ?? '',
         hostingPrice: data.project.hostingPrice ?? '',
         domainPrice: data.project.domainPrice ?? '',
+        devPrice: data.project.devPrice ?? '',
+        marketingPrice: data.project.marketingPrice ?? '',
+        adsPrice: data.project.adsPrice ?? '',
+        designPrice: data.project.designPrice ?? '',
         budget: data.project.budget ?? 0,
         status: data.project.status,
         devStatus: data.project.devStatus ?? 'Planning',
         marketingStatus: data.project.marketingStatus ?? 'Planning',
         adsStatus: data.project.adsStatus ?? 'Planning',
+        designStatus: data.project.designStatus ?? 'Planning',
         startDate: data.project.startDate ? new Date(data.project.startDate).toISOString().substring(0, 10) : '',
         endDate: data.project.endDate ? new Date(data.project.endDate).toISOString().substring(0, 10) : '',
         devStartDate: data.project.devStartDate ? new Date(data.project.devStartDate).toISOString().substring(0, 10) : '',
@@ -255,13 +319,13 @@ export default function ProjectDetailPage() {
         marketingStartDate: data.project.marketingStartDate ? new Date(data.project.marketingStartDate).toISOString().substring(0, 10) : '',
         marketingEndDate: data.project.marketingEndDate ? new Date(data.project.marketingEndDate).toISOString().substring(0, 10) : '',
         adsDate: data.project.adsDate ? new Date(data.project.adsDate).toISOString().substring(0, 10) : '',
+        designStartDate: data.project.designStartDate ? new Date(data.project.designStartDate).toISOString().substring(0, 10) : '',
+        designEndDate: data.project.designEndDate ? new Date(data.project.designEndDate).toISOString().substring(0, 10) : '',
         hostingExpiry: data.project.hostingExpiry ? new Date(data.project.hostingExpiry).toISOString().substring(0, 10) : '',
         domainExpiry: data.project.domainExpiry ? new Date(data.project.domainExpiry).toISOString().substring(0, 10) : '',
         credentials: data.project.credentials ?? [],
         quotation: data.project.quotation ?? null,
-        projectType: Array.isArray(data.project.projectType)
-          ? data.project.projectType
-          : (data.project.projectType ? [data.project.projectType] : []),
+        projectType: activeTypes,
         subcategories: data.project.subcategories ?? [],
         contentCalendar: data.project.contentCalendar ?? []
       });
@@ -304,6 +368,113 @@ export default function ProjectDetailPage() {
 
   const togglePasswordVisibility = (key) => {
     setVisiblePasswords(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Direct Credentials modification logic (View Mode actions)
+  const [credModalOpen, setCredModalOpen] = useState(false);
+  const [editingCredIndex, setEditingCredIndex] = useState(null);
+  const [credForm, setCredForm] = useState({ type: 'Other', label: '', username: '', password: '', loginUrl: '', notes: '' });
+
+  const handleOpenAddCredModal = () => {
+    setEditingCredIndex(null);
+    setCredForm({ type: 'Other', label: '', username: '', password: '', loginUrl: '', notes: '' });
+    setCredModalOpen(true);
+  };
+
+  const handleOpenEditCredModal = (index, cred) => {
+    setEditingCredIndex(index);
+    setCredForm({
+      type: cred.type || 'Other',
+      label: cred.label || '',
+      username: cred.username || '',
+      password: cred.password || '',
+      loginUrl: cred.loginUrl || '',
+      notes: cred.notes || ''
+    });
+    setCredModalOpen(true);
+  };
+
+  const handleSaveCredentialDirect = async (e) => {
+    e.preventDefault();
+    if (!credForm.label && !credForm.username) {
+      showToast("Label or Username is required", "error");
+      return;
+    }
+    
+    try {
+      setUpdating(true);
+      let updatedCredentials = [...(project.credentials || [])];
+      
+      const newCred = {
+        type: credForm.type,
+        label: credForm.label.trim(),
+        username: credForm.username.trim(),
+        password: credForm.password,
+        loginUrl: credForm.loginUrl.trim(),
+        notes: credForm.notes.trim()
+      };
+
+      if (editingCredIndex !== null) {
+        updatedCredentials[editingCredIndex] = newCred;
+      } else {
+        updatedCredentials.push(newCred);
+      }
+      
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credentials: updatedCredentials })
+      });
+      
+      if (!res.ok) throw new Error('Failed to update credentials');
+      
+      const updatedProject = await res.json();
+      setProject(updatedProject);
+      
+      setEditForm(prev => ({
+        ...prev,
+        credentials: updatedProject.credentials || []
+      }));
+      
+      showToast(editingCredIndex !== null ? 'Credential updated successfully' : 'Credential added successfully', 'success');
+      setCredModalOpen(false);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteCredentialDirect = async (index) => {
+    const confirmDelete = await showConfirm("Are you sure you want to delete this credential?");
+    if (!confirmDelete) return;
+    
+    try {
+      setUpdating(true);
+      const updatedCredentials = (project.credentials || []).filter((_, i) => i !== index);
+      
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credentials: updatedCredentials })
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete credential');
+      
+      const updatedProject = await res.json();
+      setProject(updatedProject);
+      
+      setEditForm(prev => ({
+        ...prev,
+        credentials: updatedProject.credentials || []
+      }));
+      
+      showToast('Credential deleted successfully', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const getExpiryStatus = (dateString) => {
@@ -403,9 +574,13 @@ export default function ProjectDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tasks: updatedTasks }),
       });
-      if (!res.ok) throw new Error('Failed to update task');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update task');
+      }
     } catch (err) {
       console.error(err);
+      showToast(err.message, 'error');
       // Revert back on error
       fetchProjectData();
     }
@@ -424,14 +599,17 @@ export default function ProjectDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tasks: updatedTasks }),
       });
-      if (!res.ok) throw new Error('Failed to add task');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to add task');
+      }
       const updatedProject = await res.json();
       setProject(updatedProject);
       setNewTaskName('');
       showToast('Task added successfully', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Could not add task. Please try again.', 'error');
+      showToast(err.message, 'error');
     }
   };
 
@@ -1237,6 +1415,10 @@ export default function ProjectDetailPage() {
           endDates.push(new Date(editForm.adsDate));
         }
       }
+      if (editForm.projectType.includes('Design')) {
+        if (editForm.designStartDate) startDates.push(new Date(editForm.designStartDate));
+        if (editForm.designEndDate) endDates.push(new Date(editForm.designEndDate));
+      }
       const calculatedStartDate = startDates.length > 0 ? new Date(Math.min(...startDates)) : null;
       const calculatedEndDate = endDates.length > 0 ? new Date(Math.min(...endDates)) : null;
 
@@ -1246,9 +1428,11 @@ export default function ProjectDetailPage() {
         devStatus: editForm.devStatus,
         marketingStatus: editForm.marketingStatus,
         adsStatus: editForm.adsStatus,
+        designStatus: editForm.designStatus,
         devEndDate: editForm.devEndDate,
         marketingEndDate: editForm.marketingEndDate,
-        adsDate: editForm.adsDate
+        adsDate: editForm.adsDate,
+        designEndDate: editForm.designEndDate
       });
 
       const res = await fetch(`/api/projects/${id}`, {
@@ -1257,17 +1441,31 @@ export default function ProjectDetailPage() {
         body: JSON.stringify(({
           ...editForm,
           quotePrice: editForm.quotePrice !== '' && editForm.quotePrice !== null ? parseFloat(editForm.quotePrice) : null,
-          finalPrice: editForm.finalPrice !== '' && editForm.finalPrice !== null ? parseFloat(editForm.finalPrice) : null,
           hostingPrice: editForm.hostingPrice !== '' && editForm.hostingPrice !== null ? parseFloat(editForm.hostingPrice) : null,
           domainPrice: editForm.domainPrice !== '' && editForm.domainPrice !== null ? parseFloat(editForm.domainPrice) : null,
-          // Only recompute budget if at least one pricing field is filled in.
-          // Otherwise preserve the existing project budget (prevents wiping old projects).
-          budget: (() => {
-            const fp = editForm.finalPrice !== '' && editForm.finalPrice !== null ? parseFloat(editForm.finalPrice) || 0 : null;
+          devPrice: editForm.devPrice !== '' && editForm.devPrice !== null ? parseFloat(editForm.devPrice) : null,
+          marketingPrice: editForm.marketingPrice !== '' && editForm.marketingPrice !== null ? parseFloat(editForm.marketingPrice) : null,
+          adsPrice: editForm.adsPrice !== '' && editForm.adsPrice !== null ? parseFloat(editForm.adsPrice) : null,
+          designPrice: editForm.designPrice !== '' && editForm.designPrice !== null ? parseFloat(editForm.designPrice) : null,
+          finalPrice: (() => {
             const hp = editForm.hostingPrice !== '' && editForm.hostingPrice !== null ? parseFloat(editForm.hostingPrice) || 0 : null;
             const dp = editForm.domainPrice !== '' && editForm.domainPrice !== null ? parseFloat(editForm.domainPrice) || 0 : null;
-            const hasPricing = fp !== null || hp !== null || dp !== null;
-            return hasPricing ? (fp || 0) + (hp || 0) + (dp || 0) : (project.budget || 0);
+            const devP = editForm.devPrice !== '' && editForm.devPrice !== null ? parseFloat(editForm.devPrice) || 0 : null;
+            const mP = editForm.marketingPrice !== '' && editForm.marketingPrice !== null ? parseFloat(editForm.marketingPrice) || 0 : null;
+            const adP = editForm.adsPrice !== '' && editForm.adsPrice !== null ? parseFloat(editForm.adsPrice) || 0 : null;
+            const desP = editForm.designPrice !== '' && editForm.designPrice !== null ? parseFloat(editForm.designPrice) || 0 : null;
+            const hasPricing = hp !== null || dp !== null || devP !== null || mP !== null || adP !== null || desP !== null;
+            return hasPricing ? (hp || 0) + (dp || 0) + (devP || 0) + (mP || 0) + (adP || 0) + (desP || 0) : (project.finalPrice || 0);
+          })(),
+          budget: (() => {
+            const hp = editForm.hostingPrice !== '' && editForm.hostingPrice !== null ? parseFloat(editForm.hostingPrice) || 0 : null;
+            const dp = editForm.domainPrice !== '' && editForm.domainPrice !== null ? parseFloat(editForm.domainPrice) || 0 : null;
+            const devP = editForm.devPrice !== '' && editForm.devPrice !== null ? parseFloat(editForm.devPrice) || 0 : null;
+            const mP = editForm.marketingPrice !== '' && editForm.marketingPrice !== null ? parseFloat(editForm.marketingPrice) || 0 : null;
+            const adP = editForm.adsPrice !== '' && editForm.adsPrice !== null ? parseFloat(editForm.adsPrice) || 0 : null;
+            const desP = editForm.designPrice !== '' && editForm.designPrice !== null ? parseFloat(editForm.designPrice) || 0 : null;
+            const hasPricing = hp !== null || dp !== null || devP !== null || mP !== null || adP !== null || desP !== null;
+            return hasPricing ? (hp || 0) + (dp || 0) + (devP || 0) + (mP || 0) + (adP || 0) + (desP || 0) : (project.budget || 0);
           })(),
           startDate: calculatedStartDate,
           endDate: calculatedEndDate,
@@ -1275,11 +1473,14 @@ export default function ProjectDetailPage() {
           devStatus: editForm.devStatus || 'Planning',
           marketingStatus: editForm.marketingStatus || 'Planning',
           adsStatus: editForm.adsStatus || 'Planning',
+          designStatus: editForm.designStatus || 'Planning',
           devStartDate: editForm.devStartDate || null,
           devEndDate: editForm.devEndDate || null,
           marketingStartDate: editForm.marketingStartDate || null,
           marketingEndDate: editForm.marketingEndDate || null,
           adsDate: editForm.adsDate || null,
+          designStartDate: editForm.designStartDate || null,
+          designEndDate: editForm.designEndDate || null,
           hostingExpiry: editForm.hostingExpiry || null,
           domainExpiry: editForm.domainExpiry || null,
           quotation: quotationData
@@ -1290,6 +1491,36 @@ export default function ProjectDetailPage() {
       const updatedProject = await res.json();
       setProject(updatedProject);
       
+      const activeTypes = Array.isArray(updatedProject.projectType)
+        ? updatedProject.projectType
+        : (updatedProject.projectType ? [updatedProject.projectType] : []);
+
+      const customValues = (updatedProject.subcategories || []).filter(sub => !predefinedSubs.includes(sub));
+      const loadedCustomSubs = {
+        'Development': '',
+        '360 Deg Digital Marketing': '',
+        'Meta / Google Ads': '',
+        'Design': ''
+      };
+      const loadedShowCustomInput = {
+        'Development': false,
+        '360 Deg Digital Marketing': false,
+        'Meta / Google Ads': false,
+        'Design': false
+      };
+
+      let customIdx = 0;
+      activeTypes.forEach(type => {
+        if (customIdx < customValues.length) {
+          loadedCustomSubs[type] = customValues[customIdx];
+          loadedShowCustomInput[type] = true;
+          customIdx++;
+        }
+      });
+
+      setEditCustomSubs(loadedCustomSubs);
+      setEditShowCustomInput(loadedShowCustomInput);
+
       // Update form state with new saved values
       setEditForm({
         name: updatedProject.name,
@@ -1301,11 +1532,16 @@ export default function ProjectDetailPage() {
         finalPrice: updatedProject.finalPrice ?? '',
         hostingPrice: updatedProject.hostingPrice ?? '',
         domainPrice: updatedProject.domainPrice ?? '',
+        devPrice: updatedProject.devPrice ?? '',
+        marketingPrice: updatedProject.marketingPrice ?? '',
+        adsPrice: updatedProject.adsPrice ?? '',
+        designPrice: updatedProject.designPrice ?? '',
         budget: updatedProject.budget ?? 0,
         status: updatedProject.status,
         devStatus: updatedProject.devStatus ?? 'Planning',
         marketingStatus: updatedProject.marketingStatus ?? 'Planning',
         adsStatus: updatedProject.adsStatus ?? 'Planning',
+        designStatus: updatedProject.designStatus ?? 'Planning',
         startDate: updatedProject.startDate ? new Date(updatedProject.startDate).toISOString().substring(0, 10) : '',
         endDate: updatedProject.endDate ? new Date(updatedProject.endDate).toISOString().substring(0, 10) : '',
         devStartDate: updatedProject.devStartDate ? new Date(updatedProject.devStartDate).toISOString().substring(0, 10) : '',
@@ -1313,13 +1549,13 @@ export default function ProjectDetailPage() {
         marketingStartDate: updatedProject.marketingStartDate ? new Date(updatedProject.marketingStartDate).toISOString().substring(0, 10) : '',
         marketingEndDate: updatedProject.marketingEndDate ? new Date(updatedProject.marketingEndDate).toISOString().substring(0, 10) : '',
         adsDate: updatedProject.adsDate ? new Date(updatedProject.adsDate).toISOString().substring(0, 10) : '',
+        designStartDate: updatedProject.designStartDate ? new Date(updatedProject.designStartDate).toISOString().substring(0, 10) : '',
+        designEndDate: updatedProject.designEndDate ? new Date(updatedProject.designEndDate).toISOString().substring(0, 10) : '',
         hostingExpiry: updatedProject.hostingExpiry ? new Date(updatedProject.hostingExpiry).toISOString().substring(0, 10) : '',
         domainExpiry: updatedProject.domainExpiry ? new Date(updatedProject.domainExpiry).toISOString().substring(0, 10) : '',
         credentials: updatedProject.credentials ?? [],
         quotation: updatedProject.quotation ?? null,
-        projectType: Array.isArray(updatedProject.projectType)
-          ? updatedProject.projectType
-          : (updatedProject.projectType ? [updatedProject.projectType] : []),
+        projectType: activeTypes,
         subcategories: updatedProject.subcategories ?? [],
         contentCalendar: updatedProject.contentCalendar ?? []
       });
@@ -1530,7 +1766,7 @@ export default function ProjectDetailPage() {
                                 flexDirection: 'column',
                                 gap: '0.2rem'
                               }}>
-                                {['Development', '360 Deg Digital Marketing', 'Meta / Google Ads'].map(type => {
+                                {['Development', '360 Deg Digital Marketing', 'Meta / Google Ads', 'Design'].map(type => {
                                   const isChecked = editForm.projectType.includes(type);
                                   return (
                                     <label
@@ -1561,7 +1797,9 @@ export default function ProjectDetailPage() {
                                               updatedTypes = [...editForm.projectType, type];
                                             }
                                             const newSubs = editForm.subcategories.filter(sub => {
-                                              return updatedTypes.some(t => getSubcategoriesList(t).includes(sub));
+                                              const isPre = updatedTypes.some(t => getSubcategoriesList(t).includes(sub));
+                                              if (isPre) return true;
+                                              return updatedTypes.some(t => editShowCustomInput[t] && editCustomSubs[t].trim() === sub);
                                             });
                                             setEditForm(prev => ({
                                               ...prev,
@@ -1586,35 +1824,100 @@ export default function ProjectDetailPage() {
                         {Array.isArray(editForm.projectType) && editForm.projectType.length > 0 && (
                           <div className="form-group" style={{ marginTop: '1rem', marginBottom: 0 }}>
                             <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block', fontSize: '0.8rem' }}>Select Subcategories</label>
-                            <div style={{ 
-                              display: 'grid', 
-                              gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', 
-                              gap: '0.5rem', 
-                              background: 'rgba(0, 0, 0, 0.2)', 
-                              border: '1px solid var(--border-color)', 
-                              borderRadius: '8px', 
-                              padding: '0.5rem' 
-                            }}>
-                              {editForm.projectType.flatMap(type => getSubcategoriesList(type)).map(sub => {
-                                const isChecked = editForm.subcategories.includes(sub);
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              {editForm.projectType.map(type => {
+                                const subs = getSubcategoriesList(type);
                                 return (
-                                  <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => {
-                                        const updated = isChecked
-                                          ? editForm.subcategories.filter(s => s !== sub)
-                                          : [...editForm.subcategories, sub];
-                                        setEditForm(prev => ({
-                                          ...prev,
-                                          subcategories: updated
-                                        }));
-                                      }}
-                                      style={{ width: '12px', height: '12px', borderRadius: '2px', cursor: 'pointer' }}
-                                    />
-                                    <span style={{ userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>
-                                  </label>
+                                  <div key={type} style={{
+                                    background: 'var(--bg-primary)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '10px',
+                                    padding: '0.85rem'
+                                  }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)', display: 'block', marginBottom: '0.5rem', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                                      {type}
+                                    </span>
+                                    <div style={{ 
+                                      display: 'grid', 
+                                      gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', 
+                                      gap: '0.5rem'
+                                    }}>
+                                      {subs.map(sub => {
+                                        const isChecked = editForm.subcategories.includes(sub);
+                                        return (
+                                          <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer', margin: 0 }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => {
+                                                const updated = isChecked
+                                                  ? editForm.subcategories.filter(s => s !== sub)
+                                                  : [...editForm.subcategories, sub];
+                                                setEditForm(prev => ({
+                                                  ...prev,
+                                                  subcategories: updated
+                                                }));
+                                              }}
+                                              style={{ width: '13px', height: '13px', borderRadius: '3px', cursor: 'pointer' }}
+                                            />
+                                            <span style={{ userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sub}>{sub}</span>
+                                          </label>
+                                        );
+                                      })}
+                                      {/* Others option */}
+                                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer', margin: 0 }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={editShowCustomInput[type] || false}
+                                          onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setEditShowCustomInput(prev => ({ ...prev, [type]: checked }));
+                                            if (!checked) {
+                                              const currentCustomVal = editCustomSubs[type];
+                                              if (currentCustomVal) {
+                                                setEditForm(prev => ({
+                                                  ...prev,
+                                                  subcategories: prev.subcategories.filter(s => s !== currentCustomVal.trim())
+                                                }));
+                                              }
+                                            } else {
+                                              const currentCustomVal = editCustomSubs[type];
+                                              if (currentCustomVal && currentCustomVal.trim()) {
+                                                setEditForm(prev => ({
+                                                  ...prev,
+                                                  subcategories: [...prev.subcategories, currentCustomVal.trim()]
+                                                }));
+                                              }
+                                            }
+                                          }}
+                                          style={{ width: '13px', height: '13px', borderRadius: '3px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ userSelect: 'none' }}>Others</span>
+                                      </label>
+                                    </div>
+                                    {editShowCustomInput[type] && (
+                                      <input
+                                        type="text"
+                                        placeholder="Specify other subcategory..."
+                                        className="form-input"
+                                        style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', marginTop: '0.5rem', height: 'auto' }}
+                                        value={editCustomSubs[type] || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          const oldVal = editCustomSubs[type];
+                                          setEditCustomSubs(prev => ({ ...prev, [type]: val }));
+                                          
+                                          setEditForm(prev => {
+                                            let updated = prev.subcategories.filter(s => s !== oldVal.trim());
+                                            if (val.trim()) {
+                                              updated = [...updated, val.trim()];
+                                            }
+                                            return { ...prev, subcategories: updated };
+                                          });
+                                        }}
+                                      />
+                                    )}
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1758,12 +2061,13 @@ export default function ProjectDetailPage() {
                       {/* Category-Specific Dates Section */}
                       {((editForm.projectType.includes('Development')) || 
                         (editForm.projectType.includes('360 Deg Digital Marketing')) || 
-                        (editForm.projectType.includes('Meta / Google Ads'))) && (
+                        (editForm.projectType.includes('Meta / Google Ads')) ||
+                        (editForm.projectType.includes('Design'))) && (
                         <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
                           <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block', fontWeight: 600, color: 'var(--accent-primary)' }}>Category Timelines</label>
                           
                           {editForm.projectType.includes('Development') && (
-                            <div style={{ marginBottom: '1rem', borderBottom: (editForm.projectType.includes('360 Deg Digital Marketing') || editForm.projectType.includes('Meta / Google Ads')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (editForm.projectType.includes('360 Deg Digital Marketing') || editForm.projectType.includes('Meta / Google Ads')) ? '1rem' : '0' }}>
+                            <div style={{ marginBottom: '1rem', borderBottom: (editForm.projectType.includes('360 Deg Digital Marketing') || editForm.projectType.includes('Meta / Google Ads') || editForm.projectType.includes('Design')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (editForm.projectType.includes('360 Deg Digital Marketing') || editForm.projectType.includes('Meta / Google Ads') || editForm.projectType.includes('Design')) ? '1rem' : '0' }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Development Timeline</span>
                               <div className="form-row" style={{ gap: '0.75rem' }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1803,7 +2107,7 @@ export default function ProjectDetailPage() {
                           )}
 
                           {editForm.projectType.includes('360 Deg Digital Marketing') && (
-                            <div style={{ marginBottom: editForm.projectType.includes('Meta / Google Ads') ? '1rem' : '0', borderBottom: editForm.projectType.includes('Meta / Google Ads') ? '1px dashed var(--border-color)' : 'none', paddingBottom: editForm.projectType.includes('Meta / Google Ads') ? '1rem' : '0' }}>
+                            <div style={{ marginBottom: (editForm.projectType.includes('Meta / Google Ads') || editForm.projectType.includes('Design')) ? '1rem' : '0', borderBottom: (editForm.projectType.includes('Meta / Google Ads') || editForm.projectType.includes('Design')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (editForm.projectType.includes('Meta / Google Ads') || editForm.projectType.includes('Design')) ? '1rem' : '0' }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>360° Digital Marketing Timeline</span>
                               <div className="form-row" style={{ gap: '0.75rem' }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1843,7 +2147,7 @@ export default function ProjectDetailPage() {
                           )}
 
                           {editForm.projectType.includes('Meta / Google Ads') && (
-                            <div style={{ marginTop: '0.5rem' }}>
+                            <div style={{ marginBottom: editForm.projectType.includes('Design') ? '1rem' : '0', borderBottom: editForm.projectType.includes('Design') ? '1px dashed var(--border-color)' : 'none', paddingBottom: editForm.projectType.includes('Design') ? '1rem' : '0' }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Google / Meta Ads Timeline</span>
                               <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Campaign Date</label>
@@ -1860,6 +2164,46 @@ export default function ProjectDetailPage() {
                                   className="form-select"
                                   value={editForm.adsStatus || 'Planning'}
                                   onChange={(e) => setEditForm({ ...editForm, adsStatus: e.target.value })}
+                                >
+                                  <option value="Planning">Planning</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Under Review">Under Review</option>
+                                  <option value="Completed">Completed</option>
+                                  <option value="Pending">Pending</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          {editForm.projectType.includes('Design') && (
+                            <div style={{ marginTop: '0.5rem' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Design Timeline</span>
+                              <div className="form-row" style={{ gap: '0.75rem' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Start Date</label>
+                                  <input 
+                                    type="date" 
+                                    className="form-input"
+                                    value={editForm.designStartDate}
+                                    onChange={(e) => setEditForm({ ...editForm, designStartDate: e.target.value })}
+                                  />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.75rem' }}>End Date (Target)</label>
+                                  <input 
+                                    type="date" 
+                                    className="form-input"
+                                    value={editForm.designEndDate}
+                                    onChange={(e) => setEditForm({ ...editForm, designEndDate: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="form-group" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Design Status</label>
+                                <select 
+                                  className="form-select"
+                                  value={editForm.designStatus || 'Planning'}
+                                  onChange={(e) => setEditForm({ ...editForm, designStatus: e.target.value })}
                                 >
                                   <option value="Planning">Planning</option>
                                   <option value="In Progress">In Progress</option>
@@ -1988,11 +2332,11 @@ export default function ProjectDetailPage() {
 
               {/* Tab 3: Pricing (Edit Mode) */}
               {activeTab === 'pricing' && (
-                <div className="card animate-fade-in">
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>Edit Pricing</h3>
+                <div className="card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', margin: 0 }}>Edit Pricing</h3>
                   
-                  <div className="form-row">
-                    <div className="form-group">
+                  <div className="form-row" style={{ gap: '0.75rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label">Quote Price (₹)</label>
                       <input
                         type="number"
@@ -2001,44 +2345,87 @@ export default function ProjectDetailPage() {
                         onChange={(e) => setEditForm({ ...editForm, quotePrice: e.target.value })}
                       />
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Final Price (₹)</label>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Final Price (₹) <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)' }}>(Auto-calculated)</span></label>
                       <input
                         type="number"
                         className="form-input"
-                        value={editForm.finalPrice}
-                        onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
+                        style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', color: 'var(--text-muted)' }}
+                        disabled
+                        value={
+                          (parseFloat(editForm.hostingPrice) || 0) +
+                          (parseFloat(editForm.domainPrice) || 0) +
+                          (parseFloat(editForm.devPrice) || 0) +
+                          (parseFloat(editForm.marketingPrice) || 0) +
+                          (parseFloat(editForm.adsPrice) || 0) +
+                          (parseFloat(editForm.designPrice) || 0)
+                        }
                       />
                     </div>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label className="form-label">Hosting Price (₹)</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={editForm.hostingPrice}
-                        onChange={(e) => setEditForm({ ...editForm, hostingPrice: e.target.value })}
-                      />
+
+                  <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem 0' }}>Final Price Breakdown</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Hosting Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.hostingPrice}
+                          onChange={(e) => setEditForm({ ...editForm, hostingPrice: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Domain Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.domainPrice}
+                          onChange={(e) => setEditForm({ ...editForm, domainPrice: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Development Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.devPrice}
+                          onChange={(e) => setEditForm({ ...editForm, devPrice: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">360 Deg Marketing Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.marketingPrice}
+                          onChange={(e) => setEditForm({ ...editForm, marketingPrice: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Meta/Google Ads Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.adsPrice}
+                          onChange={(e) => setEditForm({ ...editForm, adsPrice: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Design Cost (₹)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editForm.designPrice}
+                          onChange={(e) => setEditForm({ ...editForm, designPrice: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Domain Price (₹)</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={editForm.domainPrice}
-                        onChange={(e) => setEditForm({ ...editForm, domainPrice: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0.75rem 1rem', background: 'rgba(139, 92, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Grand Total (Final + Hosting + Domain)</span>
-                    <span style={{ fontWeight: 700, color: 'var(--accent-primary)', fontSize: '1.15rem' }}>
-                      ₹{((parseFloat(editForm.finalPrice) || 0) + (parseFloat(editForm.hostingPrice) || 0) + (parseFloat(editForm.domainPrice) || 0)).toLocaleString('en-IN')}
-                    </span>
                   </div>
                 </div>
               )}
+
             </form>
           ) : (
             <>
@@ -2148,7 +2535,8 @@ export default function ProjectDetailPage() {
                       {!(
                         (project.projectType?.includes('Development') && (project.devStartDate || project.devEndDate)) ||
                         (project.projectType?.includes('360 Deg Digital Marketing') && (project.marketingStartDate || project.marketingEndDate)) ||
-                        (project.projectType?.includes('Meta / Google Ads') && project.adsDate)
+                        (project.projectType?.includes('Meta / Google Ads') && project.adsDate) ||
+                        (project.projectType?.includes('Design') && (project.designStartDate || project.designEndDate))
                       ) && (project.startDate || project.endDate) && (
                         <div>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Project Timeline</span>
@@ -2164,7 +2552,8 @@ export default function ProjectDetailPage() {
                       {/* Category Specific Timelines */}
                       {project.projectType && (project.projectType.includes('Development') || 
                        project.projectType.includes('360 Deg Digital Marketing') || 
-                       project.projectType.includes('Meta / Google Ads')) && (
+                       project.projectType.includes('Meta / Google Ads') ||
+                       project.projectType.includes('Design')) && (
                         <div style={{ 
                           display: 'flex',
                           flexDirection: 'column',
@@ -2207,6 +2596,19 @@ export default function ProjectDetailPage() {
                               </span>
                               <span className={`badge badge-${(project.adsStatus || 'Planning').toLowerCase().replace(' ', '')}`} style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem', borderRadius: '4px' }}>
                                 {project.adsStatus || 'Planning'}
+                              </span>
+                            </div>
+                          )}
+
+                          {project.projectType.includes('Design') && (project.designStartDate || project.designEndDate) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, color: '#f43f5e', minWidth: '95px' }}>Design:</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <Calendar size={13} style={{ color: 'var(--text-secondary)' }} />
+                                {project.designStartDate ? new Date(project.designStartDate).toLocaleDateString('en-IN') : 'N/A'} - {project.designEndDate ? new Date(project.designEndDate).toLocaleDateString('en-IN') : 'N/A'}
+                              </span>
+                              <span className={`badge badge-${(project.designStatus || 'Planning').toLowerCase().replace(' ', '')}`} style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem', borderRadius: '4px' }}>
+                                {project.designStatus || 'Planning'}
                               </span>
                             </div>
                           )}
@@ -2267,9 +2669,34 @@ export default function ProjectDetailPage() {
               {/* Tab 2: Project Credentials (View Mode) */}
               {activeTab === 'credentials' && (
                 <div className="card animate-fade-in">
-                  <h3 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', fontWeight: 600 }}>Project Credentials</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Project Credentials</h3>
+                    {role !== 'company_user' && (
+                      <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                        onClick={handleOpenAddCredModal}
+                      >
+                        <Plus size={14} />
+                        <span>Add Credential</span>
+                      </button>
+                    )}
+                  </div>
                   {(!project.credentials || project.credentials.length === 0) ? (
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No credentials stored. Click Edit to add.</span>
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1rem' }}>No credentials stored yet.</span>
+                      {role !== 'company_user' && (
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+                          onClick={handleOpenAddCredModal}
+                        >
+                          + Add First Credential
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }} className="responsive-grid">
                       {project.credentials.map((cred, index) => {
@@ -2281,8 +2708,27 @@ export default function ProjectDetailPage() {
                               <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                                 {cred.type} - {cred.label || 'Details'}
                               </span>
-                              {cred.notes && (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{cred.notes}</span>
+                              {role !== 'company_user' && (
+                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.2rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    onClick={() => handleOpenEditCredModal(index, cred)}
+                                    title="Edit Credential"
+                                  >
+                                    <Edit size={11} />
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.2rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', color: '#f43f5e', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    onClick={() => handleDeleteCredentialDirect(index)}
+                                    title="Delete Credential"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
                               )}
                             </div>
                             
@@ -2352,6 +2798,13 @@ export default function ProjectDetailPage() {
                                   </div>
                                 </div>
                               )}
+
+                              {cred.notes && (
+                                <div style={{ gridColumn: 'span 2', borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>Notes</span>
+                                  <span style={{ color: 'var(--text-secondary)', display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{cred.notes}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -2364,27 +2817,46 @@ export default function ProjectDetailPage() {
               {/* Tab 3: Pricing (View Mode) */}
               {activeTab === 'pricing' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {/* Pricing Cards Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-primary)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Quote Price</span>
-                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.quotePrice || 0)}</strong>
+                  {/* Summary Pricing Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem' }} className="responsive-grid">
+                    <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-secondary)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Quote Price</span>
+                      <strong style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{formatCurrency(project.quotePrice || 0)}</strong>
                     </div>
-                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-secondary)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Final Price</span>
-                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.finalPrice || 0)}</strong>
+                    <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #ec4899', background: 'rgba(236, 72, 153, 0.02)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Final Price (Grand Total)</span>
+                      <strong style={{ fontSize: '1.5rem', color: '#ec4899' }}>{formatCurrency(project.finalPrice || 0)}</strong>
                     </div>
-                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #a855f7' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Hosting Price</span>
-                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.hostingPrice || 0)}</strong>
-                    </div>
-                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #06b6d4' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Domain Price</span>
-                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>{formatCurrency(project.domainPrice || 0)}</strong>
-                    </div>
-                    <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #ec4899', background: 'rgba(236, 72, 153, 0.02)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Grand Total</span>
-                      <strong style={{ fontSize: '1.25rem', color: '#ec4899' }}>{formatCurrency(project.budget || 0)}</strong>
+                  </div>
+
+                  {/* Breakdown Cards */}
+                  <div>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 0.75rem 0' }}>Cost Breakdown</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #a855f7' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Hosting Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.hostingPrice || 0)}</strong>
+                      </div>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #06b6d4' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Domain Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.domainPrice || 0)}</strong>
+                      </div>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #3b82f6' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Development Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.devPrice || 0)}</strong>
+                      </div>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #10b981' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>360 Deg Marketing Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.marketingPrice || 0)}</strong>
+                      </div>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #f59e0b' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Meta/Google Ads Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.adsPrice || 0)}</strong>
+                      </div>
+                      <div className="card" style={{ padding: '1rem', borderLeft: '4px solid #f43f5e' }}>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Design Cost</span>
+                        <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>{formatCurrency(project.designPrice || 0)}</strong>
+                      </div>
                     </div>
                   </div>
 
@@ -3272,6 +3744,107 @@ export default function ProjectDetailPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Credential Modal */}
+      {credModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
+                {editingCredIndex !== null ? 'Edit Project Credential' : 'Add Project Credential'}
+              </h3>
+              <button onClick={() => setCredModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCredentialDirect} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Credential Type *</label>
+                <select
+                  className="form-input"
+                  value={credForm.type}
+                  onChange={(e) => setCredForm({ ...credForm, type: e.target.value })}
+                  required
+                >
+                  <option value="Other">Other</option>
+                  <option value="Hosting">Hosting</option>
+                  <option value="Domain">Domain</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Label / Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g., CPanel, Registrar Account"
+                  value={credForm.label}
+                  onChange={(e) => setCredForm({ ...credForm, label: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Username</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Username or email"
+                  value={credForm.username}
+                  onChange={(e) => setCredForm({ ...credForm, username: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Password"
+                  value={credForm.password}
+                  onChange={(e) => setCredForm({ ...credForm, password: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Login URL</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g., https://cpanel.domain.com"
+                  value={credForm.loginUrl}
+                  onChange={(e) => setCredForm({ ...credForm, loginUrl: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Notes</label>
+                <textarea
+                  className="form-input"
+                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  placeholder="Any access notes or extra details..."
+                  value={credForm.notes}
+                  onChange={(e) => setCredForm({ ...credForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setCredModalOpen(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={updating}
+                >
+                  {updating ? 'Saving...' : 'Save Credential'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

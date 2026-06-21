@@ -144,6 +144,11 @@ const ProjectSchema = new mongoose.Schema(
       enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
       default: 'Planning',
     },
+    designStatus: {
+      type: String,
+      enum: ['Planning', 'In Progress', 'Under Review', 'Completed', 'Pending'],
+      default: 'Planning',
+    },
     projectType: {
       type: [String],
       default: [],
@@ -165,6 +170,22 @@ const ProjectSchema = new mongoose.Schema(
       default: null,
     },
     domainPrice: {
+      type: Number,
+      default: null,
+    },
+    devPrice: {
+      type: Number,
+      default: null,
+    },
+    marketingPrice: {
+      type: Number,
+      default: null,
+    },
+    adsPrice: {
+      type: Number,
+      default: null,
+    },
+    designPrice: {
       type: Number,
       default: null,
     },
@@ -191,6 +212,12 @@ const ProjectSchema = new mongoose.Schema(
       type: Date,
     },
     adsDate: {
+      type: Date,
+    },
+    designStartDate: {
+      type: Date,
+    },
+    designEndDate: {
       type: Date,
     },
     tasks: [TaskSchema],

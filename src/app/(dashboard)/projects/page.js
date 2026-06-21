@@ -50,6 +50,14 @@ const getOverallStatus = (proj) => {
     statuses.push(adsStatus);
   }
   
+  if (activeTypes.includes('Design')) {
+    let designStatus = proj.designStatus || 'Planning';
+    if (designStatus !== 'Completed' && proj.designEndDate && new Date(proj.designEndDate) < now) {
+      designStatus = 'Pending';
+    }
+    statuses.push(designStatus);
+  }
+  
   if (statuses.length === 0) {
     return proj.status || 'Planning';
   }
@@ -71,6 +79,8 @@ export default function ProjectsPage() {
         return ['SEO', 'SMO', 'GBP'];
       case 'Meta / Google Ads':
         return ['Meta Ads', 'Google Ads'];
+      case 'Design':
+        return ['Static', 'Motion', 'Real', 'Brand Identity', 'UI/UX', 'Print Design'];
       default:
         return [];
     }
@@ -80,6 +90,18 @@ export default function ProjectsPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [newCustomSubs, setNewCustomSubs] = useState({
+    'Development': '',
+    '360 Deg Digital Marketing': '',
+    'Meta / Google Ads': '',
+    'Design': ''
+  });
+  const [newShowCustomInput, setNewShowCustomInput] = useState({
+    'Development': false,
+    '360 Deg Digital Marketing': false,
+    'Meta / Google Ads': false,
+    'Design': false
+  });
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,11 +115,16 @@ export default function ProjectsPage() {
     finalPrice: '',
     hostingPrice: '',
     domainPrice: '',
+    devPrice: '',
+    marketingPrice: '',
+    adsPrice: '',
+    designPrice: '',
     budget: '',
     status: 'Planning',
     devStatus: 'Planning',
     marketingStatus: 'Planning',
     adsStatus: 'Planning',
+    designStatus: 'Planning',
     startDate: '',
     endDate: '',
     projectType: [],
@@ -107,6 +134,8 @@ export default function ProjectsPage() {
     marketingStartDate: '',
     marketingEndDate: '',
     adsDate: '',
+    designStartDate: '',
+    designEndDate: '',
     hostingExpiry: '',
     domainExpiry: ''
   });
@@ -270,6 +299,10 @@ export default function ProjectsPage() {
           endDates.push(new Date(newProject.adsDate));
         }
       }
+      if (newProject.projectType.includes('Design')) {
+        if (newProject.designStartDate) startDates.push(new Date(newProject.designStartDate));
+        if (newProject.designEndDate) endDates.push(new Date(newProject.designEndDate));
+      }
       const calculatedStartDate = startDates.length > 0 ? new Date(Math.min(...startDates)) : undefined;
       const calculatedEndDate = endDates.length > 0 ? new Date(Math.min(...endDates)) : undefined;
 
@@ -279,10 +312,19 @@ export default function ProjectsPage() {
         devStatus: newProject.devStatus,
         marketingStatus: newProject.marketingStatus,
         adsStatus: newProject.adsStatus,
+        designStatus: newProject.designStatus,
         devEndDate: newProject.devEndDate,
         marketingEndDate: newProject.marketingEndDate,
-        adsDate: newProject.adsDate
+        adsDate: newProject.adsDate,
+        designEndDate: newProject.designEndDate
       });
+
+      const calculatedFinalPrice = (parseFloat(newProject.hostingPrice) || 0) + 
+                                  (parseFloat(newProject.domainPrice) || 0) + 
+                                  (parseFloat(newProject.devPrice) || 0) + 
+                                  (parseFloat(newProject.marketingPrice) || 0) + 
+                                  (parseFloat(newProject.adsPrice) || 0) + 
+                                  (parseFloat(newProject.designPrice) || 0);
 
       const res = await fetch('/api/projects', {
         method: 'POST',
@@ -290,21 +332,28 @@ export default function ProjectsPage() {
         body: JSON.stringify({
           ...newProject,
           quotePrice: newProject.quotePrice ? parseFloat(newProject.quotePrice) : 0,
-          finalPrice: newProject.finalPrice ? parseFloat(newProject.finalPrice) : 0,
+          finalPrice: calculatedFinalPrice,
           hostingPrice: newProject.hostingPrice ? parseFloat(newProject.hostingPrice) : 0,
           domainPrice: newProject.domainPrice ? parseFloat(newProject.domainPrice) : 0,
-          budget: (parseFloat(newProject.finalPrice) || 0) + (parseFloat(newProject.hostingPrice) || 0) + (parseFloat(newProject.domainPrice) || 0),
+          devPrice: newProject.devPrice ? parseFloat(newProject.devPrice) : 0,
+          marketingPrice: newProject.marketingPrice ? parseFloat(newProject.marketingPrice) : 0,
+          adsPrice: newProject.adsPrice ? parseFloat(newProject.adsPrice) : 0,
+          designPrice: newProject.designPrice ? parseFloat(newProject.designPrice) : 0,
+          budget: calculatedFinalPrice,
           startDate: calculatedStartDate,
           endDate: calculatedEndDate,
           status: calculatedOverallStatus,
           devStatus: newProject.devStatus,
           marketingStatus: newProject.marketingStatus,
           adsStatus: newProject.adsStatus,
+          designStatus: newProject.designStatus,
           devStartDate: newProject.devStartDate || undefined,
           devEndDate: newProject.devEndDate || undefined,
           marketingStartDate: newProject.marketingStartDate || undefined,
           marketingEndDate: newProject.marketingEndDate || undefined,
           adsDate: newProject.adsDate || undefined,
+          designStartDate: newProject.designStartDate || undefined,
+          designEndDate: newProject.designEndDate || undefined,
           hostingExpiry: newProject.hostingExpiry || undefined,
           domainExpiry: newProject.domainExpiry || undefined,
           quotation: quotationData || undefined
@@ -327,11 +376,16 @@ export default function ProjectsPage() {
         finalPrice: '',
         hostingPrice: '',
         domainPrice: '',
+        devPrice: '',
+        marketingPrice: '',
+        adsPrice: '',
+        designPrice: '',
         budget: '',
         status: 'Planning',
         devStatus: 'Planning',
         marketingStatus: 'Planning',
         adsStatus: 'Planning',
+        designStatus: 'Planning',
         startDate: '',
         endDate: '',
         projectType: [],
@@ -341,8 +395,22 @@ export default function ProjectsPage() {
         marketingStartDate: '',
         marketingEndDate: '',
         adsDate: '',
+        designStartDate: '',
+        designEndDate: '',
         hostingExpiry: '',
         domainExpiry: ''
+      });
+      setNewCustomSubs({
+        'Development': '',
+        '360 Deg Digital Marketing': '',
+        'Meta / Google Ads': '',
+        'Design': ''
+      });
+      setNewShowCustomInput({
+        'Development': false,
+        '360 Deg Digital Marketing': false,
+        'Meta / Google Ads': false,
+        'Design': false
       });
       setQuotationFile(null);
       showToast('Project created successfully', 'success');
@@ -533,11 +601,12 @@ export default function ProjectsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                           {project.projectType && project.projectType.length > 0 ? (
                             project.projectType.map(type => {
-                              let catLabel = type === '360 Deg Digital Marketing' ? 'Marketing' : (type === 'Meta / Google Ads' ? 'Ads' : 'Dev');
+                              let catLabel = type === '360 Deg Digital Marketing' ? 'Marketing' : (type === 'Meta / Google Ads' ? 'Ads' : (type === 'Design' ? 'Design' : 'Dev'));
                               let catStatus = 'Planning';
                               if (type === 'Development') catStatus = project.devStatus || 'Planning';
                               else if (type === '360 Deg Digital Marketing') catStatus = project.marketingStatus || 'Planning';
                               else if (type === 'Meta / Google Ads') catStatus = project.adsStatus || 'Planning';
+                              else if (type === 'Design') catStatus = project.designStatus || 'Planning';
                               
                               return (
                                 <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-start' }}>
@@ -662,7 +731,7 @@ export default function ProjectsPage() {
                             flexDirection: 'column',
                             gap: '0.2rem'
                           }}>
-                            {['Development', '360 Deg Digital Marketing', 'Meta / Google Ads'].map(type => {
+                             {['Development', '360 Deg Digital Marketing', 'Meta / Google Ads', 'Design'].map(type => {
                               const isChecked = newProject.projectType.includes(type);
                               return (
                                 <label
@@ -693,7 +762,9 @@ export default function ProjectsPage() {
                                           updatedTypes = [...newProject.projectType, type];
                                         }
                                         const newSubs = newProject.subcategories.filter(sub => {
-                                          return updatedTypes.some(t => getSubcategoriesList(t).includes(sub));
+                                          const isPre = updatedTypes.some(t => getSubcategoriesList(t).includes(sub));
+                                          if (isPre) return true;
+                                          return updatedTypes.some(t => newShowCustomInput[t] && newCustomSubs[t].trim() === sub);
                                         });
                                         setNewProject(prev => ({
                                           ...prev,
@@ -718,35 +789,100 @@ export default function ProjectsPage() {
                     {Array.isArray(newProject.projectType) && newProject.projectType.length > 0 && (
                       <div className="form-group" style={{ marginTop: '1rem', marginBottom: 0 }}>
                         <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block', fontSize: '0.8rem' }}>Select Subcategories</label>
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', 
-                          gap: '0.5rem', 
-                          background: 'rgba(0, 0, 0, 0.2)', 
-                          border: '1px solid var(--border-color)', 
-                          borderRadius: '8px', 
-                          padding: '0.5rem' 
-                        }}>
-                          {newProject.projectType.flatMap(type => getSubcategoriesList(type)).map(sub => {
-                            const isChecked = newProject.subcategories.includes(sub);
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {newProject.projectType.map(type => {
+                            const subs = getSubcategoriesList(type);
                             return (
-                              <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {
-                                    const updated = isChecked
-                                      ? newProject.subcategories.filter(s => s !== sub)
-                                      : [...newProject.subcategories, sub];
-                                    setNewProject(prev => ({
-                                      ...prev,
-                                      subcategories: updated
-                                    }));
-                                  }}
-                                  style={{ width: '12px', height: '12px', borderRadius: '2px', cursor: 'pointer' }}
-                                />
-                                <span style={{ userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>
-                              </label>
+                              <div key={type} style={{
+                                background: 'var(--bg-primary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '10px',
+                                padding: '0.85rem'
+                              }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)', display: 'block', marginBottom: '0.5rem', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                                  {type}
+                                </span>
+                                <div style={{ 
+                                  display: 'grid', 
+                                  gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', 
+                                  gap: '0.5rem'
+                                }}>
+                                  {subs.map(sub => {
+                                    const isChecked = newProject.subcategories.includes(sub);
+                                    return (
+                                      <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer', margin: 0 }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => {
+                                            const updated = isChecked
+                                              ? newProject.subcategories.filter(s => s !== sub)
+                                              : [...newProject.subcategories, sub];
+                                            setNewProject(prev => ({
+                                              ...prev,
+                                              subcategories: updated
+                                            }));
+                                          }}
+                                          style={{ width: '13px', height: '13px', borderRadius: '3px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sub}>{sub}</span>
+                                      </label>
+                                    );
+                                  })}
+                                  {/* Others option */}
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer', margin: 0 }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={newShowCustomInput[type] || false}
+                                      onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setNewShowCustomInput(prev => ({ ...prev, [type]: checked }));
+                                        if (!checked) {
+                                          const currentCustomVal = newCustomSubs[type];
+                                          if (currentCustomVal) {
+                                            setNewProject(prev => ({
+                                              ...prev,
+                                              subcategories: prev.subcategories.filter(s => s !== currentCustomVal.trim())
+                                            }));
+                                          }
+                                        } else {
+                                          const currentCustomVal = newCustomSubs[type];
+                                          if (currentCustomVal && currentCustomVal.trim()) {
+                                            setNewProject(prev => ({
+                                              ...prev,
+                                              subcategories: [...prev.subcategories, currentCustomVal.trim()]
+                                            }));
+                                          }
+                                        }
+                                      }}
+                                      style={{ width: '13px', height: '13px', borderRadius: '3px', cursor: 'pointer' }}
+                                    />
+                                    <span style={{ userSelect: 'none' }}>Others</span>
+                                  </label>
+                                </div>
+                                {newShowCustomInput[type] && (
+                                  <input
+                                    type="text"
+                                    placeholder="Specify other subcategory..."
+                                    className="form-input"
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', marginTop: '0.5rem', height: 'auto' }}
+                                    value={newCustomSubs[type] || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const oldVal = newCustomSubs[type];
+                                      setNewCustomSubs(prev => ({ ...prev, [type]: val }));
+                                      
+                                      setNewProject(prev => {
+                                        let updated = prev.subcategories.filter(s => s !== oldVal.trim());
+                                        if (val.trim()) {
+                                          updated = [...updated, val.trim()];
+                                        }
+                                        return { ...prev, subcategories: updated };
+                                      });
+                                    }}
+                                  />
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -853,11 +989,14 @@ export default function ProjectsPage() {
                   </div>
 
                   {/* Pricing Section */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-                    <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block', fontWeight: 600 }}>Pricing (₹)</label>
+                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                      <label className="form-label" style={{ marginBottom: 0, fontWeight: 600 }}>Pricing (₹)</label>
+                    </div>
+                    
                     <div className="form-row" style={{ gap: '0.75rem' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Quote Price</label>
+                        <label className="form-label" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Quote Price (₹)</label>
                         <input
                           type="number"
                           name="quotePrice"
@@ -868,15 +1007,94 @@ export default function ProjectsPage() {
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Final Price</label>
+                        <label className="form-label" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Final Price (₹) <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)' }}>(Auto-calculated)</span></label>
                         <input
                           type="number"
                           name="finalPrice"
                           className="form-input"
-                          placeholder="e.g., 50000"
-                          value={newProject.finalPrice}
-                          onChange={handleInputChange}
+                          style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', color: 'var(--text-muted)' }}
+                          disabled
+                          value={
+                            (parseFloat(newProject.hostingPrice) || 0) +
+                            (parseFloat(newProject.domainPrice) || 0) +
+                            (parseFloat(newProject.devPrice) || 0) +
+                            (parseFloat(newProject.marketingPrice) || 0) +
+                            (parseFloat(newProject.adsPrice) || 0) +
+                            (parseFloat(newProject.designPrice) || 0)
+                          }
                         />
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                      <label className="form-label" style={{ display: 'block', fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Final Price Breakdown</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hosting Cost</label>
+                          <input
+                            type="number"
+                            name="hostingPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.hostingPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Domain Cost</label>
+                          <input
+                            type="number"
+                            name="domainPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.domainPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Development Cost</label>
+                          <input
+                            type="number"
+                            name="devPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.devPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>360 Deg Marketing Cost</label>
+                          <input
+                            type="number"
+                            name="marketingPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.marketingPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Meta/Google Ads Cost</label>
+                          <input
+                            type="number"
+                            name="adsPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.adsPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Design Cost</label>
+                          <input
+                            type="number"
+                            name="designPrice"
+                            className="form-input"
+                            placeholder="0"
+                            value={newProject.designPrice}
+                            onChange={handleInputChange}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -905,12 +1123,13 @@ export default function ProjectsPage() {
                   {/* Category-Specific Dates Section */}
                   {((newProject.projectType.includes('Development')) || 
                     (newProject.projectType.includes('360 Deg Digital Marketing')) || 
-                    (newProject.projectType.includes('Meta / Google Ads'))) && (
+                    (newProject.projectType.includes('Meta / Google Ads')) ||
+                    (newProject.projectType.includes('Design'))) && (
                     <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
                       <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block', fontWeight: 600, color: 'var(--accent-primary)' }}>Category Timelines</label>
                       
                       {newProject.projectType.includes('Development') && (
-                        <div style={{ marginBottom: '1rem', borderBottom: (newProject.projectType.includes('360 Deg Digital Marketing') || newProject.projectType.includes('Meta / Google Ads')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (newProject.projectType.includes('360 Deg Digital Marketing') || newProject.projectType.includes('Meta / Google Ads')) ? '1rem' : '0' }}>
+                        <div style={{ marginBottom: '1rem', borderBottom: (newProject.projectType.includes('360 Deg Digital Marketing') || newProject.projectType.includes('Meta / Google Ads') || newProject.projectType.includes('Design')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (newProject.projectType.includes('360 Deg Digital Marketing') || newProject.projectType.includes('Meta / Google Ads') || newProject.projectType.includes('Design')) ? '1rem' : '0' }}>
                           <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Development Timeline</span>
                           <div className="form-row" style={{ gap: '0.75rem' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -953,7 +1172,7 @@ export default function ProjectsPage() {
                       )}
 
                       {newProject.projectType.includes('360 Deg Digital Marketing') && (
-                        <div style={{ marginBottom: newProject.projectType.includes('Meta / Google Ads') ? '1rem' : '0', borderBottom: newProject.projectType.includes('Meta / Google Ads') ? '1px dashed var(--border-color)' : 'none', paddingBottom: newProject.projectType.includes('Meta / Google Ads') ? '1rem' : '0' }}>
+                        <div style={{ marginBottom: (newProject.projectType.includes('Meta / Google Ads') || newProject.projectType.includes('Design')) ? '1rem' : '0', borderBottom: (newProject.projectType.includes('Meta / Google Ads') || newProject.projectType.includes('Design')) ? '1px dashed var(--border-color)' : 'none', paddingBottom: (newProject.projectType.includes('Meta / Google Ads') || newProject.projectType.includes('Design')) ? '1rem' : '0' }}>
                           <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>360° Digital Marketing Timeline</span>
                           <div className="form-row" style={{ gap: '0.75rem' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -996,7 +1215,7 @@ export default function ProjectsPage() {
                       )}
 
                       {newProject.projectType.includes('Meta / Google Ads') && (
-                        <div style={{ marginTop: '0.5rem' }}>
+                        <div style={{ marginBottom: newProject.projectType.includes('Design') ? '1rem' : '0', borderBottom: newProject.projectType.includes('Design') ? '1px dashed var(--border-color)' : 'none', paddingBottom: newProject.projectType.includes('Design') ? '1rem' : '0' }}>
                           <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Google / Meta Ads Timeline</span>
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label className="form-label" style={{ fontSize: '0.75rem' }}>Campaign Date</label>
@@ -1014,6 +1233,49 @@ export default function ProjectsPage() {
                               name="adsStatus"
                               className="form-select"
                               value={newProject.adsStatus}
+                              onChange={handleInputChange}
+                            >
+                              <option value="Planning">Planning</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Under Review">Under Review</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Pending">Pending</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      {newProject.projectType.includes('Design') && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Design Timeline</span>
+                          <div className="form-row" style={{ gap: '0.75rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem' }}>Start Date</label>
+                              <input 
+                                type="date" 
+                                name="designStartDate"
+                                className="form-input"
+                                value={newProject.designStartDate}
+                                onChange={handleInputChange}
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem' }}>End Date (Target)</label>
+                              <input 
+                                type="date" 
+                                name="designEndDate"
+                                className="form-input"
+                                value={newProject.designEndDate}
+                                onChange={handleInputChange}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Design Status</label>
+                            <select 
+                              name="designStatus"
+                              className="form-select"
+                              value={newProject.designStatus}
                               onChange={handleInputChange}
                             >
                               <option value="Planning">Planning</option>

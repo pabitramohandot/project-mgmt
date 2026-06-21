@@ -58,6 +58,16 @@ export async function GET(request) {
       { $set: { adsStatus: 'Pending', status: 'Pending' } }
     ).catch(err => console.error('Error auto-updating adsStatus in GET:', err));
 
+    Project.updateMany(
+      {
+        companyId,
+        projectType: 'Design',
+        designEndDate: { $lt: now },
+        designStatus: { $nin: ['Completed', 'Pending'] }
+      },
+      { $set: { designStatus: 'Pending', status: 'Pending' } }
+    ).catch(err => console.error('Error auto-updating designStatus in GET:', err));
+
     const projects = await Project.find(query).populate('client').sort({ createdAt: -1 }).lean();
     
     // Map status dynamically checking for any overdue project categories

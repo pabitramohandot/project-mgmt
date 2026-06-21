@@ -11,7 +11,8 @@ import {
   Briefcase, 
   ArrowRight,
   Filter,
-  Globe
+  Globe,
+  Calendar
 } from 'lucide-react';
 
 export default function PendingTasksPage() {
@@ -43,6 +44,7 @@ export default function PendingTasksPage() {
     if (filter === 'hosting_expiry') return task.type === 'hosting_expiry';
     if (filter === 'domain_expiry') return task.type === 'domain_expiry';
     if (filter === 'project_pending') return task.type === 'project_pending';
+    if (filter === 'calendar_pending') return task.type === 'calendar_pending';
     return true;
   });
 
@@ -75,6 +77,13 @@ export default function PendingTasksPage() {
           color: '#3b82f6',
           bgLight: 'rgba(59, 130, 246, 0.1)',
           badgeText: 'INVOICE DRAFT'
+        };
+      case 'calendar_pending':
+        return {
+          icon: Calendar,
+          color: '#06b6d4',
+          bgLight: 'rgba(6, 182, 212, 0.1)',
+          badgeText: 'POST PENDING'
         };
       default:
         return {
@@ -132,6 +141,13 @@ export default function PendingTasksPage() {
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
             Overdue Projects ({tasks.filter(t => t.type === 'project_pending').length})
+          </button>
+          <button 
+            onClick={() => setFilter('calendar_pending')} 
+            className={`btn ${filter === 'calendar_pending' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            Pending Posts ({tasks.filter(t => t.type === 'calendar_pending').length})
           </button>
         </div>
 
