@@ -32,16 +32,15 @@ export default function Dashboard() {
   const [companyName, setCompanyName] = useState('Workspace');
   const [username, setUsername] = useState('User');
   const [userRole, setUserRole] = useState('');
-  const [showPrices, setShowPrices] = useState(true);
+  const [showPrices, setShowPrices] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('show_prices');
+      return saved !== null ? saved === 'true' : true;
+    }
+    return true;
+  });
   const [activeBar, setActiveBar] = useState(null);
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('show_prices');
-    if (saved !== null) {
-      setShowPrices(saved === 'true');
-    }
-  }, []);
 
   const toggleShowPrices = (e) => {
     if (e) {
@@ -411,7 +410,7 @@ export default function Dashboard() {
                       y={barY}
                       width={barWidth}
                       height={barHeight}
-                      fill={isHighlighted ? 'url(#diagonalStripes)' : 'var(--accent-primary)'}
+                      fill="var(--accent-primary)"
                       rx={6}
                       style={{
                         transition: 'height 0.3s ease, y 0.3s ease, opacity 0.2s',
@@ -927,8 +926,8 @@ export default function Dashboard() {
           color: var(--text-muted);
         }
         .dashboard-ai-banner {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(6, 182, 212, 0.04) 100%);
-          border: 1px solid rgba(139, 92, 246, 0.15);
+          background: var(--accent-primary-glow);
+          border: 1px solid var(--border-color-hover);
           border-radius: 16px;
           padding: 1.25rem 1.5rem;
           display: flex;
@@ -936,7 +935,7 @@ export default function Dashboard() {
           align-items: center;
           flex-wrap: wrap;
           gap: 1.25rem;
-          box-shadow: 0 10px 30px rgba(139, 92, 246, 0.03);
+          box-shadow: 0 10px 30px var(--accent-primary-glow);
         }
         .ai-banner-content {
           display: flex;
@@ -948,7 +947,7 @@ export default function Dashboard() {
           width: 40px;
           height: 40px;
           border-radius: 12px;
-          background: rgba(139, 92, 246, 0.1);
+          background: var(--accent-primary-glow);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -967,9 +966,9 @@ export default function Dashboard() {
           line-height: 1.45;
         }
         .ai-banner-btn {
-          background: linear-gradient(135deg, #ef4444 0%, #7c3aed 100%);
+          background: var(--accent-primary);
           border: none;
-          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+          box-shadow: 0 4px 15px var(--accent-primary-glow);
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;

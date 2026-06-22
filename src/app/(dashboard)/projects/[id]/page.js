@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -218,7 +218,7 @@ export default function ProjectDetailPage() {
   const [copiedKey, setCopiedKey] = useState(null);
   const [fourDaysThreshold] = useState(() => new Date(Date.now() + 4 * 24 * 60 * 60 * 1000));
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       const res = await fetch('/api/clients');
       if (res.ok) {
@@ -228,7 +228,7 @@ export default function ProjectDetailPage() {
     } catch (e) {
       console.error("Failed to load clients", e);
     }
-  };
+  }, []);
 
   const handleCreateInlineClient = async () => {
     if (!inlineClient.name || !inlineClient.email) {
@@ -261,16 +261,27 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const fetchProjectData = async () => {
+  const fetchProjectData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/projects/${id}`);
-      if (!res.ok) throw new Error('Project not found');
-      const data = await res.json();
-      setProject(data.project);
-      setInvoices(data.invoices);
+      const [projectRes, clientsRes] = await Promise.all([
+        fetch(`/api/projects/${id}`),
+        fetch('/api/clients')
+      ]);
+
+      if (!projectRes.ok) throw new Error('Project not found');
+      const projectData = await projectRes.json();
+      
+      let clientsData = [];
+      if (clientsRes.ok) {
+        clientsData = await clientsRes.json();
+        setClients(clientsData);
+      }
+
+      setProject(projectData.project);
+      setInvoices(projectData.invoices);
       
       // Initialize edit form
-      const customValues = (data.project.subcategories || []).filter(sub => !predefinedSubs.includes(sub));
+      const customValues = (projectData.project.subcategories || []).filter(sub => !predefinedSubs.includes(sub));
 
       const loadedCustomSubs = {
         'Development': '',
@@ -285,9 +296,9 @@ export default function ProjectDetailPage() {
         'Design': false
       };
 
-      const activeTypes = Array.isArray(data.project.projectType)
-        ? data.project.projectType
-        : (data.project.projectType ? [data.project.projectType] : []);
+      const activeTypes = Array.isArray(projectData.project.projectType)
+        ? projectData.project.projectType
+        : (projectData.project.projectType ? [projectData.project.projectType] : []);
       
       let customIdx = 0;
       activeTypes.forEach(type => {
@@ -301,49 +312,59 @@ export default function ProjectDetailPage() {
       setEditCustomSubs(loadedCustomSubs);
       setEditShowCustomInput(loadedShowCustomInput);
 
+      let matchedClientId = projectData.project.client ?? '';
+      if (!matchedClientId && projectData.project.clientName && clientsData.length > 0) {
+        const matchingClient = clientsData.find(
+          c => c.name.toLowerCase() === projectData.project.clientName.toLowerCase()
+        );
+        if (matchingClient) {
+          matchedClientId = matchingClient._id;
+        }
+      }
+
       setEditForm({
-        name: data.project.name,
-        description: data.project.description ?? '',
-        clientName: data.project.clientName,
-        clientEmail: data.project.clientEmail ?? '',
-        client: data.project.client ?? '',
-        quotePrice: data.project.quotePrice ?? '',
-        finalPrice: data.project.finalPrice ?? '',
-        hostingPrice: data.project.hostingPrice ?? '',
-        domainPrice: data.project.domainPrice ?? '',
-        devPrice: data.project.devPrice ?? '',
-        marketingPrice: data.project.marketingPrice ?? '',
-        adsPrice: data.project.adsPrice ?? '',
-        designPrice: data.project.designPrice ?? '',
-        budget: data.project.budget ?? 0,
-        status: data.project.status,
-        devStatus: data.project.devStatus ?? 'Planning',
-        marketingStatus: data.project.marketingStatus ?? 'Planning',
-        adsStatus: data.project.adsStatus ?? 'Planning',
-        designStatus: data.project.designStatus ?? 'Planning',
-        startDate: data.project.startDate ? new Date(data.project.startDate).toISOString().substring(0, 10) : '',
-        endDate: data.project.endDate ? new Date(data.project.endDate).toISOString().substring(0, 10) : '',
-        devStartDate: data.project.devStartDate ? new Date(data.project.devStartDate).toISOString().substring(0, 10) : '',
-        devEndDate: data.project.devEndDate ? new Date(data.project.devEndDate).toISOString().substring(0, 10) : '',
-        marketingStartDate: data.project.marketingStartDate ? new Date(data.project.marketingStartDate).toISOString().substring(0, 10) : '',
-        marketingEndDate: data.project.marketingEndDate ? new Date(data.project.marketingEndDate).toISOString().substring(0, 10) : '',
-        adsDate: data.project.adsDate ? new Date(data.project.adsDate).toISOString().substring(0, 10) : '',
-        designStartDate: data.project.designStartDate ? new Date(data.project.designStartDate).toISOString().substring(0, 10) : '',
-        designEndDate: data.project.designEndDate ? new Date(data.project.designEndDate).toISOString().substring(0, 10) : '',
-        hostingExpiry: data.project.hostingExpiry ? new Date(data.project.hostingExpiry).toISOString().substring(0, 10) : '',
-        domainExpiry: data.project.domainExpiry ? new Date(data.project.domainExpiry).toISOString().substring(0, 10) : '',
-        credentials: data.project.credentials ?? [],
-        quotation: data.project.quotation ?? null,
+        name: projectData.project.name,
+        description: projectData.project.description ?? '',
+        clientName: projectData.project.clientName,
+        clientEmail: projectData.project.clientEmail ?? '',
+        client: matchedClientId,
+        quotePrice: projectData.project.quotePrice ?? '',
+        finalPrice: projectData.project.finalPrice ?? '',
+        hostingPrice: projectData.project.hostingPrice ?? '',
+        domainPrice: projectData.project.domainPrice ?? '',
+        devPrice: projectData.project.devPrice ?? '',
+        marketingPrice: projectData.project.marketingPrice ?? '',
+        adsPrice: projectData.project.adsPrice ?? '',
+        designPrice: projectData.project.designPrice ?? '',
+        budget: projectData.project.budget ?? 0,
+        status: projectData.project.status,
+        devStatus: projectData.project.devStatus ?? 'Planning',
+        marketingStatus: projectData.project.marketingStatus ?? 'Planning',
+        adsStatus: projectData.project.adsStatus ?? 'Planning',
+        designStatus: projectData.project.designStatus ?? 'Planning',
+        startDate: projectData.project.startDate ? new Date(projectData.project.startDate).toISOString().substring(0, 10) : '',
+        endDate: projectData.project.endDate ? new Date(projectData.project.endDate).toISOString().substring(0, 10) : '',
+        devStartDate: projectData.project.devStartDate ? new Date(projectData.project.devStartDate).toISOString().substring(0, 10) : '',
+        devEndDate: projectData.project.devEndDate ? new Date(projectData.project.devEndDate).toISOString().substring(0, 10) : '',
+        marketingStartDate: projectData.project.marketingStartDate ? new Date(projectData.project.marketingStartDate).toISOString().substring(0, 10) : '',
+        marketingEndDate: projectData.project.marketingEndDate ? new Date(projectData.project.marketingEndDate).toISOString().substring(0, 10) : '',
+        adsDate: projectData.project.adsDate ? new Date(projectData.project.adsDate).toISOString().substring(0, 10) : '',
+        designStartDate: projectData.project.designStartDate ? new Date(projectData.project.designStartDate).toISOString().substring(0, 10) : '',
+        designEndDate: projectData.project.designEndDate ? new Date(projectData.project.designEndDate).toISOString().substring(0, 10) : '',
+        hostingExpiry: projectData.project.hostingExpiry ? new Date(projectData.project.hostingExpiry).toISOString().substring(0, 10) : '',
+        domainExpiry: projectData.project.domainExpiry ? new Date(projectData.project.domainExpiry).toISOString().substring(0, 10) : '',
+        credentials: projectData.project.credentials ?? [],
+        quotation: projectData.project.quotation ?? null,
         projectType: activeTypes,
-        subcategories: data.project.subcategories ?? [],
-        contentCalendar: data.project.contentCalendar ?? []
+        subcategories: projectData.project.subcategories ?? [],
+        contentCalendar: projectData.project.contentCalendar ?? []
       });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleAddCredential = () => {
     setEditForm(prev => ({
@@ -454,36 +475,40 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleDeleteCredentialDirect = async (index) => {
-    const confirmDelete = await showConfirm("Are you sure you want to delete this credential?");
-    if (!confirmDelete) return;
-    
-    try {
-      setUpdating(true);
-      const updatedCredentials = (project.credentials || []).filter((_, i) => i !== index);
-      
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credentials: updatedCredentials })
-      });
-      
-      if (!res.ok) throw new Error('Failed to delete credential');
-      
-      const updatedProject = await res.json();
-      setProject(updatedProject);
-      
-      setEditForm(prev => ({
-        ...prev,
-        credentials: updatedProject.credentials || []
-      }));
-      
-      showToast('Credential deleted successfully', 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setUpdating(false);
-    }
+  const handleDeleteCredentialDirect = (index) => {
+    showConfirm({
+      title: 'Delete Credential',
+      message: 'Are you sure you want to delete this credential?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setUpdating(true);
+          const updatedCredentials = (project.credentials || []).filter((_, i) => i !== index);
+          
+          const res = await fetch(`/api/projects/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credentials: updatedCredentials })
+          });
+          
+          if (!res.ok) throw new Error('Failed to delete credential');
+          
+          const updatedProject = await res.json();
+          setProject(updatedProject);
+          
+          setEditForm(prev => ({
+            ...prev,
+            credentials: updatedProject.credentials || []
+          }));
+          
+          showToast('Credential deleted successfully', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setUpdating(false);
+        }
+      }
+    });
   };
 
   // Direct Credentials share logic
@@ -638,21 +663,10 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchProjectData();
-      fetchClients();
     }
-  }, [id]);
-
-  useEffect(() => {
-    if (project && clients.length > 0 && !editForm.client) {
-      const matchingClient = clients.find(
-        c => c.name.toLowerCase() === project.clientName?.toLowerCase()
-      );
-      if (matchingClient) {
-        setEditForm(prev => ({ ...prev, client: matchingClient._id }));
-      }
-    }
-  }, [project, clients, editForm.client]);
+  }, [id, fetchProjectData]);
 
   useEffect(() => {
     if (project) {

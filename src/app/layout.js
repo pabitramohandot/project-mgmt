@@ -1,5 +1,6 @@
 import "./globals.css";
 import NotificationProvider from "@/components/NotificationProvider";
+import Script from "next/script";
 
 export const metadata = {
   title: "Workspace Manager",
@@ -10,15 +11,15 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              (function() {
-                try {
-                  const theme = localStorage.getItem('theme') || 'light';
-                  document.documentElement.setAttribute('data-theme', theme);
-                } catch (e) {}
-              })();
+              try {
+                const theme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+              } catch (e) {}
             `
           }}
         />

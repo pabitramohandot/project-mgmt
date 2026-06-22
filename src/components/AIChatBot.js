@@ -664,7 +664,7 @@ export default function AIChatBot() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Brain size={48} style={{ color: '#ef4444', filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))' }} />
+          <Brain size={48} style={{ color: 'var(--accent-primary)', filter: 'drop-shadow(0 0 8px var(--accent-primary-glow))' }} />
         </div>
         <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
           Loading your secure workspace assistant...
@@ -713,7 +713,7 @@ export default function AIChatBot() {
               width: '100%',
               padding: '0.75rem 1rem',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, var(--accent-primary) 0%, #7c3aed 100%)',
+              background: 'var(--accent-primary)',
               color: '#ffffff',
               border: 'none',
               cursor: 'pointer',
@@ -723,7 +723,7 @@ export default function AIChatBot() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)',
+              boxShadow: '0 4px 12px var(--accent-primary-glow)',
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -733,7 +733,7 @@ export default function AIChatBot() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.2)';
+              e.currentTarget.style.boxShadow = '0 4px 12px var(--accent-primary-glow)';
               e.currentTarget.style.filter = 'brightness(1)';
             }}
           >
@@ -938,17 +938,17 @@ export default function AIChatBot() {
             >
               <Menu size={16} />
             </button>
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%)',
+             <div style={{
+              background: 'var(--accent-primary-glow)',
               padding: '0.5rem',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 10px rgba(239, 68, 68, 0.25)',
-              border: '1px solid rgba(239, 68, 68, 0.2)'
+              boxShadow: '0 0 10px var(--accent-primary-glow)',
+              border: '1px solid var(--border-color-hover)'
             }}>
-              <Brain size={20} style={{ color: '#ef4444', filter: 'drop-shadow(0 0 3px rgba(239, 68, 68, 0.45))' }} />
+              <Brain size={20} style={{ color: 'var(--accent-primary)', filter: 'drop-shadow(0 0 3px var(--accent-primary-glow))' }} />
             </div>
             <div>
               <h4 style={{ fontWeight: 700, margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Workspace Assistant</h4>
@@ -1065,12 +1065,12 @@ export default function AIChatBot() {
                       style={{
                         padding: '0.85rem 1.25rem',
                         borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                        background: isUser ? 'linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%)' : 'var(--bg-secondary)',
+                        background: isUser ? 'var(--accent-primary)' : 'var(--bg-secondary)',
                         border: isUser ? 'none' : '1px solid var(--border-color)',
                         color: isUser ? '#ffffff' : 'var(--text-primary)',
                         fontSize: '0.875rem',
                         lineHeight: '1.5',
-                        boxShadow: isUser ? '0 4px 12px rgba(0, 174, 239, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
+                        boxShadow: isUser ? '0 4px 12px var(--accent-primary-glow)' : '0 4px 15px rgba(0, 0, 0, 0.04)'
                       }}
                       dangerouslySetInnerHTML={{ __html: isUser ? msg.text : formatMarkdown(msg.text) }}
                     />
