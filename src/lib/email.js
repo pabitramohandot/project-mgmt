@@ -103,52 +103,79 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
       <head>
         <meta charset="utf-8">
         <title>Invoice ${invoice.invoiceNumber} from ${companyName}</title>
+        <meta name="color-scheme" content="light">
+        <meta name="supported-color-schemes" content="light">
+        <style>
+          :root {
+            color-scheme: light;
+            supported-color-schemes: light;
+          }
+          body {
+            background-color: #f9fafb !important;
+            color: #1f2937 !important;
+          }
+          .container {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+          }
+          td, th {
+            color: #374151 !important;
+          }
+          h1, h2, h3, h4, strong {
+            color: #111827 !important;
+          }
+        </style>
       </head>
-      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 20px; margin: 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
-          <!-- Header -->
-          <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; text-align: center;">
-              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px; display: inline-block;" />` : ''}
-              <span style="display: inline-block; vertical-align: middle;">${companyName}</span>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; color: #1f2937; padding: 30px 20px; margin: 0; -webkit-font-smoothing: antialiased;">
+        <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+          
+          <!-- Logo & Header -->
+          <div style="text-align: center; padding: 40px 40px 30px 40px; border-bottom: 1px solid #f1f5f9; background-color: #ffffff;">
+            ${companyLogo ? `
+              <div style="margin-bottom: 16px; text-align: center;">
+                <img src="${companyLogo}" alt="${companyName}" style="height: 56px; max-height: 70px; max-width: 220px; object-fit: contain; display: inline-block;" />
+              </div>
+            ` : ''}
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.025em;">
+              ${companyName}
             </h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">${companyTagline}</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280; font-weight: 500;">${companyTagline}</p>
           </div>
           
           <!-- Content -->
-          <div style="padding: 30px;">
-            <h2 style="margin-top: 0; color: #0f172a; font-size: 20px;">Hello ${invoice.clientName},</h2>
-            ${(invoice.clientCompany || (invoice.client && invoice.client.company)) ? `<p style="margin-top: -10px; margin-bottom: 15px; color: #475569; font-size: 14px; font-weight: 600;">${invoice.clientCompany || invoice.client.company}</p>` : ''}
-            <p style="line-height: 1.6; color: #475569; font-size: 15px;">
+          <div style="padding: 40px; background-color: #ffffff;">
+            <h2 style="margin-top: 0; color: #111827; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Hello ${invoice.clientName},</h2>
+            ${(invoice.clientCompany || (invoice.client && invoice.client.company)) ? `<p style="margin-top: -12px; margin-bottom: 20px; color: #6b7280; font-size: 14px; font-weight: 600;">${invoice.clientCompany || invoice.client.company}</p>` : ''}
+            <p style="line-height: 1.6; color: #374151; font-size: 15px; margin-bottom: 24px;">
               Please find your invoice for the project <strong>${project ? project.name : 'Development Services'}</strong> detailed below.
             </p>
             
-            <!-- Invoice Details -->
-            <div style="background-color: #f8fafc; border-radius: 10px; padding: 15px; margin: 20px 0; border: 1px solid #e2e8f0; font-size: 14px;">
+            <!-- Invoice Details Card -->
+            <div style="background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #f3f4f6; font-size: 14px; color: #374151;">
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                  <td style="color: #64748b; padding: 5px 0;">Invoice Number:</td>
-                  <td style="text-align: right; font-weight: bold; color: #0f172a;">${invoice.invoiceNumber}</td>
+                  <td style="color: #6b7280; padding: 6px 0;">Invoice Number</td>
+                  <td style="text-align: right; font-weight: 700; color: #111827;">${invoice.invoiceNumber}</td>
                 </tr>
                 <tr>
-                  <td style="color: #64748b; padding: 5px 0;">Date Issued:</td>
-                  <td style="text-align: right; color: #0f172a;">${new Date(invoice.issueDate).toLocaleDateString('en-IN')}</td>
+                  <td style="color: #6b7280; padding: 6px 0;">Date Issued</td>
+                  <td style="text-align: right; color: #111827;">${new Date(invoice.issueDate).toLocaleDateString('en-IN')}</td>
                 </tr>
                 <tr>
-                  <td style="color: #64748b; padding: 5px 0;">Due Date:</td>
-                  <td style="text-align: right; color: #0f172a; font-weight: 600;">${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : 'Upon Receipt'}</td>
+                  <td style="color: #6b7280; padding: 6px 0;">Due Date</td>
+                  <td style="text-align: right; color: #111827; font-weight: 600;">${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : 'Upon Receipt'}</td>
                 </tr>
               </table>
             </div>
 
             <!-- Items Table -->
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px;">
               <thead>
-                <tr style="background-color: #f1f5f9;">
-                  <th style="padding: 10px; text-align: left; color: #475569; border-bottom: 2px solid #cbd5e1;">Description</th>
-                  <th style="padding: 10px; text-align: center; color: #475569; border-bottom: 2px solid #cbd5e1; width: 50px;">Qty</th>
-                  <th style="padding: 10px; text-align: right; color: #475569; border-bottom: 2px solid #cbd5e1; width: 100px;">Rate</th>
-                  <th style="padding: 10px; text-align: right; color: #475569; border-bottom: 2px solid #cbd5e1; width: 100px;">Amount</th>
+                <tr style="background-color: #f9fafb;">
+                  <th style="padding: 12px 10px; text-align: left; color: #4b5563; border-bottom: 2px solid #e5e7eb; font-weight: 600;">Description</th>
+                  <th style="padding: 12px 10px; text-align: center; color: #4b5563; border-bottom: 2px solid #e5e7eb; width: 50px; font-weight: 600;">Qty</th>
+                  <th style="padding: 12px 10px; text-align: right; color: #4b5563; border-bottom: 2px solid #e5e7eb; width: 100px; font-weight: 600;">Rate</th>
+                  <th style="padding: 12px 10px; text-align: right; color: #4b5563; border-bottom: 2px solid #e5e7eb; width: 100px; font-weight: 600;">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,44 +184,42 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
             </table>
 
             <!-- Totals -->
-            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-              <table style="width: 250px; border-collapse: collapse; font-size: 14px; color: #475569;">
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+              <table style="width: 250px; border-collapse: collapse; font-size: 14px; color: #4b5563; line-height: 1.6;">
                 <tr>
-                  <td style="padding: 5px 0;">Subtotal:</td>
-                  <td style="text-align: right; color: #0f172a;">₹${invoice.subtotal.toLocaleString('en-IN')}</td>
+                  <td style="padding: 6px 0; color: #6b7280;">Subtotal</td>
+                  <td style="text-align: right; color: #111827;">₹${invoice.subtotal.toLocaleString('en-IN')}</td>
                 </tr>
                 ${taxAmount > 0 ? `
                   <tr>
-                    <td style="padding: 5px 0;">Tax (${invoice.taxRate}%):</td>
+                    <td style="padding: 6px 0; color: #6b7280;">Tax (${invoice.taxRate}%)</td>
                     <td style="text-align: right; color: #ef4444;">+₹${taxAmount.toLocaleString('en-IN')}</td>
                   </tr>
                 ` : ''}
                 ${discountAmount > 0 ? `
                   <tr>
-                    <td style="padding: 5px 0;">Discount (${invoice.discountRate}%):</td>
+                    <td style="padding: 6px 0; color: #6b7280;">Discount (${invoice.discountRate}%)</td>
                     <td style="text-align: right; color: #10b981;">-₹${discountAmount.toLocaleString('en-IN')}</td>
                   </tr>
                 ` : ''}
-                <tr style="border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: bold; color: #0f172a;">
-                  <td style="padding: 10px 0 0 0;">Total Due:</td>
-                  <td style="text-align: right; padding: 10px 0 0 0; color: ${brandColors.primary}; font-weight: 700;">₹${invoice.total.toLocaleString('en-IN')}</td>
+                <tr style="border-top: 2px solid #e5e7eb; font-size: 16px; font-weight: bold; color: #111827;">
+                  <td style="padding: 12px 0 0 0;">Total Due</td>
+                  <td style="text-align: right; padding: 12px 0 0 0; color: ${brandColors.primary}; font-weight: 800; font-size: 18px;">₹${invoice.total.toLocaleString('en-IN')}</td>
                 </tr>
               </table>
             </div>
 
             <!-- Notes -->
             ${invoice.notes ? `
-              <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 13px; color: #64748b;">
-                <h4 style="margin: 0 0 5px 0; color: #475569;">Notes & Payment Terms:</h4>
-                <div style="white-space: pre-wrap;">${invoice.notes}</div>
+              <div style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 20px; font-size: 13px; color: #6b7280; line-height: 1.5;">
+                <h4 style="margin: 0 0 6px 0; color: #374151; font-weight: 600; font-size: 14px;">Notes & Payment Terms:</h4>
+                <div style="white-space: pre-wrap; color: #6b7280;">${invoice.notes}</div>
               </div>
             ` : ''}
-
-
           </div>
           
           <!-- Footer -->
-          <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <div style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
             This is an automated email from the team at ${companyName}.
           </div>
         </div>
@@ -306,26 +331,50 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
       <head>
         <meta charset="utf-8">
         <title>${emailSubject}</title>
+        <meta name="color-scheme" content="light">
+        <meta name="supported-color-schemes" content="light">
+        <style>
+          :root {
+            color-scheme: light;
+            supported-color-schemes: light;
+          }
+          body {
+            background-color: #f9fafb !important;
+            color: #1f2937 !important;
+          }
+          .container {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+          }
+          h1, h2, h3, h4, strong {
+            color: #111827 !important;
+          }
+        </style>
       </head>
-      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #070e16; color: #f8fafc; padding: 20px; margin: 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #0c1520; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);">
-          <!-- Header -->
-          <div style="background: ${brandColors.primary}; padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; text-align: center;">
-              ${companyLogo ? `<img src="${companyLogo}" alt="Logo" style="height: 28px; max-width: 100px; object-fit: contain; vertical-align: middle; margin-right: 8px; display: inline-block;" />` : ''}
-              <span style="display: inline-block; vertical-align: middle;">${companyName} Announcement</span>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; color: #1f2937; padding: 30px 20px; margin: 0; -webkit-font-smoothing: antialiased;">
+        <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+          
+          <!-- Logo & Header -->
+          <div style="text-align: center; padding: 40px 40px 30px 40px; border-bottom: 1px solid #f1f5f9; background-color: #ffffff;">
+            ${companyLogo ? `
+              <div style="margin-bottom: 16px; text-align: center;">
+                <img src="${companyLogo}" alt="${companyName}" style="height: 56px; max-height: 70px; max-width: 220px; object-fit: contain; display: inline-block;" />
+              </div>
+            ` : ''}
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.025em;">
+              ${companyName} Announcement
             </h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">Official Broadcast Update</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280; font-weight: 500;">Official Broadcast Update</p>
           </div>
           
           <!-- Content -->
-          <div style="padding: 30px; line-height: 1.6; color: #94a3b8; font-size: 15px;">
-            <h2 style="margin-top: 0; color: #f8fafc; font-size: 18px;">Hello ${clientName},</h2>
-            <div style="white-space: pre-wrap; margin-top: 15px; color: #cbd5e1;">${personalizedBody}</div>
+          <div style="padding: 40px; line-height: 1.6; color: #374151; font-size: 15px; background-color: #ffffff;">
+            <h2 style="margin-top: 0; color: #111827; font-size: 18px; font-weight: 700;">Hello ${clientName},</h2>
+            <div style="white-space: pre-wrap; margin-top: 16px; color: #374151;">${personalizedBody}</div>
           </div>
           
           <!-- Footer -->
-          <div style="background-color: #03070b; border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; text-align: center; font-size: 12px; color: #64748b;">
+          <div style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
             This email was sent by the management system of ${companyName}.
           </div>
         </div>

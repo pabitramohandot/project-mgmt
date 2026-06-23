@@ -169,6 +169,7 @@ export default function ProjectDetailPage() {
     hostingExpiry: '',
     domainExpiry: '',
     credentials: [],
+    links: [],
     quotation: null,
     projectType: [],
     subcategories: [],
@@ -354,6 +355,7 @@ export default function ProjectDetailPage() {
         hostingExpiry: projectData.project.hostingExpiry ? new Date(projectData.project.hostingExpiry).toISOString().substring(0, 10) : '',
         domainExpiry: projectData.project.domainExpiry ? new Date(projectData.project.domainExpiry).toISOString().substring(0, 10) : '',
         credentials: projectData.project.credentials ?? [],
+        links: projectData.project.links ?? [],
         quotation: projectData.project.quotation ?? null,
         projectType: activeTypes,
         subcategories: projectData.project.subcategories ?? [],
@@ -511,6 +513,111 @@ export default function ProjectDetailPage() {
     });
   };
 
+  // Direct Links modification logic (View Mode actions)
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [editingLinkIndex, setEditingLinkIndex] = useState(null);
+  const [linkForm, setLinkForm] = useState({ name: '', url: '', notes: '' });
+
+  const handleOpenAddLinkModal = () => {
+    setEditingLinkIndex(null);
+    setLinkForm({ name: '', url: '', notes: '' });
+    setLinkModalOpen(true);
+  };
+
+  const handleOpenEditLinkModal = (index, lnk) => {
+    setEditingLinkIndex(index);
+    setLinkForm({
+      name: lnk.name || '',
+      url: lnk.url || '',
+      notes: lnk.notes || ''
+    });
+    setLinkModalOpen(true);
+  };
+
+  const handleSaveLinkDirect = async (e) => {
+    e.preventDefault();
+    if (!linkForm.name || !linkForm.url) {
+      showToast("Name and URL are required", "error");
+      return;
+    }
+    
+    try {
+      setUpdating(true);
+      let updatedLinks = [...(project.links || [])];
+      
+      const newLnk = {
+        name: linkForm.name.trim(),
+        url: linkForm.url.trim(),
+        notes: linkForm.notes.trim()
+      };
+
+      if (editingLinkIndex !== null) {
+        updatedLinks[editingLinkIndex] = newLnk;
+      } else {
+        updatedLinks.push(newLnk);
+      }
+      
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ links: updatedLinks })
+      });
+      
+      if (!res.ok) throw new Error('Failed to update links');
+      
+      const updatedProject = await res.json();
+      setProject(updatedProject);
+      
+      setEditForm(prev => ({
+        ...prev,
+        links: updatedProject.links || []
+      }));
+      
+      showToast(editingLinkIndex !== null ? 'Link updated successfully' : 'Link added successfully', 'success');
+      setLinkModalOpen(false);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteLinkDirect = (index) => {
+    showConfirm({
+      title: 'Delete Link',
+      message: 'Are you sure you want to delete this link?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setUpdating(true);
+          const updatedLinks = (project.links || []).filter((_, i) => i !== index);
+          
+          const res = await fetch(`/api/projects/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links: updatedLinks })
+          });
+          
+          if (!res.ok) throw new Error('Failed to delete link');
+          
+          const updatedProject = await res.json();
+          setProject(updatedProject);
+          
+          setEditForm(prev => ({
+            ...prev,
+            links: updatedProject.links || []
+          }));
+          
+          showToast('Link deleted successfully', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setUpdating(false);
+        }
+      }
+    });
+  };
+
   // Direct Credentials share logic
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedCreds, setSelectedCreds] = useState([]); // indices of credentials
@@ -650,6 +757,167 @@ export default function ProjectDetailPage() {
     const url = `mailto:${email}?subject=${subject}&body=${encodedBody}`;
     
     window.location.href = url;
+  };
+
+  // Direct Links share logic
+  const [linkShareModalOpen, setLinkShareModalOpen] = useState(false);
+  const [selectedLinks, setSelectedLinks] = useState([]); // indices of links
+  const [linkShareRecipientType, setLinkShareRecipientType] = useState('client'); // 'client' | 'employee' | 'custom'
+  const [selectedLinkRecipientId, setSelectedLinkRecipientId] = useState(''); // Client ID or Employee ID
+  const [customLinkPhone, setCustomLinkPhone] = useState('');
+  const [customLinkEmail, setCustomLinkEmail] = useState('');
+
+  const handleOpenLinkShareModal = () => {
+    if (!project || !project.links || project.links.length === 0) return;
+    
+    // Select all indices by default
+    setSelectedLinks(project.links.map((_, i) => i));
+    setLinkShareRecipientType('client');
+    
+    // Pre-select project client if available
+    if (project.client) {
+      setSelectedLinkRecipientId(project.client);
+    } else if (clients && clients.length > 0) {
+      setSelectedLinkRecipientId(clients[0]._id);
+    } else {
+      setSelectedLinkRecipientId('');
+    }
+    
+    setCustomLinkPhone('');
+    setCustomLinkEmail('');
+    setLinkShareModalOpen(true);
+  };
+
+  const handleToggleSelectLink = (index) => {
+    setSelectedLinks(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  const handleToggleSelectAllLinks = () => {
+    if (!project || !project.links) return;
+    if (selectedLinks.length === project.links.length) {
+      setSelectedLinks([]);
+    } else {
+      setSelectedLinks(project.links.map((_, i) => i));
+    }
+  };
+
+  const formatLinksText = () => {
+    if (!project || selectedLinks.length === 0) return '';
+
+    let text = `🔗 *Project Links for ${project.name}*\n\n`;
+    selectedLinks.forEach((idx) => {
+      const lnk = project.links[idx];
+      if (!lnk) return;
+      text += `*${lnk.name}*\n`;
+      if (lnk.url) text += `• Link: ${lnk.url}\n`;
+      if (lnk.notes) text += `• Notes: ${lnk.notes}\n`;
+      text += `\n`;
+    });
+    
+    return text.trim();
+  };
+
+  const formatLinksEmailBody = () => {
+    if (!project || selectedLinks.length === 0) return '';
+
+    let text = `Project Links for ${project.name}\n\n`;
+    selectedLinks.forEach((idx) => {
+      const lnk = project.links[idx];
+      if (!lnk) return;
+      text += `--- ${lnk.name} ---\n`;
+      if (lnk.url) text += `Link: ${lnk.url}\n`;
+      if (lnk.notes) text += `Notes: ${lnk.notes}\n`;
+      text += `\n`;
+    });
+    
+    return text.trim();
+  };
+
+  const getLinkRecipientInfo = () => {
+    let email = '';
+    let phone = '';
+
+    if (linkShareRecipientType === 'client') {
+      const clientObj = clients.find(c => c._id === selectedLinkRecipientId);
+      if (clientObj) {
+        email = clientObj.email || '';
+        phone = clientObj.phone || clientObj.whatsapp || '';
+      } else {
+        email = project.clientEmail || '';
+      }
+    } else if (linkShareRecipientType === 'employee') {
+      const emp = companyUsers.find(u => u.id === selectedLinkRecipientId);
+      if (emp) {
+        email = emp.email || '';
+        phone = emp.whatsapp || emp.phone || '';
+      }
+    } else if (linkShareRecipientType === 'custom') {
+      email = customLinkEmail;
+      phone = customLinkPhone;
+    }
+
+    if (phone) {
+      phone = phone.replace(/[^\d+]/g, '');
+    }
+
+    return { email, phone };
+  };
+
+  const handleShareLinksWhatsApp = () => {
+    const { phone } = getLinkRecipientInfo();
+    const text = formatLinksText();
+    if (!text) {
+      showToast("Please select at least one link to share", "error");
+      return;
+    }
+    
+    const encodedText = encodeURIComponent(text);
+    const url = phone 
+      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}` 
+      : `https://api.whatsapp.com/send?text=${encodedText}`;
+    
+    window.open(url, '_blank');
+  };
+
+  const handleShareLinksEmail = () => {
+    const { email } = getLinkRecipientInfo();
+    const body = formatLinksEmailBody();
+    if (!body) {
+      showToast("Please select at least one link to share", "error");
+      return;
+    }
+
+    const subject = encodeURIComponent(`Links for Project: ${project.name}`);
+    const encodedBody = encodeURIComponent(body);
+    const url = `mailto:${email}?subject=${subject}&body=${encodedBody}`;
+    
+    window.location.href = url;
+  };
+
+  const handleAddLink = () => {
+    setEditForm(prev => ({
+      ...prev,
+      links: [...prev.links, { name: '', url: '', notes: '' }]
+    }));
+  };
+
+  const handleRemoveLink = (index) => {
+    const updated = editForm.links.filter((_, i) => i !== index);
+    setEditForm(prev => ({ ...prev, links: updated }));
+  };
+
+  const handleLinkChange = (index, field, value) => {
+    setEditForm(prev => {
+      const updated = prev.links.map((lnk, i) => {
+        if (i === index) {
+          return { ...lnk, [field]: value };
+        }
+        return lnk;
+      });
+      return { ...prev, links: updated };
+    });
   };
 
   const getExpiryStatus = (dateString) => {
@@ -1718,6 +1986,7 @@ export default function ProjectDetailPage() {
         hostingExpiry: updatedProject.hostingExpiry ? new Date(updatedProject.hostingExpiry).toISOString().substring(0, 10) : '',
         domainExpiry: updatedProject.domainExpiry ? new Date(updatedProject.domainExpiry).toISOString().substring(0, 10) : '',
         credentials: updatedProject.credentials ?? [],
+        links: updatedProject.links ?? [],
         quotation: updatedProject.quotation ?? null,
         projectType: activeTypes,
         subcategories: updatedProject.subcategories ?? [],
@@ -1790,6 +2059,7 @@ export default function ProjectDetailPage() {
   const tabs = [
     { id: 'details', label: 'Project Details' },
     { id: 'credentials', label: 'Project Credential' },
+    { id: 'links', label: 'Project Links' },
     { id: 'pricing', label: 'Pricing' },
     { id: 'invoices', label: 'Invoice' },
     { id: 'status', label: 'Status' },
@@ -1802,6 +2072,9 @@ export default function ProjectDetailPage() {
   const pendingTotal = invoices.filter(inv => inv.status !== 'Paid').reduce((sum, inv) => sum + (inv.total || 0), 0);
   const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
   const billingProgress = totalInvoiced > 0 ? Math.round((paidTotal / totalInvoiced) * 100) : 0;
+  const outstandingTotal = Math.max(0, (project.finalPrice || 0) - totalInvoiced);
+  const paymentProgress = (project.finalPrice || 0) > 0 ? Math.min(100, Math.round((paidTotal / (project.finalPrice || 0)) * 100)) : 0;
+  const projectOutstanding = Math.max(0, (project.finalPrice || 0) - paidTotal);
 
   return (
     <>
@@ -2498,6 +2771,49 @@ export default function ProjectDetailPage() {
                 </div>
               )}
 
+              {/* Tab 2.5: Project Links (Edit Mode) */}
+              {activeTab === 'links' && (
+                <div className="card animate-fade-in">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Project Links</h3>
+                    <button type="button" className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }} onClick={handleAddLink}>
+                      <Plus size={14} style={{ marginRight: '4px' }} /> Add Link
+                    </button>
+                  </div>
+
+                  {(!editForm.links || editForm.links.length === 0) ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', margin: '2rem 0' }}>No links added yet.</p>
+                  ) : (
+                    editForm.links.map((lnk, index) => (
+                      <div key={index} style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)' }}>LINK #{index + 1}</span>
+                          <button type="button" className="btn btn-danger" style={{ padding: '0.25rem', borderRadius: '6px' }} onClick={() => handleRemoveLink(index)}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label className="form-label">Name (e.g. Website, Dev Site)</label>
+                            <input type="text" className="form-input" value={lnk.name || ''} onChange={(e) => handleLinkChange(index, 'name', e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Link (URL)</label>
+                            <input type="text" className="form-input" placeholder="e.g. https://www.example.com" value={lnk.url || ''} onChange={(e) => handleLinkChange(index, 'url', e.target.value)} required />
+                          </div>
+                        </div>
+                        <div className="form-row" style={{ marginTop: '0.5rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Note</label>
+                            <input type="text" className="form-input" value={lnk.notes || ''} onChange={(e) => handleLinkChange(index, 'notes', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {/* Tab 3: Pricing (Edit Mode) */}
               {activeTab === 'pricing' && (
                 <div className="card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2995,11 +3311,125 @@ export default function ProjectDetailPage() {
                 </div>
               )}
 
+              {/* Tab 2.5: Project Links (View Mode) */}
+              {activeTab === 'links' && (
+                <div className="card animate-fade-in">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Project Links</h3>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {project.links && project.links.length > 0 && (
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                          onClick={handleOpenLinkShareModal}
+                        >
+                          <Share2 size={14} />
+                          <span>Share</span>
+                        </button>
+                      )}
+                      {role !== 'company_user' && (
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                          onClick={handleOpenAddLinkModal}
+                        >
+                          <Plus size={14} />
+                          <span>Add Link</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {(!project.links || project.links.length === 0) ? (
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1rem' }}>No links stored yet.</span>
+                      {role !== 'company_user' && (
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+                          onClick={handleOpenAddLinkModal}
+                        >
+                          + Add First Link
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }} className="responsive-grid">
+                      {project.links.map((lnk, index) => {
+                        return (
+                          <div key={index} style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                {lnk.name}
+                              </span>
+                              {role !== 'company_user' && (
+                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.2rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    onClick={() => handleOpenEditLinkModal(index, lnk)}
+                                    title="Edit Link"
+                                  >
+                                    <Edit size={11} />
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.2rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', color: '#f43f5e', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} 
+                                    onClick={() => handleDeleteLinkDirect(index)}
+                                    title="Delete Link"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                              <div>
+                                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>Link (URL)</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <a 
+                                    href={lnk.url.startsWith('http') ? lnk.url : `https://${lnk.url}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    style={{ color: 'var(--accent-primary)', textDecoration: 'underline', fontWeight: 500, wordBreak: 'break-all' }}
+                                  >
+                                    {lnk.url}
+                                  </a>
+                                  <button 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.15rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem' }} 
+                                    onClick={() => handleCopy(lnk.url, `lnk_url_${index}`)}
+                                  >
+                                    {copiedKey === `lnk_url_${index}` ? <Check size={10} style={{ color: '#10b981' }} /> : <Copy size={10} />}
+                                  </button>
+                                </div>
+                              </div>
+ 
+                              {lnk.notes && (
+                                <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>Note</span>
+                                  <span style={{ color: 'var(--text-secondary)', display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{lnk.notes}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Tab 3: Pricing (View Mode) */}
               {activeTab === 'pricing' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {/* Summary Pricing Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem' }} className="responsive-grid">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: '1rem' }} className="responsive-grid">
                     <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-secondary)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Quote Price</span>
                       <strong style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{formatCurrency(project.quotePrice || 0)}</strong>
@@ -3007,6 +3437,10 @@ export default function ProjectDetailPage() {
                     <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #ec4899', background: 'rgba(236, 72, 153, 0.02)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Final Price (Grand Total)</span>
                       <strong style={{ fontSize: '1.5rem', color: '#ec4899' }}>{formatCurrency(project.finalPrice || 0)}</strong>
+                    </div>
+                    <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #ef4444', background: 'rgba(239, 68, 68, 0.02)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600 }}>Outstanding Amount</span>
+                      <strong style={{ fontSize: '1.5rem', color: '#ef4444' }}>{formatCurrency(outstandingTotal)}</strong>
                     </div>
                   </div>
 
@@ -3044,18 +3478,18 @@ export default function ProjectDetailPage() {
                   {/* Payment Progress and Statement stats */}
                   <div className="card responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
                     <div>
-                      <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 600 }}>Billing Progress Summary</h3>
+                      <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 600 }}>Project Payment Progress Summary</h3>
                       <div style={{ background: 'rgba(255, 255, 255, 0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                          <span>Invoiced Amount Billed</span>
-                          <strong>{billingProgress}% Paid</strong>
+                          <span>Project Payment Progress</span>
+                          <strong>{paymentProgress}% Paid</strong>
                         </div>
                         <div style={{ height: '8px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '9999px', overflow: 'hidden', marginBottom: '0.75rem' }}>
-                          <div style={{ width: `${billingProgress}%`, height: '100%', background: '#10b981', borderRadius: '9999px', transition: 'width 0.3s ease' }}></div>
+                          <div style={{ width: `${paymentProgress}%`, height: '100%', background: '#10b981', borderRadius: '9999px', transition: 'width 0.3s ease' }}></div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          <span>Total Invoiced: {formatCurrency(totalInvoiced)}</span>
-                          <span>Remaining Balance: {formatCurrency(Math.max(0, totalInvoiced - paidTotal))}</span>
+                          <span>Total Paid: {formatCurrency(paidTotal)}</span>
+                          <span>Outstanding Balance: {formatCurrency(projectOutstanding)}</span>
                         </div>
                       </div>
                     </div>
@@ -3068,6 +3502,10 @@ export default function ProjectDetailPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.65rem 1rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pending Invoices Amount</span>
                         <strong style={{ color: '#f59e0b', fontSize: '0.95rem' }}>{formatCurrency(pendingTotal)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.65rem 1rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Outstanding Amount</span>
+                        <strong style={{ color: '#ef4444', fontSize: '0.95rem' }}>{formatCurrency(outstandingTotal)}</strong>
                       </div>
                     </div>
                   </div>
@@ -4268,6 +4706,302 @@ export default function ProjectDetailPage() {
                   className="btn btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                   onClick={handleShareEmail}
+                >
+                  <Mail size={14} />
+                  <span>Send via Email</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Link Modal */}
+      {linkModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>{editingLinkIndex !== null ? 'Edit Link' : 'Add Link'}</span>
+              </h3>
+              <button onClick={() => setLinkModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLinkDirect}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Name (e.g. Website, Dev Site) *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Website, Dev Site"
+                    value={linkForm.name}
+                    onChange={(e) => setLinkForm({ ...linkForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Link (URL) *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. https://www.example.com"
+                    value={linkForm.url}
+                    onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Note</label>
+                  <textarea
+                    className="form-input"
+                    style={{ minHeight: '70px', resize: 'vertical' }}
+                    placeholder="Any description or extra details..."
+                    value={linkForm.notes}
+                    onChange={(e) => setLinkForm({ ...linkForm, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setLinkModalOpen(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={updating}
+                >
+                  {updating ? 'Saving...' : 'Save Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Share Links Modal */}
+      {linkShareModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', width: '90%', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Share2 size={18} style={{ color: 'var(--accent-primary)' }} />
+                <span>Share Links</span>
+              </h3>
+              <button onClick={() => setLinkShareModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* 1. Selection Header & List */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    SELECT LINKS TO SHARE ({selectedLinks.length})
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleToggleSelectAllLinks} 
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                  >
+                    {selectedLinks.length === (project.links || []).length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                  {(project.links || []).map((lnk, index) => {
+                    const isChecked = selectedLinks.includes(index);
+                    return (
+                      <label 
+                        key={index} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked} 
+                          onChange={() => handleToggleSelectLink(index)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                          {lnk.name}
+                        </span>
+                        {lnk.url && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({lnk.url})</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Recipient Selector */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
+                  RECIPIENT TYPE
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    className={`btn ${linkShareRecipientType === 'client' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setLinkShareRecipientType('client');
+                      if (project.client) {
+                        setSelectedLinkRecipientId(project.client);
+                      } else if (clients && clients.length > 0) {
+                        setSelectedLinkRecipientId(clients[0]._id);
+                      } else {
+                        setSelectedLinkRecipientId('');
+                      }
+                    }}
+                  >
+                    Client
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${linkShareRecipientType === 'employee' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setLinkShareRecipientType('employee');
+                      if (companyUsers && companyUsers.length > 0) {
+                        setSelectedLinkRecipientId(companyUsers[0].id);
+                      } else {
+                        setSelectedLinkRecipientId('');
+                      }
+                    }}
+                  >
+                    Employee
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${linkShareRecipientType === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setLinkShareRecipientType('custom');
+                      setSelectedLinkRecipientId('');
+                    }}
+                  >
+                    Custom contact
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Recipient Fields */}
+              <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
+                {linkShareRecipientType === 'client' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Select Client</label>
+                    <SearchableSelect
+                      options={clients.map(c => ({
+                        value: c._id,
+                        label: c.name,
+                        sublabel: `${c.company ? `${c.company} • ` : ''}${c.email}`,
+                        searchText: `${c.name} ${c.company || ''} ${c.email}`
+                      }))}
+                      placeholder="Search and select client..."
+                      value={selectedLinkRecipientId}
+                      onChange={(clientId) => setSelectedLinkRecipientId(clientId)}
+                    />
+                    {selectedLinkRecipientId && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {(() => {
+                          const client = clients.find(c => c._id === selectedLinkRecipientId);
+                          if (client) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span>📧 Email: {client.email}</span>
+                                <span>📞 WhatsApp/Phone: {client.phone || client.whatsapp || 'N/A'}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {linkShareRecipientType === 'employee' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Select Employee</label>
+                    <SearchableSelect
+                      options={companyUsers.map(u => ({
+                        value: u.id,
+                        label: u.username || u.name,
+                        sublabel: `${u.role || 'Member'} • ${u.email || ''}`,
+                        searchText: `${u.username || u.name || ''} ${u.email || ''} ${u.role || ''}`
+                      }))}
+                      placeholder="Search and select employee..."
+                      value={selectedLinkRecipientId}
+                      onChange={(empId) => setSelectedLinkRecipientId(empId)}
+                    />
+                    {selectedLinkRecipientId && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {(() => {
+                          const emp = companyUsers.find(u => u.id === selectedLinkRecipientId);
+                          if (emp) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span>📧 Email: {emp.email}</span>
+                                <span>📞 WhatsApp/Phone: {emp.whatsapp || emp.phone || 'N/A'}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {linkShareRecipientType === 'custom' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Phone Number / WhatsApp (with country code, e.g. +919876543210)</label>
+                      <input 
+                        type="tel"
+                        className="form-input"
+                        placeholder="e.g. +919876543210"
+                        value={customLinkPhone}
+                        onChange={(e) => setCustomLinkPhone(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Email Address</label>
+                      <input 
+                        type="email"
+                        className="form-input"
+                        placeholder="recipient@example.com"
+                        value={customLinkEmail}
+                        onChange={(e) => setCustomLinkEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setLinkShareModalOpen(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn"
+                  style={{ background: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={handleShareLinksWhatsApp}
+                >
+                  <WhatsAppIcon size={14} />
+                  <span>Send via WhatsApp</span>
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  onClick={handleShareLinksEmail}
                 >
                   <Mail size={14} />
                   <span>Send via Email</span>

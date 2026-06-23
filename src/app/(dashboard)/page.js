@@ -245,25 +245,25 @@ export default function Dashboard() {
       <div className="dashboard-stats-grid">
         {/* Card 1: Active Projects */}
         <div className="dashboard-stat-card-premium">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <div className="stat-card-icon-box blue-theme">
-              <Briefcase size={16} />
+              <Briefcase size={14} />
             </div>
             <span className="stat-card-title">Active Projects</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span className="stat-card-value">{stats.projects.active}</span>
             <span className="stat-card-badge positive">
-              15% <span style={{ fontSize: '0.75rem', marginLeft: '1px' }}>↗</span>
+              15% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
           </div>
         </div>
 
         {/* Card 2: Total Project Value */}
         <div className="dashboard-stat-card-premium">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <div className="stat-card-icon-box teal-theme">
-              <TrendingUp size={16} />
+              <TrendingUp size={14} />
             </div>
             <span className="stat-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               Total Value
@@ -275,16 +275,16 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span className="stat-card-value">{displayPrice(stats.projects.totalBudget)}</span>
             <span className="stat-card-badge positive">
-              8% <span style={{ fontSize: '0.75rem', marginLeft: '1px' }}>↗</span>
+              8% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
           </div>
         </div>
 
         {/* Card 3: Total Earnings */}
         <div className="dashboard-stat-card-premium">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <div className="stat-card-icon-box green-theme">
-              <IndianRupee size={16} />
+              <IndianRupee size={14} />
             </div>
             <span className="stat-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               Total Earnings
@@ -296,16 +296,16 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span className="stat-card-value">{displayPrice(stats.invoices.totalEarnings)}</span>
             <span className="stat-card-badge positive">
-              10% <span style={{ fontSize: '0.75rem', marginLeft: '1px' }}>↗</span>
+              10% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
           </div>
         </div>
 
         {/* Card 4: Outstanding Amount */}
         <div className="dashboard-stat-card-premium">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <div className="stat-card-icon-box orange-theme">
-              <Clock size={16} />
+              <Clock size={14} />
             </div>
             <span className="stat-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               Outstanding Amount
@@ -317,7 +317,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span className="stat-card-value">{displayPrice(stats.invoices.totalPendingAmount)}</span>
             <span className="stat-card-badge negative">
-              4% <span style={{ fontSize: '0.75rem', marginLeft: '1px' }}>↘</span>
+              4% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↘</span>
             </span>
           </div>
         </div>
@@ -326,10 +326,10 @@ export default function Dashboard() {
       {/* Main Content Grid: Chart + Tasks */}
       <div className="dashboard-columns-grid">
         {/* Left Column: Analytics Chart */}
-        <div className="card dashboard-large-card relative" style={{ minHeight: '340px' }}>
+        <div className="card dashboard-large-card relative" style={{ minHeight: '310px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Billing Performance</h3>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Billing Performance</h3>
             </div>
             <button className="btn-filter-dropdown-small">
               <span>Weekly</span>
@@ -337,23 +337,23 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div style={{ margin: '0.5rem 0 1.25rem 0' }}>
+          <div style={{ margin: '0.35rem 0 1rem 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              <span style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                 {displayPrice(stats.invoices.totalEarnings)}
               </span>
-              <span className="stat-card-badge positive" style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                12% <span style={{ fontSize: '0.75rem' }}>↗</span>
+              <span className="stat-card-badge positive" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                12% <span style={{ fontSize: '0.7rem' }}>↗</span>
               </span>
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
               Compared to previous month
             </div>
           </div>
 
-          <div style={{ position: 'relative', width: '100%', height: '220px' }}>
+          <div style={{ position: 'relative', width: '100%', height: '190px' }}>
             {/* SVG Rendered Chart */}
-            <svg width="100%" height="100%" viewBox="0 0 500 220" preserveAspectRatio="none">
+            <svg width="100%" height="100%" viewBox="0 0 500 200" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--accent-primary)" />
@@ -365,21 +365,21 @@ export default function Dashboard() {
                   <rect x="8" width="8" height="16" fill="#00c8ff" />
                 </pattern>
               </defs>
-
+ 
               {/* Grid Lines */}
               <line x1="40" y1="20" x2="480" y2="20" stroke="var(--border-color)" strokeDasharray="3 3" opacity={0.3} />
               <line x1="40" y1="65" x2="480" y2="65" stroke="var(--border-color)" strokeDasharray="3 3" opacity={0.3} />
               <line x1="40" y1="110" x2="480" y2="110" stroke="var(--border-color)" strokeDasharray="3 3" opacity={0.3} />
               <line x1="40" y1="155" x2="480" y2="155" stroke="var(--border-color)" strokeDasharray="3 3" opacity={0.3} />
               <line x1="40" y1="165" x2="480" y2="165" stroke="var(--border-color)" strokeWidth="1" />
-
+ 
               {/* Y Axis Labels */}
-              <text x="32" y="24" fontSize="9" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue)}</text>
-              <text x="32" y="69" fontSize="9" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.75)}</text>
-              <text x="32" y="114" fontSize="9" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.5)}</text>
-              <text x="32" y="159" fontSize="9" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.25)}</text>
-              <text x="32" y="169" fontSize="9" fill="var(--text-muted)" textAnchor="end">0</text>
-
+              <text x="32" y="24" fontSize="8" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue)}</text>
+              <text x="32" y="69" fontSize="8" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.75)}</text>
+              <text x="32" y="114" fontSize="8" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.5)}</text>
+              <text x="32" y="159" fontSize="8" fill="var(--text-muted)" textAnchor="end">{formatYLabel(maxChartValue * 0.25)}</text>
+              <text x="32" y="169" fontSize="8" fill="var(--text-muted)" textAnchor="end">0</text>
+ 
               {/* Bar Columns */}
               {chartData.map((d, index) => {
                 const spacing = 60;
@@ -391,7 +391,7 @@ export default function Dashboard() {
                 const isHovered = activeBar === index;
                 // Highlight either the hovered bar or, if none is hovered, the last bar (current month)
                 const isHighlighted = isHovered || (activeBar === null && index === chartData.length - 1);
-
+ 
                 return (
                   <g key={index} onMouseEnter={() => setActiveBar(index)} onMouseLeave={() => setActiveBar(null)}>
                     {isHovered && (
@@ -421,7 +421,7 @@ export default function Dashboard() {
                     <text
                       x={barX + barWidth / 2}
                       y={182}
-                      fontSize="10"
+                      fontSize="9"
                       fill={isHighlighted ? 'var(--accent-primary)' : 'var(--text-secondary)'}
                       fontWeight={isHighlighted ? '600' : '400'}
                       textAnchor="middle"
@@ -433,7 +433,7 @@ export default function Dashboard() {
                 );
               })}
             </svg>
-
+ 
             {/* Interactive Tooltip Overlay */}
             {activeBar !== null && (
               <div 
@@ -444,8 +444,8 @@ export default function Dashboard() {
                   border: '1px solid var(--border-color)',
                   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
                   borderRadius: '12px',
-                  padding: '0.75rem 1rem',
-                  fontSize: '0.82rem',
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.78rem',
                   left: `${((activeBar * 60 + 77) / 500) * 100}%`,
                   top: `${145 - (chartData[activeBar].value / maxChartValue) * 135}px`,
                   transform: 'translate(-50%, -100%)',
@@ -454,15 +454,15 @@ export default function Dashboard() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '0.25rem',
-                  minWidth: '140px'
+                  minWidth: '120px'
                 }}
               >
-                <div style={{ fontWeight: 500, color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{chartData[activeBar].label} Billings</div>
+                <div style={{ fontWeight: 500, color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{chartData[activeBar].label} Billings</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '1px' }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '1rem' }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.88rem' }}>
                     {displayPrice(chartData[activeBar].value)}
                   </span>
-                  <span className="stat-card-badge positive" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '9999px' }}>
+                  <span className="stat-card-badge positive" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', borderRadius: '9999px' }}>
                     8% ↗
                   </span>
                 </div>
@@ -473,13 +473,13 @@ export default function Dashboard() {
 
         {/* Right Column: Ongoing Tasks */}
         <div className="card dashboard-large-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div className="stat-card-icon-box blue-theme" style={{ width: '28px', height: '28px', borderRadius: '6px' }}>
                 <Clock size={14} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Ongoing Tasks</h3>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Ongoing Tasks</h3>
               </div>
             </div>
             <Link href="/projects" className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderRadius: '8px' }}>
@@ -531,10 +531,10 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row: Recent Invoices Statement */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Recent Invoices</h2>
-          <Link href="/invoices" style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+      <div style={{ marginTop: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontSize: '0.98rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>Recent Invoices</h2>
+          <Link href="/invoices" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
             <span>All Invoices</span>
             <ArrowRight size={14} />
           </Link>
@@ -587,7 +587,7 @@ export default function Dashboard() {
         .dashboard-page-wrapper {
           display: flex;
           flex-direction: column;
-          gap: 1.5rem;
+          gap: 1.25rem;
           width: 100%;
           padding-bottom: 2rem;
         }
@@ -599,16 +599,16 @@ export default function Dashboard() {
           gap: 1rem;
         }
         .dashboard-title-text {
-          font-size: 1.75rem;
-          font-weight: 800;
+          font-size: 1.5rem;
+          font-weight: 700;
           color: var(--text-primary);
           margin: 0;
           letter-spacing: -0.02em;
         }
         .dashboard-subtitle-text {
-          font-size: 0.88rem;
+          font-size: 0.82rem;
           color: var(--text-secondary);
-          margin: 0.25rem 0 0 0;
+          margin: 0.2rem 0 0 0;
         }
         .btn-filter-dropdown {
           background: var(--bg-secondary);
@@ -773,8 +773,8 @@ export default function Dashboard() {
         .dashboard-stat-card-premium {
           background: var(--bg-secondary);
           border: 1px solid var(--border-color);
-          border-radius: 16px;
-          padding: 1.5rem;
+          border-radius: 12px;
+          padding: 1.15rem;
           display: flex;
           flex-direction: column;
           transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -785,22 +785,22 @@ export default function Dashboard() {
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
         }
         .stat-card-title {
-          font-size: 0.82rem;
-          font-weight: 600;
+          font-size: 0.78rem;
+          font-weight: 500;
           color: var(--text-secondary);
           text-transform: none;
           letter-spacing: 0;
         }
         .stat-card-value {
-          font-size: 1.8rem;
-          font-weight: 800;
+          font-size: 1.3rem;
+          font-weight: 700;
           color: var(--text-primary);
           letter-spacing: -0.02em;
           line-height: 1.2;
           margin-top: 0;
         }
         .stat-card-badge {
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 700;
           padding: 0.2rem 0.55rem;
           border-radius: 9999px;
@@ -818,9 +818,9 @@ export default function Dashboard() {
           color: #ef4444;
         }
         .stat-card-icon-box {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -869,19 +869,19 @@ export default function Dashboard() {
           }
         }
         .dashboard-large-card {
-          padding: 1.5rem;
+          padding: 1.15rem;
           border: 1px solid var(--border-color);
-          border-radius: 16px;
+          border-radius: 12px;
           background: var(--bg-secondary);
         }
         .ongoing-task-card {
           display: flex;
           flex-direction: column;
-          gap: 0.6rem;
-          padding: 1.25rem;
+          gap: 0.4rem;
+          padding: 0.85rem 1rem;
           background: var(--bg-card);
           border: 1px solid var(--border-color);
-          border-radius: 12px;
+          border-radius: 10px;
           text-decoration: none;
           transition: all 0.2s ease-in-out;
         }
@@ -891,7 +891,7 @@ export default function Dashboard() {
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
         }
         .ongoing-task-title {
-          font-size: 0.92rem;
+          font-size: 0.82rem;
           font-weight: 600;
           color: var(--text-primary);
           white-space: nowrap;
@@ -900,7 +900,7 @@ export default function Dashboard() {
         }
         .task-progress-bar-container-premium {
           width: 100%;
-          height: 10px;
+          height: 5px;
           background: rgba(255, 255, 255, 0.05);
           border-radius: 9999px;
           overflow: hidden;
@@ -921,15 +921,15 @@ export default function Dashboard() {
           transition: width 0.4s ease;
         }
         .ongoing-task-percentage {
-          font-size: 0.78rem;
+          font-size: 0.7rem;
           font-weight: 500;
           color: var(--text-muted);
         }
         .dashboard-ai-banner {
           background: var(--accent-primary-glow);
           border: 1px solid var(--border-color-hover);
-          border-radius: 16px;
-          padding: 1.25rem 1.5rem;
+          border-radius: 12px;
+          padding: 1rem 1.25rem;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -954,13 +954,13 @@ export default function Dashboard() {
           flex-shrink: 0;
         }
         .ai-banner-title {
-          font-size: 1.05rem;
-          font-weight: 750;
+          font-size: 0.98rem;
+          font-weight: 700;
           color: var(--text-primary);
           margin: 0 0 0.25rem 0;
         }
         .ai-banner-subtitle {
-          font-size: 0.85rem;
+          font-size: 0.78rem;
           color: var(--text-secondary);
           margin: 0;
           line-height: 1.45;
@@ -986,8 +986,8 @@ export default function Dashboard() {
           border-collapse: collapse;
         }
         .dashboard-premium-table th {
-          padding: 1rem 1.25rem;
-          font-size: 0.8rem;
+          padding: 0.75rem 1rem;
+          font-size: 0.72rem;
           font-weight: 600;
           color: var(--text-secondary);
           text-transform: none;
@@ -996,8 +996,8 @@ export default function Dashboard() {
           text-align: left;
         }
         .dashboard-premium-table td {
-          padding: 1rem 1.25rem;
-          font-size: 0.88rem;
+          padding: 0.8rem 1rem;
+          font-size: 0.8rem;
           border-bottom: 1px solid var(--border-color);
           vertical-align: middle;
           color: var(--text-primary);

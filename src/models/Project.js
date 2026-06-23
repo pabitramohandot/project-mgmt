@@ -34,11 +34,25 @@ const CredentialSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+});
+
+const LinkSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  url: {
+    type: String,
+    required: true,
+    trim: true,
+  },
   notes: {
     type: String,
     trim: true,
   },
 });
+
 
 const ContentCalendarSchema = new mongoose.Schema({
   month: {
@@ -228,6 +242,7 @@ const ProjectSchema = new mongoose.Schema(
       type: Date,
     },
     credentials: [CredentialSchema],
+    links: [LinkSchema],
     contentCalendar: [ContentCalendarSchema],
     statusUpdates: [
       new mongoose.Schema({

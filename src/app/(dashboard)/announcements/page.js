@@ -177,7 +177,7 @@ export default function AnnouncementsPage() {
     ? clients.find(c => c._id === selectedIndividual) 
     : (recipientType === 'selected' && selectedClients.length > 0 ? clients.find(c => c._id === selectedClients[0]) : null);
 
-  const previewName = samplePreviewClient ? samplePreviewClient.name : 'Priyanka';
+  const previewName = samplePreviewClient ? samplePreviewClient.name : 'Client Name';
 
   return (
     <>
