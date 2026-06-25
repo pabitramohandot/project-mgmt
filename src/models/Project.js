@@ -10,6 +10,36 @@ const TaskSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  status: {
+    type: String,
+    enum: ['Todo', 'In Progress', 'Completed'],
+    default: 'Todo',
+  },
+  assignedTo: {
+    type: String,
+    default: '',
+  },
+  dueDate: {
+    type: Date,
+    default: null,
+  },
+  priority: {
+    type: String,
+    enum: ['Low', 'Medium', 'High'],
+    default: 'Medium',
+  },
+  notes: {
+    type: String,
+    default: '',
+  },
+  assignedBy: {
+    type: String,
+    default: '',
+  },
+  isRead: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const CredentialSchema = new mongoose.Schema({
@@ -92,6 +122,10 @@ const ContentCalendarSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Design Done', 'Design Approved', 'Posted', 'Draft', 'Approved'],
     default: 'Pending',
+  },
+  assignedTo: {
+    type: String,
+    default: '',
   },
   // Legacy fields for backward compatibility
   ideation: {
@@ -257,6 +291,10 @@ const ProjectSchema = new mongoose.Schema(
         },
       })
     ],
+    assignedEmployees: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
     quotation: {
       fileName: {
         type: String,

@@ -390,35 +390,50 @@ export default function SuperAdminFeedbackPage() {
             {/* Screenshot Preview */}
             {selectedFeedback.screenshot && (
               <div style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Uploaded Image</h4>
-                <div style={{ width: '100%', maxHeight: '200px', overflow: 'hidden', borderRadius: '10px', border: '1px solid var(--border-color)', position: 'relative' }}>
-                  <img 
-                    src={selectedFeedback.screenshot} 
-                    alt="Feedback attachments" 
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '200px' }} 
-                  />
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Screenshot / Attachment URL</h4>
+                <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '0.85rem' }}>🔗</span>
                   <a 
                     href={selectedFeedback.screenshot} 
                     target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      right: '8px',
-                      background: 'rgba(0, 0, 0, 0.7)',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      color: '#ffffff',
-                      fontSize: '0.75rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
+                    rel="noopener noreferrer" 
+                    style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   >
-                    <span>Zoom</span>
-                    <ExternalLink size={10} />
+                    {selectedFeedback.screenshot}
                   </a>
                 </div>
+                
+                {/* Image preview only if it looks like an image URL */}
+                {(selectedFeedback.screenshot.match(/\.(jpeg|jpg|gif|png|webp)/i) || !selectedFeedback.screenshot.startsWith('http')) && (
+                  <div style={{ width: '100%', maxHeight: '200px', overflow: 'hidden', borderRadius: '10px', border: '1px solid var(--border-color)', position: 'relative' }}>
+                    <img 
+                      src={selectedFeedback.screenshot} 
+                      alt="Feedback attachments" 
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '200px' }} 
+                    />
+                    <a 
+                      href={selectedFeedback.screenshot} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        right: '8px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        color: '#ffffff',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span>Zoom</span>
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 

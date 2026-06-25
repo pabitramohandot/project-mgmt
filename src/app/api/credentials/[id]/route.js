@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import Credential from '@/models/Credential';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 function checkPasscode(request) {
   const passcode = request.headers.get('x-vault-passcode');
@@ -11,6 +12,11 @@ function checkPasscode(request) {
 
 export async function PUT(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'credentials', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to modify credentials' }, { status: 403 });
+    }
+
     if (!checkPasscode(request)) {
       return NextResponse.json({ error: 'Unauthorized. Invalid vault passcode.' }, { status: 401 });
     }
@@ -20,10 +26,7 @@ export async function PUT(request, context) {
     const { id } = params;
     const data = await request.json();
 
-    const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot edit credentials' }, { status: 403 });
-    }
+    const { companyId } = getRequestSession(request);
     let query = { _id: id, companyId };
 
     const credential = await Credential.findOne(query);
@@ -47,6 +50,11 @@ export async function PUT(request, context) {
 
 export async function DELETE(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'credentials', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete credentials' }, { status: 403 });
+    }
+
     if (!checkPasscode(request)) {
       return NextResponse.json({ error: 'Unauthorized. Invalid vault passcode.' }, { status: 401 });
     }
@@ -55,10 +63,7 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot delete credentials' }, { status: 403 });
-    }
+    const { companyId } = getRequestSession(request);
     let query = { _id: id, companyId };
 
     const credential = await Credential.findOne(query);

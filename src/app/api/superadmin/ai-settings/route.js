@@ -73,6 +73,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       activeProvider: settings.activeProvider || "gemini",
+      uploadCode: settings.uploadCode || "ABC012",
       providers: {
         gemini: {
           configured: !!aiKeys.gemini,
@@ -122,6 +123,11 @@ export async function PUT(request) {
     // Switch active provider
     if (data.activeProvider && allowedProviders.includes(data.activeProvider)) {
       settings.activeProvider = data.activeProvider;
+    }
+
+    // Save upload code if provided
+    if (data.uploadCode !== undefined) {
+      settings.uploadCode = data.uploadCode.trim();
     }
 
     // Save keys (skip masked placeholders)

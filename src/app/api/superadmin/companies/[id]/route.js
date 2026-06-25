@@ -83,6 +83,9 @@ export async function PUT(request, context) {
     if (data.contactEmail !== undefined)
       company.contactEmail = data.contactEmail.trim();
     if (data.isActive !== undefined) company.isActive = data.isActive;
+    if (data.projectLimit !== undefined) company.projectLimit = Number(data.projectLimit) || 0;
+    if (data.clientLimit !== undefined) company.clientLimit = Number(data.clientLimit) || 0;
+    if (data.employeeLimit !== undefined) company.employeeLimit = Number(data.employeeLimit) || 0;
 
     const saved = await company.save();
     return NextResponse.json(saved);

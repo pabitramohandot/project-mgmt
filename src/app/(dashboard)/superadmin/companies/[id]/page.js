@@ -25,6 +25,9 @@ export default function EditCompanyPage() {
     secondaryColor: "#f26522",
     contactEmail: "",
     isActive: true,
+    projectLimit: 0,
+    clientLimit: 0,
+    employeeLimit: 0,
   });
 
   useEffect(() => {
@@ -44,6 +47,9 @@ export default function EditCompanyPage() {
             secondaryColor: company.brandColors?.secondary || "#f26522",
             contactEmail: company.contactEmail || "",
             isActive: company.isActive,
+            projectLimit: company.projectLimit || 0,
+            clientLimit: company.clientLimit || 0,
+            employeeLimit: company.employeeLimit || 0,
           });
           setUsers(companyUsers);
         } else {
@@ -78,6 +84,9 @@ export default function EditCompanyPage() {
           },
           contactEmail: form.contactEmail,
           isActive: form.isActive,
+          projectLimit: form.projectLimit,
+          clientLimit: form.clientLimit,
+          employeeLimit: form.employeeLimit,
         }),
       });
 
@@ -287,6 +296,53 @@ export default function EditCompanyPage() {
                     }
                   />
                 </div>
+              </div>
+            </div>
+
+            <div style={{ margin: "2rem 0", height: "1px", background: "var(--border-color)" }}></div>
+            
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--accent-primary)", marginBottom: "1rem" }}>
+              Workspace Creation Limits (0 = Unlimited)
+            </h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: "0.78rem" }}>Project Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  value={form.projectLimit}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, projectLimit: parseInt(e.target.value) || 0 }))
+                  }
+                />
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: "0.78rem" }}>Client Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  value={form.clientLimit}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, clientLimit: parseInt(e.target.value) || 0 }))
+                  }
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: "0.78rem" }}>Employee Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  value={form.employeeLimit}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, employeeLimit: parseInt(e.target.value) || 0 }))
+                  }
+                />
               </div>
             </div>
 

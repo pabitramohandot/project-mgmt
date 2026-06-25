@@ -12,8 +12,12 @@ import {
   Clock, 
   AlertCircle,
   ChevronDown,
-  Check
+  Check,
+  Users,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
+
 import SearchableSelect from '@/components/SearchableSelect';
 import { useNotification } from '@/components/NotificationProvider';
 
@@ -90,6 +94,9 @@ export default function ProjectsPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [userCategory, setUserCategory] = useState('');
+  const [projectLimit, setProjectLimit] = useState(0);
+  const [projectCount, setProjectCount] = useState(0);
   const [newCustomSubs, setNewCustomSubs] = useState({
     'Development': '',
     '360 Deg Digital Marketing': '',
@@ -142,11 +149,19 @@ export default function ProjectsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [quotationFile, setQuotationFile] = useState(null);
+  const [quotationUrl, setQuotationUrl] = useState('');
+  const [uploadCode, setUploadCode] = useState('ABC012');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
 
   const [clients, setClients] = useState([]);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [inlineClient, setInlineClient] = useState({ name: '', email: '' });
+
+  // Company users for employee assignment
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [newProjectEmployees, setNewProjectEmployees] = useState([]);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   const getClientAvatar = (name) => {
     if (!name) return { initials: '?', bg: 'hsl(260, 50%, 50%)' };
@@ -184,6 +199,17 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (isModalOpen) {
       fetchClients();
+      // Fetch company users for assignment
+      fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+        if (data) {
+          if (data.companyUsers) setCompanyUsers(data.companyUsers);
+          if (data.uploadCode) setUploadCode(data.uploadCode);
+        }
+      }).catch(() => {});
+    } else {
+      // Reset employee selection on close
+      setNewProjectEmployees([]);
+      setShowEmployeeDropdown(false);
     }
   }, [isModalOpen]);
 
@@ -244,6 +270,19 @@ export default function ProjectsPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [search, statusFilter]);
 
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          if (data.category) setUserCategory(data.category);
+          if (data.company?.projectLimit !== undefined) setProjectLimit(data.company.projectLimit);
+          if (data.projectCount !== undefined) setProjectCount(data.projectCount);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewProject(prev => ({
@@ -277,8 +316,13 @@ export default function ProjectsPage() {
         }
         const uploadData = await uploadRes.json();
         quotationData = {
-          fileName: uploadData.fileName,
-          filePath: uploadData.filePath
+          fileName: quotationFile.name,
+          filePath: uploadData.url,
+        };
+      } else if (quotationUrl.trim()) {
+        quotationData = {
+          fileName: quotationUrl.split('/').pop() || 'Quotation Document',
+          filePath: quotationUrl.trim(),
         };
       }
 
@@ -365,6 +409,17 @@ export default function ProjectsPage() {
         throw new Error(errData.error || 'Failed to create project');
       }
 
+      const createdProject = await res.json();
+
+      // If employees were selected, assign them
+      if (newProjectEmployees.length > 0 && createdProject._id) {
+        await fetch(`/api/projects/${createdProject._id}/assign`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employeeIds: newProjectEmployees }),
+        }).catch(() => {}); // non-blocking
+      }
+
       // Reset form & close modal
       setNewProject({
         name: '',
@@ -413,6 +468,8 @@ export default function ProjectsPage() {
         'Design': false
       });
       setQuotationFile(null);
+      setNewProjectEmployees([]);
+      setShowEmployeeDropdown(false);
       showToast('Project created successfully', 'success');
       setIsModalOpen(false);
       fetchProjects();
@@ -463,15 +520,45 @@ export default function ProjectsPage() {
   return (
     <>
       <div className="animate-fade-in">
-        <div className="page-header">
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 className="page-title">Projects</h1>
             <p className="page-subtitle">Manage, track, and update all client development milestones.</p>
+            {projectLimit > 0 && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.25rem 0.65rem',
+                background: projectCount >= projectLimit ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 174, 239, 0.06)',
+                border: `1px solid ${projectCount >= projectLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 174, 239, 0.15)'}`,
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: projectCount >= projectLimit ? '#ef4444' : 'var(--accent-primary)',
+                marginTop: '0.5rem'
+              }}>
+                <Briefcase size={12} />
+                <span>Limit: {projectCount} / {projectLimit} Projects</span>
+                {projectCount >= projectLimit && <span style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem', borderRadius: '4px', background: '#ef4444', color: '#fff', marginLeft: '4px' }}>MAX REACHED</span>}
+              </div>
+            )}
           </div>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} />
-            <span>New Project</span>
-          </button>
+          {userCategory !== 'Employee' && (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => {
+                if (projectLimit > 0 && projectCount >= projectLimit) {
+                  showToast(`Project creation limit reached (${projectLimit}).`, 'error');
+                } else {
+                  setIsModalOpen(true);
+                }
+              }}
+            >
+              <Plus size={18} />
+              <span>New Project</span>
+            </button>
+          )}
         </div>
 
         {/* Stats Summary strip */}
@@ -554,6 +641,155 @@ export default function ProjectsPage() {
             <h3>No projects found</h3>
             <p>Try refining your search or create a new project to get started.</p>
           </div>
+        ) : userCategory === 'Employee' ? (
+          /* Cards Layout: 4 cards in a row */
+          <>
+            <div className="project-cards-grid">
+              {projects.map((project) => {
+                const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
+                  ? project.statusUpdates[project.statusUpdates.length - 1]
+                  : null;
+
+                return (
+                  <div key={project._id} className="project-premium-card">
+                    <div className="project-card-header">
+                      <Briefcase size={16} style={{ color: 'var(--accent-primary)' }} />
+                      <span className={`badge badge-${project.status.toLowerCase().replace(' ', '')}`} style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem', textTransform: 'uppercase' }}>
+                        {project.status}
+                      </span>
+                    </div>
+                    <Link href={`/projects/${project._id}`} className="project-card-name-link">
+                      {project.name}
+                    </Link>
+                    <p className="project-card-description">
+                      {project.description || 'No description provided.'}
+                    </p>
+                    <div className="project-card-status-section">
+                      <span className="status-label">Latest Status Update:</span>
+                      <p className="status-message-text" title={latestUpdate ? latestUpdate.message : 'No updates yet'}>
+                        {latestUpdate ? latestUpdate.message : 'No updates yet'}
+                      </p>
+                      {latestUpdate && (
+                        <span className="status-time">
+                          {new Date(latestUpdate.date).toLocaleDateString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <style jsx global>{`
+              .project-cards-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 1.25rem;
+                margin-top: 1.5rem;
+                width: 100%;
+              }
+              @media (max-width: 1200px) {
+                .project-cards-grid {
+                  grid-template-columns: repeat(3, 1fr);
+                }
+              }
+              @media (max-width: 900px) {
+                .project-cards-grid {
+                  grid-template-columns: repeat(2, 1fr);
+                }
+              }
+              @media (max-width: 600px) {
+                .project-cards-grid {
+                  grid-template-columns: 1fr;
+                }
+              }
+              .project-premium-card {
+                background: var(--bg-card, rgba(30, 41, 59, 0.7));
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                border-radius: 12px;
+                padding: 1.25rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                position: relative;
+                overflow: hidden;
+              }
+              .project-premium-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 3px;
+                background: linear-gradient(90deg, var(--accent-primary, #00aeef), var(--accent-secondary, #f26522));
+                opacity: 0.8;
+              }
+              .project-premium-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 174, 239, 0.15);
+                border-color: rgba(0, 174, 239, 0.4);
+              }
+              .project-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              }
+              .project-card-name-link {
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: var(--accent-primary, #00aeef);
+                text-decoration: none;
+                transition: color 0.2s;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .project-card-name-link:hover {
+                color: var(--text-primary, #ffffff);
+              }
+              .project-card-description {
+                font-size: 0.82rem;
+                color: var(--text-secondary, #94a3b8);
+                line-height: 1.5;
+                margin: 0;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                height: 2.45rem;
+              }
+              .project-card-status-section {
+                margin-top: auto;
+                padding-top: 0.75rem;
+                border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.08));
+                display: flex;
+                flex-direction: column;
+                gap: 0.35rem;
+              }
+              .status-label {
+                font-size: 0.72rem;
+                color: var(--text-muted, #64748b);
+                text-transform: uppercase;
+                font-weight: 600;
+                letter-spacing: 0.05em;
+              }
+              .status-message-text {
+                font-size: 0.85rem;
+                color: var(--text-primary, #ffffff);
+                margin: 0;
+                font-weight: 500;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .status-time {
+                font-size: 0.7rem;
+                color: var(--text-muted, #64748b);
+                align-self: flex-end;
+              }
+            `}</style>
+          </>
         ) : (
           /* List Table Layout */
           <div className="table-container">
@@ -1100,19 +1336,51 @@ export default function ProjectsPage() {
                   </div>
 
                   {/* Quotation upload section */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-                    <label className="form-label" style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Quotation Document</label>
-                    <input 
-                      type="file" 
-                      className="form-input" 
-                      onChange={(e) => setQuotationFile(e.target.files[0] || null)}
-                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                    />
-                    {quotationFile && (
-                      <p style={{ fontSize: '0.75rem', color: 'var(--accent-secondary)', marginTop: '0.25rem', margin: 0 }}>
-                        Selected: {quotationFile.name}
-                      </p>
-                    )}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label className="form-label" style={{ display: 'block', fontWeight: 600, marginBottom: 0 }}>Quotation Document</label>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', opacity: 0.45, pointerEvents: 'none', userSelect: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Upload File</span>
+                        <span style={{ fontSize: '0.62rem', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '9999px', padding: '0.05rem 0.4rem', fontWeight: 600, letterSpacing: '0.03em' }}>Coming Soon</span>
+                      </div>
+                      <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>📁</span>
+                        <span>File upload is currently unavailable. Use the URL option below.</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>OR</span>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Enter Document URL</span>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ flex: 1 }}
+                          placeholder="e.g. https://domain.com/quotation.pdf"
+                          value={quotationUrl}
+                          onChange={(e) => {
+                            setQuotationUrl(e.target.value);
+                            setQuotationFile(null); // Clear file if URL typed
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0 1rem' }}
+                          onClick={() => setIsUploadModalOpen(true)}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Get URL</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                 </div>
@@ -1334,6 +1602,62 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
+                  {/* Assign Team Members */}
+                  {companyUsers.filter(u => u.role !== 'company_admin').length > 0 && (
+                    <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                        <Users size={14} style={{ color: 'var(--accent-primary)' }} />
+                        Assign Team Members
+                      </label>
+
+                      {/* Selected chips */}
+                      {newProjectEmployees.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                          {newProjectEmployees.map(eid => {
+                            const u = companyUsers.find(u => u.id === eid);
+                            if (!u) return null;
+                            return (
+                              <div key={eid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(0,174,239,0.12)', border: '1px solid rgba(0,174,239,0.3)', color: 'var(--accent-primary)', borderRadius: '20px', padding: '0.2rem 0.55rem 0.2rem 0.4rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                                {u.username}
+                                <button type="button" onClick={() => setNewProjectEmployees(prev => prev.filter(id => id !== eid))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.7 }}>×</button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Dropdown toggle button */}
+                      <button
+                        type="button"
+                        className="form-select"
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.85rem' }}
+                        onClick={() => setShowEmployeeDropdown(p => !p)}
+                      >
+                        <span>{newProjectEmployees.length > 0 ? `${newProjectEmployees.length} member${newProjectEmployees.length > 1 ? 's' : ''} selected` : 'Click to select team members'}</span>
+                        <ChevronDown size={14} />
+                      </button>
+
+                      {showEmployeeDropdown && (
+                        <>
+                          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setShowEmployeeDropdown(false)} />
+                          <div style={{ position: 'relative', zIndex: 999, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '4px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxHeight: '200px', overflowY: 'auto' }}>
+                            {companyUsers.filter(u => u.role !== 'company_admin').map(user => {
+                              const isChecked = newProjectEmployees.includes(user.id);
+                              return (
+                                <label key={user.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', cursor: 'pointer', background: isChecked ? 'rgba(0,174,239,0.08)' : 'transparent', margin: 0 }}>
+                                  <input type="checkbox" checked={isChecked} onChange={() => setNewProjectEmployees(prev => prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id])} style={{ width: '14px', height: '14px' }} onClick={e => e.stopPropagation()} />
+                                  <span style={{ fontSize: '0.85rem', color: isChecked ? 'var(--accent-primary)' : 'var(--text-primary)', fontWeight: isChecked ? 600 : 400 }}>{user.username}</span>
+                                  {user.email && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>{user.email}</span>}
+                                  {isChecked && <Check size={12} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                 </div>
 
               </div>
@@ -1347,6 +1671,92 @@ export default function ProjectsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Platform Access Modal */}
+      {isUploadModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', width: '90%', padding: '2rem', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                Access Uploading Platform
+              </h2>
+              <button onClick={() => setIsUploadModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Access Code</label>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  background: 'var(--bg-secondary)', 
+                  border: '1.5px dashed var(--accent-primary)', 
+                  borderRadius: '12px', 
+                  padding: '0.75rem 1.25rem',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.25rem', letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
+                    {uploadCode}
+                  </span>
+                  <button 
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ 
+                      padding: '0.4rem 0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.35rem', 
+                      fontSize: '0.78rem', 
+                      fontWeight: 600, 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-color)' 
+                    }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(uploadCode);
+                      showToast('Access code copied to clipboard', 'success');
+                    }}
+                  >
+                    <Copy size={13} />
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ 
+                fontSize: '0.82rem', 
+                color: 'var(--text-secondary)', 
+                background: 'var(--accent-primary-glow)', 
+                padding: '0.85rem 1.15rem', 
+                borderRadius: '10px', 
+                borderLeft: '4px solid var(--accent-primary)',
+                lineHeight: '1.5'
+              }}>
+                <strong>Note:</strong> To access the site, copy the access code above.
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                <button type="button" className="btn btn-secondary" style={{ borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600 }} onClick={() => setIsUploadModalOpen(false)}>
+                  Cancel
+                </button>
+                <a 
+                  href="https://uploads.worklanceai.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none', borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                  onClick={() => setIsUploadModalOpen(false)}
+                >
+                  <span>Go to Site</span>
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

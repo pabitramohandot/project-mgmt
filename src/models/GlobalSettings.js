@@ -25,6 +25,12 @@ const GlobalSettingsSchema = new mongoose.Schema(
       nvidia: { type: String, trim: true, default: '' },
       grok: { type: String, trim: true, default: '' },
     },
+    // Code to access uploading platform
+    uploadCode: {
+      type: String,
+      default: 'ABC012',
+      trim: true,
+    },
   },
   { timestamps: true }
 );

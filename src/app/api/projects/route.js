@@ -1,9 +1,12 @@
 import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import Client from '@/models/Client';
+import User from '@/models/User';
+import Company from '@/models/Company';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
 import { processProjectStatus } from '@/lib/projectUtils';
+import { getCategoryForUser } from '@/lib/permissions';
 
 export async function GET(request) {
   try {
@@ -12,8 +15,15 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, userId } = getRequestSession(request);
     let query = { companyId };
+
+    // For Employee-category users, only show projects they are assigned to
+    const userDoc = await User.findById(userId).populate('customRole').lean();
+    const category = await getCategoryForUser(userDoc);
+    if (userDoc && userDoc.role === 'company_user' && category === 'Employee') {
+      query.assignedEmployees = userId;
+    }
 
     if (status) {
       query.status = status;
@@ -83,11 +93,28 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await dbConnect();
-    const { companyId } = getRequestSession(request);
+    const { companyId, userId } = getRequestSession(request);
+    
+    // Check permission - Employee category cannot create projects
+    const userDoc = await User.findById(userId).populate('customRole').lean();
+    const category = await getCategoryForUser(userDoc);
+    if (userDoc && userDoc.role === 'company_user' && category === 'Employee') {
+      return NextResponse.json({ error: 'Permission denied: Employees cannot create projects' }, { status: 403 });
+    }
+
     const data = await request.json();
 
     if (!data.name || !data.clientName) {
       return NextResponse.json({ error: 'Project Name and Client Name are required' }, { status: 400 });
+    }
+
+    // Enforce Project Limit
+    const companyDoc = await Company.findById(companyId).lean();
+    if (companyDoc && companyDoc.projectLimit > 0) {
+      const currentProjects = await Project.countDocuments({ companyId });
+      if (currentProjects >= companyDoc.projectLimit) {
+        return NextResponse.json({ error: `Project creation limit reached. Max allowed: ${companyDoc.projectLimit}` }, { status: 400 });
+      }
     }
 
     // Convert empty string client to null to avoid Mongoose ObjectId CastErrors

@@ -18,31 +18,36 @@ export default function UsersPage() {
   // Form modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [globalRoles, setGlobalRoles] = useState([]);
   const [form, setForm] = useState({
     username: '',
     password: '',
     role: 'company_user',
-    companyId: ''
+    companyId: '',
+    customRole: ''
   });
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersRes, companiesRes] = await Promise.all([
+      const [usersRes, companiesRes, rolesRes] = await Promise.all([
         fetch('/api/superadmin/users'),
-        fetch('/api/superadmin/companies')
+        fetch('/api/superadmin/companies'),
+        fetch('/api/superadmin/roles')
       ]);
 
-      if (usersRes.ok && companiesRes.ok) {
+      if (usersRes.ok && companiesRes.ok && rolesRes.ok) {
         const usersData = await usersRes.json();
         const companiesData = await companiesRes.json();
+        const rolesData = await rolesRes.json();
         setUsers(usersData);
         setCompanies(companiesData);
+        setGlobalRoles(rolesData);
         if (companiesData.length > 0) {
           setForm(prev => ({ ...prev, companyId: companiesData[0]._id }));
         }
       } else {
-        showToast('Failed to fetch users or companies', 'error');
+        showToast('Failed to fetch users, companies, or roles', 'error');
       }
     } catch (e) {
       console.error(e);
@@ -110,14 +115,15 @@ export default function UsersPage() {
           username: form.username,
           password: form.password,
           role: form.role,
-          companyId: form.role === 'superadmin' ? null : form.companyId
+          companyId: form.role === 'superadmin' ? null : form.companyId,
+          customRole: form.role === 'company_user' ? (form.customRole || null) : null
         })
       });
 
       if (res.ok) {
         showToast('User created successfully!', 'success');
         setIsModalOpen(false);
-        setForm(prev => ({ ...prev, username: '', password: '' }));
+        setForm(prev => ({ ...prev, username: '', password: '', customRole: '' }));
         fetchData();
       } else {
         const data = await res.json();
@@ -270,8 +276,12 @@ export default function UsersPage() {
                         )}
                       </td>
                       <td>
-                        <span className={`badge ${u.role === 'superadmin' ? 'badge-review' : u.role === 'company_admin' ? 'badge-progress' : 'badge-planning'}`} style={{ fontSize: '0.7rem' }}>
-                          {u.role.replace('_', ' ')}
+                        <span className={`badge ${
+                          u.role === 'superadmin' ? 'badge-review' : 
+                          u.role === 'company_admin' ? 'badge-progress' : 
+                          'badge-planning'
+                        }`} style={{ fontSize: '0.7rem' }}>
+                          {u.role === 'company_user' && u.customRole ? u.customRole.name : u.role.replace('_', ' ')}
                         </span>
                       </td>
                       <td>
@@ -347,14 +357,137 @@ export default function UsersPage() {
                 <label className="form-label">Access Role *</label>
                 <select
                   className="form-select"
-                  value={form.role}
-                  onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
+                  value={form.customRole ? form.customRole : form.role}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'superadmin' || val === 'company_admin' || val === 'company_user') {
+                      setForm(prev => ({ ...prev, role: val, customRole: '' }));
+                    } else {
+                      setForm(prev => ({ ...prev, role: 'company_user', customRole: val }));
+                    }
+                  }}
                   required
                 >
-                  <option value="company_user">Company User</option>
-                  <option value="company_admin">Company Admin</option>
-                  <option value="superadmin">Super Admin</option>
+                  <optgroup label="System Roles">
+                    <option value="company_user">Company User (Default permissions)</option>
+                    <option value="company_admin">Company Admin (Full company access)</option>
+                    <option value="superadmin">Super Admin (Full global access)</option>
+                  </optgroup>
+                  {globalRoles.filter(r => !r.isSystem).length > 0 && (
+                    <optgroup label="Custom Roles">
+                      {globalRoles.filter(r => !r.isSystem).map((role) => (
+                        <option key={role._id} value={role._id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
+
+                {/* Permissions Preview Card */}
+                {(() => {
+                  const selectedVal = form.customRole || form.role;
+                  let title = '';
+                  let badgeText = '';
+                  let badgeColor = '';
+                  let p = null;
+
+                  if (selectedVal === 'superadmin') {
+                    title = 'Super Admin';
+                    badgeText = 'Full Global Access';
+                    badgeColor = 'var(--status-overdue)';
+                    p = {
+                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write',
+                      project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
+                    };
+                  } else if (selectedVal === 'company_admin') {
+                    title = 'Company Admin';
+                    badgeText = 'Company Access';
+                    badgeColor = 'var(--status-progress)';
+                    const dbRole = globalRoles.find(r => r.name === 'Company Admin');
+                    p = dbRole ? dbRole.permissions : {
+                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write',
+                      project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
+                    };
+                  } else if (selectedVal === 'company_user') {
+                    title = 'Company User (Default)';
+                    badgeText = 'Standard Access';
+                    badgeColor = 'var(--status-planning)';
+                    const dbRole = globalRoles.find(r => r.name === 'Company User (Default)');
+                    p = dbRole ? dbRole.permissions : {
+                      ai_agent: 'read', clients: 'read', invoices: 'read', credentials: 'none', pending_tasks: 'read', announcements: 'read', branding: 'none',
+                      project_details: 'read', project_credential: 'none', project_links: 'read', project_pricing: 'read', project_invoice: 'read', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
+                    };
+                  } else {
+                    const dbRole = globalRoles.find(r => r._id === selectedVal);
+                    if (dbRole) {
+                      title = `${dbRole.name} Role`;
+                      badgeText = 'Custom Access';
+                      badgeColor = 'var(--accent-primary)';
+                      p = dbRole.permissions;
+                    }
+                  }
+
+                  if (!p) return null;
+
+                  const formatLevel = (lvl) => {
+                    if (lvl === 'write') return 'Write Access';
+                    if (lvl === 'read') return 'Read Only';
+                    return 'No Access';
+                  };
+
+                  const items = [
+                    { name: 'Projects Details & Timeline', level: formatLevel(p.project_details) },
+                    { name: 'Project Credentials/Secrets', level: formatLevel(p.project_credential) },
+                    { name: 'Project Bookmarks & Links', level: formatLevel(p.project_links) },
+                    { name: 'Project Finances & Invoices', level: formatLevel(p.project_invoice || p.project_pricing) },
+                    { name: 'Project Checklist & Tasks', level: formatLevel(p.project_tasks) },
+                    { name: 'Clients & Billing registries', level: formatLevel(p.invoices || p.clients) },
+                    { name: 'Credentials Vault', level: formatLevel(p.credentials) },
+                    { name: 'AI Chat Assistant', level: formatLevel(p.ai_agent) }
+                  ];
+
+                  return (
+                    <div className="animate-fade-in" style={{
+                      marginTop: '1.25rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '12px',
+                      background: 'rgba(255, 255, 255, 0.015)',
+                      border: '1px solid var(--border-color)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-primary)' }}>{title} Access Summary</span>
+                        <span style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '0.15rem 0.45rem', 
+                          borderRadius: '6px', 
+                          background: 'rgba(255,255,255,0.03)', 
+                          border: `1px solid ${badgeColor}`, 
+                          color: badgeColor,
+                          fontWeight: 600
+                        }}>{badgeText}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {items.map((item, idx) => {
+                          let levelColor = 'var(--text-muted)';
+                          if (item.level === 'Write Access') {
+                            levelColor = 'var(--status-progress)';
+                          } else if (item.level === 'Read Only') {
+                            levelColor = 'var(--accent-secondary)';
+                          } else if (item.level === 'No Access') {
+                            levelColor = 'var(--text-muted)';
+                          }
+                          return (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.775rem' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
+                              <span style={{ fontWeight: 500, color: levelColor }}>{item.level}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {form.role !== 'superadmin' && (

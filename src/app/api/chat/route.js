@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getRequestSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
+import { hasPermission } from "@/lib/permissions";
 import GlobalSettings from "@/models/GlobalSettings";
 import ChatSession from "@/models/ChatSession";
 import {
@@ -685,6 +686,11 @@ async function handleGrokStream(apiKey, sessionId, message, history, companyId, 
 
 export async function POST(request) {
   try {
+    const isAllowed = await hasPermission(request, "ai_agent", "read");
+    if (!isAllowed) {
+      return NextResponse.json({ error: "Forbidden: You do not have permission to access the AI Agent" }, { status: 403 });
+    }
+
     const { companyId, role, userId } = getRequestSession(request);
     if (!companyId || !userId) {
       return NextResponse.json({ error: "Unauthorized. Session is required." }, { status: 401 });

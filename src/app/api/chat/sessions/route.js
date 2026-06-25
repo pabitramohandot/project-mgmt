@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
 import { getRequestSession } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export async function GET(request) {
   try {
+    const isAllowed = await hasPermission(request, "ai_agent", "read");
+    if (!isAllowed) {
+      return NextResponse.json({ error: "Forbidden: You do not have permission to access the AI Agent" }, { status: 403 });
+    }
+
     const { companyId, userId } = getRequestSession(request);
     if (!companyId || !userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -36,6 +42,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const isAllowed = await hasPermission(request, "ai_agent", "read");
+    if (!isAllowed) {
+      return NextResponse.json({ error: "Forbidden: You do not have permission to access the AI Agent" }, { status: 403 });
+    }
+
     const { companyId, userId } = getRequestSession(request);
     if (!companyId || !userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

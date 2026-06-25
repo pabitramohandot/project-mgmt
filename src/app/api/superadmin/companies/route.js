@@ -77,6 +77,9 @@ export async function POST(request) {
       },
       contactEmail: data.contactEmail || "",
       isActive: data.isActive !== undefined ? data.isActive : true,
+      projectLimit: Number(data.projectLimit) || 0,
+      clientLimit: Number(data.clientLimit) || 0,
+      employeeLimit: Number(data.employeeLimit) || 0,
     });
 
     return NextResponse.json(company, { status: 201 });

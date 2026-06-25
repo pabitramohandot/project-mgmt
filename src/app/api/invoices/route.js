@@ -3,9 +3,15 @@ import Invoice from '@/models/Invoice';
 import Project from '@/models/Project';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function GET(request) {
   try {
+    const isAllowed = await hasPermission(request, 'invoices', 'read');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to view invoices' }, { status: 403 });
+    }
+
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -31,6 +37,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const isAllowed = await hasPermission(request, 'invoices', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to create invoices' }, { status: 403 });
+    }
+
     await dbConnect();
     const { companyId } = getRequestSession(request);
     const data = await request.json();

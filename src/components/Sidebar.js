@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -56,6 +56,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   if (user?.role === 'superadmin') {
     menuItems.push(
       { name: 'Companies', path: '/superadmin/companies', icon: Building },
+      { name: 'Roles', path: '/superadmin/roles', icon: Shield },
       { name: 'Users', path: '/superadmin/users', icon: ShieldCheck },
       { name: 'Feedback', path: '/superadmin/feedback', icon: MessageSquare },
       { name: 'AI Settings', path: '/superadmin/ai-settings', icon: Key }
@@ -71,6 +72,32 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   menuItems.push(
     { name: 'Account Settings', path: '/settings/profile', icon: User }
   );
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (user?.role === 'superadmin') return true;
+
+    // Hide Clients, Invoices, Branding, Account Settings for Employee category
+    if (user?.category === 'Employee') {
+      if (
+        item.path === '/clients' || 
+        item.path === '/invoices' || 
+        item.path === '/settings/branding' || 
+        item.path === '/settings/profile'
+      ) {
+        return false;
+      }
+    }
+
+    const p = user?.permissions || {};
+    if (item.path === '/ai-agents') return p.ai_agent && p.ai_agent !== 'none';
+    if (item.path === '/clients') return p.clients && p.clients !== 'none';
+    if (item.path === '/invoices') return p.invoices && p.invoices !== 'none';
+    if (item.path === '/credentials') return p.credentials && p.credentials !== 'none';
+    if (item.path === '/tasks') return p.pending_tasks && p.pending_tasks !== 'none';
+    if (item.path === '/announcements') return p.announcements && p.announcements !== 'none';
+    if (item.path === '/settings/branding') return p.branding && p.branding !== 'none';
+    return true;
+  });
 
   const handleLogout = async () => {
     try {
@@ -106,7 +133,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       </div>
       <nav style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <ul className="menu-list">
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.path === '/' 
               ? pathname === '/' 
@@ -146,7 +173,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        background: '#fbbf24',
+                        background: '#ef4444',
                         border: '1.5px solid var(--bg-secondary)'
                       }} />
                     )}
@@ -187,13 +214,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   </div>
                   {!isCollapsed && item.badge > 0 && (
                     <span style={{
-                      background: 'rgba(245, 158, 11, 0.15)',
-                      color: '#fbbf24',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#ef4444',
                       fontSize: '0.72rem',
                       fontWeight: '700',
                       padding: '0.15rem 0.45rem',
                       borderRadius: '9999px',
-                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
                       lineHeight: 1
                     }}>
                       {item.badge}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Bug, MessageSquare, Lightbulb, X, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bug, MessageSquare, Lightbulb, X, Upload, Loader2, Image as ImageIcon, Copy, ExternalLink } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function FooterFeedback() {
@@ -11,7 +11,28 @@ export default function FooterFeedback() {
   const [activeModal, setActiveModal] = useState(null); // 'bug' | 'feature' | null
   const [uploadingFile, setUploadingFile] = useState(false);
   const [screenshotPath, setScreenshotPath] = useState('');
+  const [screenshotUrl, setScreenshotUrl] = useState('');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadCode, setUploadCode] = useState('ABC012');
   const [submitting, setSubmitting] = useState(false);
+
+  // Fetch upload code from session on mount
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.uploadCode) {
+            setUploadCode(data.uploadCode);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch upload code", e);
+      }
+    };
+    fetchMe();
+  }, []);
 
   // Forms states
   const [bugForm, setBugForm] = useState({
@@ -31,6 +52,7 @@ export default function FooterFeedback() {
   const openModal = (type) => {
     setActiveModal(type);
     setScreenshotPath('');
+    setScreenshotUrl('');
     setBugForm({ page: '', description: '' });
     setFeatureForm({ description: '', referenceUrl: '' });
   };
@@ -61,6 +83,7 @@ export default function FooterFeedback() {
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       setScreenshotPath(data.filePath);
+      setScreenshotUrl('');
       showToast('Image uploaded successfully!', 'success');
     } catch (error) {
       console.error('File upload error:', error);
@@ -72,6 +95,7 @@ export default function FooterFeedback() {
 
   const handleRemoveScreenshot = () => {
     setScreenshotPath('');
+    setScreenshotUrl('');
   };
 
   const handleBugSubmit = async (e) => {
@@ -85,6 +109,8 @@ export default function FooterFeedback() {
       return;
     }
 
+    const finalScreenshot = screenshotPath || screenshotUrl.trim();
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/feedback', {
@@ -94,7 +120,7 @@ export default function FooterFeedback() {
           type: 'bug',
           page: bugForm.page,
           description: bugForm.description,
-          screenshot: screenshotPath
+          screenshot: finalScreenshot
         }),
       });
 
@@ -120,6 +146,8 @@ export default function FooterFeedback() {
       return;
     }
 
+    const finalScreenshot = screenshotPath || screenshotUrl.trim();
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/feedback', {
@@ -129,7 +157,7 @@ export default function FooterFeedback() {
           type: 'feature',
           description: featureForm.description,
           referenceUrl: featureForm.referenceUrl,
-          screenshot: screenshotPath
+          screenshot: finalScreenshot
         }),
       });
 
@@ -247,37 +275,50 @@ export default function FooterFeedback() {
                     </button>
                   </div>
                 ) : (
-                  <label style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100px',
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: 'rgba(255, 255, 255, 0.01)',
-                    transition: 'all 0.2s'
-                  }}>
-                    {uploadingFile ? (
-                      <>
-                        <Loader2 className="animate-spin" size={24} style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Uploading image...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={24} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Click to upload screenshot</span>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleFileChange} 
-                      disabled={uploadingFile}
-                      style={{ display: 'none' }} 
-                    />
-                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', opacity: 0.45, pointerEvents: 'none', userSelect: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Upload Image</span>
+                        <span style={{ fontSize: '0.62rem', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '9999px', padding: '0.05rem 0.4rem', fontWeight: 600, letterSpacing: '0.03em' }}>Coming Soon</span>
+                      </div>
+                      <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>📁</span>
+                        <span>Image upload is currently unavailable. Use the URL option below.</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>OR</span>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Enter Screenshot URL</span>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ flex: 1, padding: '0.6rem 0.8rem', borderRadius: '8px' }}
+                          placeholder="e.g. https://domain.com/screenshot.png"
+                          value={screenshotUrl}
+                          onChange={(e) => {
+                            setScreenshotUrl(e.target.value);
+                            setScreenshotPath('');
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0 1rem', borderRadius: '8px' }}
+                          onClick={() => setIsUploadModalOpen(true)}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Get URL</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -376,37 +417,50 @@ export default function FooterFeedback() {
                     </button>
                   </div>
                 ) : (
-                  <label style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100px',
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: 'rgba(255, 255, 255, 0.01)',
-                    transition: 'all 0.2s'
-                  }}>
-                    {uploadingFile ? (
-                      <>
-                        <Loader2 className="animate-spin" size={24} style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Uploading image...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={24} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Click to upload reference image</span>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleFileChange} 
-                      disabled={uploadingFile}
-                      style={{ display: 'none' }} 
-                    />
-                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', opacity: 0.45, pointerEvents: 'none', userSelect: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Upload Image</span>
+                        <span style={{ fontSize: '0.62rem', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '9999px', padding: '0.05rem 0.4rem', fontWeight: 600, letterSpacing: '0.03em' }}>Coming Soon</span>
+                      </div>
+                      <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>📁</span>
+                        <span>Image upload is currently unavailable. Use the URL option below.</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>OR</span>
+                      <div style={{ height: '1px', background: 'var(--border-color)', flex: 1 }}></div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Enter Image URL</span>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ flex: 1, padding: '0.6rem 0.8rem', borderRadius: '8px' }}
+                          placeholder="e.g. https://domain.com/image.png"
+                          value={screenshotUrl}
+                          onChange={(e) => {
+                            setScreenshotUrl(e.target.value);
+                            setScreenshotPath('');
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0 1rem', borderRadius: '8px' }}
+                          onClick={() => setIsUploadModalOpen(true)}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Get URL</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -432,6 +486,91 @@ export default function FooterFeedback() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Platform Access Modal */}
+      {isUploadModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', width: '90%', padding: '2rem', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                Access Uploading Platform
+              </h2>
+              <button onClick={() => setIsUploadModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Access Code</label>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  background: 'var(--bg-secondary)', 
+                  border: '1.5px dashed var(--accent-primary)', 
+                  borderRadius: '12px', 
+                  padding: '0.75rem 1.25rem',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.25rem', letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
+                    {uploadCode}
+                  </span>
+                  <button 
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ 
+                      padding: '0.4rem 0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.35rem', 
+                      fontSize: '0.78rem', 
+                      fontWeight: 600, 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-color)' 
+                    }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(uploadCode);
+                      showToast('Access code copied to clipboard', 'success');
+                    }}
+                  >
+                    <Copy size={13} />
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ 
+                fontSize: '0.82rem', 
+                color: 'var(--text-secondary)', 
+                background: 'var(--accent-primary-glow)', 
+                padding: '0.85rem 1.15rem', 
+                borderRadius: '10px', 
+                borderLeft: '4px solid var(--accent-primary)',
+                lineHeight: '1.5'
+              }}>
+                <strong>Note:</strong> To access the site, copy the access code above.
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                <button type="button" className="btn btn-secondary" style={{ borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600 }} onClick={() => setIsUploadModalOpen(false)}>
+                  Cancel
+                </button>
+                <a 
+                  href="https://uploads.worklanceai.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none', borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                  onClick={() => setIsUploadModalOpen(false)}
+                >
+                  <span>Go to Site</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

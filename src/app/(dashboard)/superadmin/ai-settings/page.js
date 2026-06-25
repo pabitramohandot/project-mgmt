@@ -60,6 +60,8 @@ export default function SuperAdminAISettingsPage() {
   const [visibility, setVisibility] = useState({ gemini: false, openai: false, claude: false, nvidia: false, grok: false });
   const [testing, setTesting] = useState({});
   const [testResults, setTestResults] = useState({});
+  const [uploadCode, setUploadCode] = useState("");
+  const [savingUploadCode, setSavingUploadCode] = useState(false);
   const [switchingTo, setSwitchingTo] = useState(null);
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export default function SuperAdminAISettingsPage() {
         }
         setKeys(newKeys);
         setProviderStatus(newStatus);
+        setUploadCode(data.uploadCode || "ABC012");
       } else {
         showToast("Failed to load AI settings.", "error");
       }
@@ -90,6 +93,27 @@ export default function SuperAdminAISettingsPage() {
       setLoading(false);
     }
   }
+
+  const handleSaveUploadCode = async () => {
+    try {
+      setSavingUploadCode(true);
+      const res = await fetch("/api/superadmin/ai-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadCode }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("Uploading Platform Access Code saved successfully.", "success");
+      } else {
+        showToast(data.error || "Failed to save code.", "error");
+      }
+    } catch {
+      showToast("Error saving code.", "error");
+    } finally {
+      setSavingUploadCode(false);
+    }
+  };
 
   const handleSaveKey = async (providerId) => {
     const key = keys[providerId];
@@ -389,6 +413,37 @@ export default function SuperAdminAISettingsPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Uploading Platform Code Configuration */}
+      <div className="card" style={{ padding: "1.5rem", marginBottom: "2rem" }}>
+        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, marginBottom: "0.5rem" }}>
+          Uploading Platform Access Code
+        </h3>
+        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0, marginBottom: "1rem" }}>
+          Configure the passcode required by users to authenticate on the uploading platform.
+        </p>
+        
+        <div style={{ display: "flex", gap: "0.5rem", maxWidth: "400px" }}>
+          <input
+            type="text"
+            className="form-input"
+            value={uploadCode}
+            onChange={(e) => setUploadCode(e.target.value)}
+            placeholder="e.g. ABC012"
+            style={{ flex: 1, fontFamily: "monospace", fontSize: "0.9rem", fontWeight: 600 }}
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSaveUploadCode}
+            disabled={savingUploadCode || !uploadCode.trim()}
+            style={{ display: "flex", alignItems: "center", gap: "0.35rem", padding: "0.5rem 1rem", fontSize: "0.8rem" }}
+          >
+            {savingUploadCode ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+            <span>Save Code</span>
+          </button>
+        </div>
       </div>
 
       {/* Info Footer */}

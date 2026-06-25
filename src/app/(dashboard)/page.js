@@ -19,7 +19,14 @@ import {
   EyeOff,
   ChevronDown,
   Calendar,
-  Zap
+  Zap,
+  Copy,
+  ExternalLink,
+  Lock,
+  Unlock,
+  CalendarDays,
+  ClipboardList,
+  X
 } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 import NotificationBell from '@/components/NotificationBell';
@@ -32,6 +39,44 @@ export default function Dashboard() {
   const [companyName, setCompanyName] = useState('Workspace');
   const [username, setUsername] = useState('User');
   const [userRole, setUserRole] = useState('');
+  const [userCategory, setUserCategory] = useState('');
+  const [userPermissions, setUserPermissions] = useState(null);
+  const [userReady, setUserReady] = useState(false);
+  
+  // Employee dashboard states
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    name: '',
+    projectId: '',
+    dueDate: '',
+    priority: 'Medium',
+    assignedTo: '',
+    notes: ''
+  });
+  const [allProjects, setAllProjects] = useState([]);
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+  const [revealedCreds, setRevealedCreds] = useState({});
+  const [draggedOverCol, setDraggedOverCol] = useState(null);
+
+  // Fetch all projects when modal is opened
+  useEffect(() => {
+    if (isAddTaskOpen) {
+      const fetchProjects = async () => {
+        try {
+          const res = await fetch('/api/projects');
+          if (res.ok) {
+            const data = await res.json();
+            setAllProjects(data);
+          }
+        } catch (e) {
+          console.error('Failed to load projects', e);
+        }
+      };
+      fetchProjects();
+    }
+  }, [isAddTaskOpen]);
+
   const [showPrices, setShowPrices] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('show_prices');
@@ -40,6 +85,8 @@ export default function Dashboard() {
     return true;
   });
   const [activeBar, setActiveBar] = useState(null);
+  const [chartTimeframe, setChartTimeframe] = useState('Monthly');
+  const [dashboardTimeframe, setDashboardTimeframe] = useState('all');
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
 
   const toggleShowPrices = (e) => {
@@ -54,17 +101,122 @@ export default function Dashboard() {
     });
   };
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const [res, meRes] = await Promise.all([
-          fetch('/api/dashboard'),
-          fetch('/api/auth/me')
-        ]);
-        if (!res.ok) throw new Error('Failed to load dashboard data');
-        const data = await res.json();
-        setStats(data);
+  const handleDropTask = async (taskId, targetStatus) => {
+    try {
+      const task = stats.tasks.find(t => t._id === taskId);
+      if (!task) return;
+      
+      const projectId = task.projectId;
+      
+      // Fetch current project tasks
+      const projRes = await fetch(`/api/projects/${projectId}`);
+      if (!projRes.ok) throw new Error('Failed to load project details for task update');
+      const { project } = await projRes.json();
+      
+      if (!project) throw new Error('Project not found');
+      
+      const updatedTasks = project.tasks.map(t => {
+        if (t._id === taskId) {
+          return {
+            ...t,
+            status: targetStatus,
+            completed: targetStatus === 'Completed'
+          };
+        }
+        return t;
+      });
+      
+      const updateRes = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: updatedTasks }),
+      });
+      
+      if (!updateRes.ok) throw new Error('Failed to update task status in database');
+      
+      // Reload stats to refresh dashboard
+      const reloadRes = await fetch('/api/dashboard');
+      if (reloadRes.ok) {
+        const reloadData = await reloadRes.json();
+        setStats(reloadData);
+      }
+      showToast(`Task status updated to ${targetStatus}`, 'success');
+    } catch (e) {
+      console.error(e);
+      showToast(e.message, 'error');
+    }
+  };
 
+  const handleToggleEmployeeTask = async (taskId, completed) => {
+    const nextStatus = !completed ? 'Completed' : 'Todo';
+    await handleDropTask(taskId, nextStatus);
+  };
+
+  const handleEmployeeAddTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.name.trim() || !taskForm.projectId) {
+      showToast('Task name and Project are required', 'error');
+      return;
+    }
+    
+    try {
+      setIsSubmittingTask(true);
+      
+      const projRes = await fetch(`/api/projects/${taskForm.projectId}`);
+      if (!projRes.ok) throw new Error('Failed to load project details for adding task');
+      const { project } = await projRes.json();
+      
+      if (!project) throw new Error('Project not found');
+      
+      const newTask = {
+        name: taskForm.name.trim(),
+        completed: false,
+        status: 'Todo',
+        assignedTo: taskForm.assignedTo || username,
+        dueDate: taskForm.dueDate ? new Date(taskForm.dueDate).toISOString() : null,
+        priority: taskForm.priority,
+        notes: taskForm.notes,
+        assignedBy: username
+      };
+      
+      const updatedTasks = [...(project.tasks || []), newTask];
+      
+      const updateRes = await fetch(`/api/projects/${taskForm.projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: updatedTasks }),
+      });
+      
+      if (!updateRes.ok) throw new Error('Failed to add task to project');
+      
+      setIsAddTaskOpen(false);
+      setTaskForm({
+        name: '',
+        projectId: '',
+        dueDate: '',
+        priority: 'Medium',
+        assignedTo: '',
+        notes: ''
+      });
+      
+      const reloadRes = await fetch('/api/dashboard');
+      if (reloadRes.ok) {
+        const reloadData = await reloadRes.json();
+        setStats(reloadData);
+      }
+      showToast('Task created and assigned successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+    } finally {
+      setIsSubmittingTask(false);
+    }
+  };
+
+  useEffect(() => {
+    async function fetchMe() {
+      try {
+        const meRes = await fetch('/api/auth/me');
         if (meRes.ok) {
           const meData = await meRes.json();
           if (meData.company?.name) {
@@ -76,7 +228,33 @@ export default function Dashboard() {
           if (meData.username) {
             setUsername(meData.username);
           }
+          if (meData.category) {
+            setUserCategory(meData.category);
+          }
+          if (meData.permissions) {
+            setUserPermissions(meData.permissions);
+          }
+          if (meData.companyUsers) {
+            setCompanyUsers(meData.companyUsers);
+          }
         }
+      } catch (err) {
+        console.error('Failed to load auth data:', err);
+      } finally {
+        setUserReady(true);
+      }
+    }
+    fetchMe();
+  }, []);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/dashboard?timeframe=${dashboardTimeframe}`);
+        if (!res.ok) throw new Error('Failed to load dashboard data');
+        const data = await res.json();
+        setStats(data);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -84,7 +262,7 @@ export default function Dashboard() {
       }
     }
     fetchStats();
-  }, []);
+  }, [dashboardTimeframe]);
 
   const activeAlerts = stats?.pendingTasks ? stats.pendingTasks.slice(0, 5) : [];
 
@@ -96,7 +274,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [activeAlerts.length]);
 
-  if (loading) {
+  if (loading || !userReady) {
     return (
       <div className="empty-state">
         <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
@@ -138,21 +316,51 @@ export default function Dashboard() {
   };
 
   // Process data for bar chart
-  const baseEarnings = stats.invoices.totalEarnings || 75000;
-  const chartData = [
-    { label: 'Jan', value: Math.round(baseEarnings * 0.45) || 30000 },
-    { label: 'Feb', value: Math.round(baseEarnings * 0.60) || 45000 },
-    { label: 'Mar', value: Math.round(baseEarnings * 0.50) || 38000 },
-    { label: 'Apr', value: Math.round(baseEarnings * 0.80) || 60000 },
-    { label: 'May', value: Math.round(baseEarnings * 0.70) || 52000 },
-    { label: 'Jun', value: Math.round(baseEarnings * 0.95) || 71000 },
-    { label: 'Jul', value: baseEarnings || 75000 }
-  ];
+  let chartData = [];
+  if (stats?.billingPerformance) {
+    if (chartTimeframe === 'Weekly') {
+      chartData = stats.billingPerformance.weekly || [];
+    } else if (chartTimeframe === 'Quarterly') {
+      chartData = stats.billingPerformance.quarterly || [];
+    } else {
+      chartData = stats.billingPerformance.monthly || [];
+    }
+  } else {
+    const baseEarnings = stats?.invoices?.totalEarnings || 75000;
+    if (chartTimeframe === 'Weekly') {
+      chartData = [
+        { label: 'Week 1', value: Math.round(baseEarnings * 0.15) || 11000 },
+        { label: 'Week 2', value: Math.round(baseEarnings * 0.25) || 18000 },
+        { label: 'Week 3', value: Math.round(baseEarnings * 0.35) || 26000 },
+        { label: 'Week 4', value: Math.round(baseEarnings * 0.25) || 20000 }
+      ];
+    } else if (chartTimeframe === 'Quarterly') {
+      chartData = [
+        { label: 'Q1', value: Math.round(baseEarnings * 0.8) || 60000 },
+        { label: 'Q2', value: Math.round(baseEarnings * 1.2) || 90000 },
+        { label: 'Q3', value: Math.round(baseEarnings * 0.95) || 71000 },
+        { label: 'Q4', value: baseEarnings || 75000 }
+      ];
+    } else {
+      chartData = [
+        { label: 'Jan', value: Math.round(baseEarnings * 0.45) || 30000 },
+        { label: 'Feb', value: Math.round(baseEarnings * 0.60) || 45000 },
+        { label: 'Mar', value: Math.round(baseEarnings * 0.50) || 38000 },
+        { label: 'Apr', value: Math.round(baseEarnings * 0.80) || 60000 },
+        { label: 'May', value: Math.round(baseEarnings * 0.70) || 52000 },
+        { label: 'Jun', value: Math.round(baseEarnings * 0.95) || 71000 },
+        { label: 'Jul', value: baseEarnings || 75000 }
+      ];
+    }
+  }
   
   const maxChartValue = Math.max(...chartData.map(d => d.value), 10000);
+  const activeBarIndex = activeBar !== null ? activeBar : (chartData.length - 1);
+  const activeValue = chartData[activeBarIndex]?.value ?? (stats?.invoices?.totalEarnings || 0);
+  const activeLabel = chartData[activeBarIndex]?.label ?? 'Current';
 
   // Ongoing tasks calculator
-  const ongoingProjects = (stats.recentProjects || [])
+  const ongoingProjects = (stats?.recentProjects || [])
     .filter(p => ['Planning', 'In Progress', 'Under Review', 'Pending'].includes(p.status))
     .slice(0, 3)
     .map(proj => {
@@ -172,8 +380,338 @@ export default function Dashboard() {
       return { ...proj, progress };
     });
 
+  const p = userPermissions || {};
+
   return (
     <div className="animate-fade-in dashboard-page-wrapper">
+      {userCategory === 'Employee' ? (
+        <>
+        {/* Top Header Section */}
+        <div className="dashboard-header-container">
+          <div>
+            <h1 className="dashboard-title-text">Employee Workspace</h1>
+            <p className="dashboard-subtitle-text">Welcome back, {username.charAt(0).toUpperCase() + username.slice(1)}. Manage your assignments and scheduled calendar posts.</p>
+          </div>
+          {p.project_tasks !== 'none' && (
+            <div>
+              <button className="btn btn-primary" onClick={() => setIsAddTaskOpen(true)}>
+                <Plus size={16} />
+                <span>Create Task</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Expiry alerts banners carousel / Overdue Pending Tasks notification area */}
+        {p.pending_tasks !== 'none' && stats.overdueTasks?.length > 0 && (
+          <div className="employee-overdue-banner animate-fade-in">
+            <div className="overdue-banner-content">
+              <AlertTriangle size={18} style={{ color: 'var(--status-overdue)' }} />
+              <span>
+                <strong>Urgent Action Required:</strong> You have {stats.overdueTasks.length} overdue task{stats.overdueTasks.length > 1 ? 's' : ''}.
+              </span>
+            </div>
+            <div className="overdue-banner-list">
+              {stats.overdueTasks.map((t, idx) => (
+                <div key={idx} className="overdue-badge-pill">
+                  <span style={{ fontWeight: 600 }}>{t.name}</span>
+                  <span style={{ opacity: 0.8, marginLeft: '4px' }}>in {t.projectName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Draggable Kanban Task board */}
+        {p.project_tasks !== 'none' && (
+          <div className="kanban-section">
+          <div className="section-header-row" style={{ marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <ClipboardList size={18} style={{ color: 'var(--accent-primary)' }} />
+              <span>My Task Board</span>
+            </h2>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>Drag and drop cards to update status</p>
+          </div>
+
+          <div className="kanban-board">
+            {[
+              { title: 'To Do', status: 'Todo', color: 'var(--text-secondary)' },
+              { title: 'In Progress', status: 'In Progress', color: 'var(--accent-primary)' },
+              { title: 'Completed', status: 'Completed', color: 'var(--status-completed)' }
+            ].map(col => {
+              const colTasks = (stats.tasks || [])
+                .filter(t => t.status === col.status)
+                .sort((a, b) => {
+                  if (!a.dueDate && !b.dueDate) return 0;
+                  if (!a.dueDate) return 1;
+                  if (!b.dueDate) return -1;
+                  return new Date(a.dueDate) - new Date(b.dueDate);
+                });
+              return (
+                <div 
+                  key={col.status}
+                  className={`kanban-column ${draggedOverCol === col.status ? 'drag-over' : ''}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setDraggedOverCol(col.status)}
+                  onDragLeave={() => setDraggedOverCol(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    handleDropTask(taskId, col.status);
+                    setDraggedOverCol(null);
+                  }}
+                >
+                  <div className="kanban-column-header">
+                    <span className="kanban-column-title" style={{ color: col.color }}>
+                      <span className="column-indicator-dot" style={{ backgroundColor: col.color }}></span>
+                      {col.title}
+                    </span>
+                    <span className="kanban-column-count">{colTasks.length}</span>
+                  </div>
+                  
+                  <div className="kanban-cards-container">
+                    {colTasks.length === 0 ? (
+                      <div className="kanban-empty-placeholder">
+                        No tasks here
+                      </div>
+                    ) : (
+                      colTasks.map(task => {
+                        const isOverdue = !task.completed && task.dueDate && new Date(task.dueDate) < new Date();
+                        return (
+                          <div
+                            key={task._id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', task._id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            className={`kanban-card ${isOverdue ? 'overdue' : ''}`}
+                          >
+                            <div className="kanban-card-project">{task.projectName}</div>
+                            <div className="kanban-card-title">{task.name}</div>
+                            
+                            <div className="kanban-card-meta">
+                              {task.dueDate ? (
+                                <div className={`kanban-card-date ${isOverdue ? 'overdue' : ''}`}>
+                                  <CalendarDays size={12} />
+                                  <span>{new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                </div>
+                              ) : (
+                                <div className="kanban-card-date">
+                                  <CalendarDays size={12} style={{ opacity: 0.5 }} />
+                                  <span style={{ opacity: 0.5 }}>No due date</span>
+                                </div>
+                              )}
+                              
+                              <input
+                                type="checkbox"
+                                checked={task.completed}
+                                onChange={() => handleToggleEmployeeTask(task._id, task.completed)}
+                                className="kanban-card-checkbox"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Toggle completion"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        )}
+
+        {/* Fallback when all main sections are empty */}
+        {p.project_tasks === 'none' && p.project_calendar === 'none' && p.credentials === 'none' && (
+          <div className="card empty-state" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+            <Zap size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
+            <h3>No Active Dashboard Tools</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Your user role currently does not grant access to any workspace tools on this dashboard.</p>
+          </div>
+        )}
+
+        {/* Bottom Section: Calendar + Credentials */}
+        {(p.project_calendar !== 'none' || p.credentials !== 'none') && (
+          <div className="employee-bottom-grid" style={{
+            gridTemplateColumns: (p.project_calendar !== 'none' && p.credentials !== 'none') ? '1.4fr 1fr' : '1fr'
+          }}>
+            {/* Left: Content Calendar (60% width) */}
+            {p.project_calendar !== 'none' && (
+              <div className="card employee-calendar-card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <Calendar size={16} style={{ color: 'var(--accent-primary)' }} />
+                <span>Assigned Content Calendar</span>
+              </h3>
+              <span className="badge badge-inprogress" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
+                {stats.calendarPosts?.length || 0} Posts Assigned
+              </span>
+            </div>
+
+            <div className="calendar-posts-list">
+              {!stats.calendarPosts || stats.calendarPosts.length === 0 ? (
+                <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No calendar posts assigned to you.
+                </div>
+              ) : (
+                stats.calendarPosts.map((post, idx) => {
+                  const postDate = new Date(post.scheduledDate);
+                  const monthStr = postDate.toLocaleString('default', { month: 'short' });
+                  const dayStr = postDate.getDate();
+                  
+                  return (
+                    <div key={idx} className="calendar-post-row-premium">
+                      <div className="calendar-date-badge">
+                        <span className="month">{monthStr}</span>
+                        <span className="day">{dayStr}</span>
+                      </div>
+                      
+                      <div className="calendar-post-details">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span className="calendar-post-project">{post.projectName}</span>
+                          <span className={`badge-post-type ${post.postType?.toLowerCase() || 'static'}`}>
+                            {post.postType}
+                          </span>
+                        </div>
+                        <div className="calendar-post-topic">{post.topic || 'Untitled Post'}</div>
+                        {post.content && <p className="calendar-post-content">{post.content}</p>}
+                        
+                        {post.platforms && post.platforms.length > 0 && (
+                          <div className="calendar-post-platforms">
+                            {post.platforms.map((p, pIdx) => (
+                              <span key={pIdx} className="platform-tag">{p}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="calendar-post-status-col">
+                        <span className={`badge badge-${post.status?.toLowerCase().replace(/\s+/g, '') || 'pending'}`}>
+                          {post.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          )}
+
+          {/* Right: Project Credentials (40% width) */}
+          {p.credentials !== 'none' && (
+            <div className="card employee-credentials-card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <Lock size={16} style={{ color: 'var(--accent-secondary)' }} />
+                <span>Project Credentials Vault</span>
+              </h3>
+            </div>
+
+            <div className="credentials-vault-list">
+              {!stats.credentials || stats.credentials.length === 0 ? (
+                <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No project credentials available.
+                </div>
+              ) : (
+                stats.credentials.map((group, gIdx) => (
+                  <div key={gIdx} className="cred-project-group">
+                    <div className="cred-project-header">
+                      <Briefcase size={12} />
+                      <span>{group.projectName}</span>
+                    </div>
+                    
+                    <div className="cred-items-container">
+                      {group.credentials.map((cred, cIdx) => {
+                        const credId = `${group.projectId}-${cIdx}`;
+                        const isRevealed = !!revealedCreds[credId];
+                        
+                        return (
+                          <div key={cred._id || cIdx} className="cred-item-card">
+                            <div className="cred-item-header">
+                              <span className="cred-item-label">{cred.label || 'Credentials'}</span>
+                              <span className="cred-item-type-badge">{cred.type}</span>
+                            </div>
+
+                            {cred.loginUrl && (
+                              <div className="cred-field-row">
+                                <span className="cred-field-name">URL:</span>
+                                <a href={cred.loginUrl} target="_blank" rel="noopener noreferrer" className="cred-field-link">
+                                  <span>{cred.loginUrl}</span>
+                                  <ExternalLink size={10} />
+                                </a>
+                              </div>
+                            )}
+
+                            {cred.username && (
+                              <div className="cred-field-row">
+                                <span className="cred-field-name">User:</span>
+                                <div className="cred-field-val-container">
+                                  <span className="cred-field-value">{cred.username}</span>
+                                  <button 
+                                    className="cred-copy-btn"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(cred.username);
+                                      showToast('Username copied to clipboard', 'success');
+                                    }}
+                                    title="Copy username"
+                                  >
+                                    <Copy size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {cred.password && (
+                              <div className="cred-field-row">
+                                <span className="cred-field-name">Pass:</span>
+                                <div className="cred-field-val-container">
+                                  <span className="cred-field-value password-font">
+                                    {isRevealed ? cred.password : '••••••••'}
+                                  </span>
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button 
+                                      className="cred-copy-btn"
+                                      onClick={() => {
+                                        setRevealedCreds(prev => ({ ...prev, [credId]: !prev[credId] }));
+                                      }}
+                                      title={isRevealed ? "Hide password" : "Show password"}
+                                    >
+                                      {isRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
+                                    </button>
+                                    <button 
+                                      className="cred-copy-btn"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(cred.password);
+                                        showToast('Password copied to clipboard', 'success');
+                                      }}
+                                      title="Copy password"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          )}
+        </div>
+        )}
+
+        </>
+      ) : (
+        <>
       {/* Top Header Section */}
       <div className="dashboard-header-container">
         <div>
@@ -184,22 +722,30 @@ export default function Dashboard() {
           <NotificationBell userRole={userRole} />
           
           <div className="select-container-custom">
-            <button className="btn-filter-dropdown">
-              <span>Monthly</span>
-              <ChevronDown size={14} />
-            </button>
+            <select
+              value={dashboardTimeframe}
+              onChange={(e) => setDashboardTimeframe(e.target.value)}
+              className="btn-filter-dropdown"
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="all">All Time</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link href="/projects" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
-              <Plus size={16} />
-              <span>New Project</span>
-            </Link>
-            <Link href="/invoices" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
-              <FileText size={16} />
-              <span>New Invoice</span>
-            </Link>
-          </div>
+          {userCategory !== 'Management' && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link href="/projects" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
+                <Plus size={16} />
+                <span>New Project</span>
+              </Link>
+              <Link href="/invoices" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
+                <FileText size={16} />
+                <span>New Invoice</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -252,7 +798,7 @@ export default function Dashboard() {
             <span className="stat-card-title">Active Projects</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="stat-card-value">{stats.projects.active}</span>
+            <span className="stat-card-value">{stats?.projects?.active ?? 0}</span>
             <span className="stat-card-badge positive">
               15% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
@@ -273,7 +819,7 @@ export default function Dashboard() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="stat-card-value">{displayPrice(stats.projects.totalBudget)}</span>
+            <span className="stat-card-value">{displayPrice(stats?.projects?.totalBudget ?? 0)}</span>
             <span className="stat-card-badge positive">
               8% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
@@ -294,7 +840,7 @@ export default function Dashboard() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="stat-card-value">{displayPrice(stats.invoices.totalEarnings)}</span>
+            <span className="stat-card-value">{displayPrice(stats?.invoices?.totalEarnings ?? 0)}</span>
             <span className="stat-card-badge positive">
               10% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↗</span>
             </span>
@@ -315,7 +861,7 @@ export default function Dashboard() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="stat-card-value">{displayPrice(stats.invoices.totalPendingAmount)}</span>
+            <span className="stat-card-value">{displayPrice(stats?.invoices?.totalPendingAmount ?? 0)}</span>
             <span className="stat-card-badge negative">
               4% <span style={{ fontSize: '0.7rem', marginLeft: '1px' }}>↘</span>
             </span>
@@ -331,23 +877,29 @@ export default function Dashboard() {
             <div>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Billing Performance</h3>
             </div>
-            <button className="btn-filter-dropdown-small">
-              <span>Weekly</span>
-              <ChevronDown size={12} />
-            </button>
+            <select 
+              value={chartTimeframe} 
+              onChange={(e) => setChartTimeframe(e.target.value)} 
+              className="btn-filter-dropdown-small"
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+              <option value="Quarterly">Quarterly</option>
+            </select>
           </div>
 
           <div style={{ margin: '0.35rem 0 1rem 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <span style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                {displayPrice(stats.invoices.totalEarnings)}
+                {displayPrice(activeValue)}
               </span>
               <span className="stat-card-badge positive" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                 12% <span style={{ fontSize: '0.7rem' }}>↗</span>
               </span>
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-              Compared to previous month
+              {chartTimeframe === 'Weekly' ? `For ${activeLabel}` : chartTimeframe === 'Quarterly' ? `For ${activeLabel}` : `For ${activeLabel}`}
             </div>
           </div>
 
@@ -482,10 +1034,14 @@ export default function Dashboard() {
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Ongoing Tasks</h3>
               </div>
             </div>
-            <Link href="/projects" className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderRadius: '8px' }}>
+            <button 
+              onClick={() => setIsAddTaskOpen(true)}
+              className="btn btn-primary" 
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem', borderRadius: '8px' }}
+            >
               <Plus size={14} />
               <span>New Task</span>
-            </Link>
+            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -552,14 +1108,14 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {stats.recentInvoices.length === 0 ? (
+              {(stats?.recentInvoices || []).length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No invoices generated yet. Create one to collect payments!
                   </td>
                 </tr>
               ) : (
-                stats.recentInvoices.slice(0, 4).map((invoice) => (
+                (stats?.recentInvoices || []).slice(0, 4).map((invoice) => (
                   <tr key={invoice._id} onClick={() => window.location.href = `/invoices/${invoice._id}`} className="premium-table-row">
                     <td>
                       <span className="table-invoice-link">{invoice.invoiceNumber}</span>
@@ -581,6 +1137,119 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+      </>
+    )}
+
+    {/* Modal for task creation */}
+    {isAddTaskOpen && (
+      <div className="modal-overlay" onClick={() => setIsAddTaskOpen(false)}>
+        <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '90%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Create Task</h2>
+            <button onClick={() => setIsAddTaskOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+            Add a task to a project and assign it to a teammate.
+          </p>
+
+          <form onSubmit={handleEmployeeAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Title *</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                required 
+                placeholder="What needs to be done?"
+                value={taskForm.name}
+                onChange={(e) => setTaskForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Associated Project *</label>
+              <select
+                required
+                className="form-select"
+                value={taskForm.projectId}
+                onChange={(e) => setTaskForm(prev => ({ ...prev, projectId: e.target.value }))}
+              >
+                <option value="">Select a project...</option>
+                {allProjects.map((proj) => (
+                  <option key={proj._id} value={proj._id}>
+                    {proj.name}
+                  </option>
+                ))}
+                {allProjects.length === 0 && (
+                  <option disabled value="">No projects found</option>
+                )}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>Priority</label>
+                <select 
+                  className="form-select"
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>Due Date / Reminder</label>
+                <input 
+                  type="date" 
+                  className="form-input"
+                  value={taskForm.dueDate}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Assign To (optional)</label>
+              <select 
+                className="form-select"
+                value={taskForm.assignedTo}
+                onChange={(e) => setTaskForm(prev => ({ ...prev, assignedTo: e.target.value }))}
+              >
+                <option value="">Add assignees...</option>
+                {companyUsers.map(u => (
+                  <option key={u.id} value={u.username}>{u.username}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Notes (optional)</label>
+              <textarea 
+                className="form-textarea"
+                placeholder="Add details..."
+                rows={4}
+                value={taskForm.notes}
+                onChange={(e) => setTaskForm(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddTaskOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmittingTask}>
+                {isSubmittingTask ? 'Creating...' : 'Create Task'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
 
       {/* Styled Scoped Styling */}
       <style jsx global>{`
@@ -1015,6 +1684,440 @@ export default function Dashboard() {
         }
         .table-invoice-link:hover {
           text-decoration: underline;
+        }
+
+        /* Employee Workspace & Kanban styles */
+        .employee-overdue-banner {
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          border-left: 5px solid #ef4444;
+          border-radius: 12px;
+          padding: 1rem 1.25rem;
+          color: var(--text-primary);
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+          box-shadow: 0 4px 20px rgba(239, 68, 68, 0.08);
+        }
+        .overdue-banner-content {
+          display: flex;
+          align-items: center;
+          gap: 0.65rem;
+          font-size: 0.88rem;
+        }
+        .overdue-banner-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .overdue-badge-pill {
+          background: rgba(239, 68, 68, 0.12);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #fca5a5;
+          font-size: 0.72rem;
+          padding: 0.2rem 0.55rem;
+          border-radius: 6px;
+          display: inline-flex;
+          align-items: center;
+        }
+        [data-theme="light"] .employee-overdue-banner {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-left: 5px solid #ef4444;
+          color: #991b1b;
+        }
+        [data-theme="light"] .overdue-badge-pill {
+          background: #fee2e2;
+          color: #b91c1c;
+          border: 1px solid #fca5a5;
+        }
+        .kanban-section {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          padding: 1.25rem;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+        .kanban-board {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.25rem;
+          margin-top: 1rem;
+        }
+        @media (max-width: 768px) {
+          .kanban-board {
+            grid-template-columns: 1fr;
+          }
+        }
+        .kanban-column {
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          padding: 1rem;
+          min-height: 420px;
+          display: flex;
+          flex-direction: column;
+          gap: 0.85rem;
+          transition: all 0.2s ease-in-out;
+        }
+        [data-theme="light"] .kanban-column {
+          background: rgba(0, 0, 0, 0.01);
+        }
+        .kanban-column.drag-over {
+          background: var(--accent-primary-glow);
+          border-color: var(--accent-primary);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0, 174, 239, 0.15);
+        }
+        .column-indicator-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .kanban-column-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 0.65rem;
+          border-bottom: 1px solid var(--border-color);
+          margin-bottom: 0.25rem;
+        }
+        .kanban-column-title {
+          font-size: 0.85rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .kanban-column-count {
+          font-size: 0.72rem;
+          font-weight: 700;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--text-secondary);
+          padding: 0.15rem 0.45rem;
+          border-radius: 9999px;
+        }
+        [data-theme="light"] .kanban-column-count {
+          background: rgba(0, 0, 0, 0.05);
+        }
+        .kanban-cards-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          flex: 1;
+        }
+        .kanban-empty-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 80px;
+          border: 1px dashed var(--border-color);
+          border-radius: 8px;
+          font-size: 0.78rem;
+          color: var(--text-muted);
+        }
+        .kanban-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 0.85rem;
+          cursor: grab;
+          transition: all 0.2s ease-in-out;
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+        }
+        .kanban-card:hover {
+          transform: translateY(-2px);
+          border-color: var(--accent-primary);
+          background: var(--bg-card-hover);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+        .kanban-card:active {
+          cursor: grabbing;
+        }
+        .kanban-card.overdue {
+          border-left: 3px solid var(--status-overdue);
+        }
+        .kanban-card-project {
+          font-size: 0.68rem;
+          font-weight: 600;
+          color: var(--accent-primary);
+        }
+        .kanban-card-title {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          line-height: 1.4;
+          word-break: break-word;
+        }
+        .kanban-card-meta {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 0.25rem;
+          font-size: 0.7rem;
+          color: var(--text-secondary);
+        }
+        .kanban-card-date {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        .kanban-card-date.overdue {
+          color: var(--status-overdue);
+          font-weight: 600;
+        }
+        .kanban-card-checkbox {
+          width: 14px;
+          height: 14px;
+          border-radius: 3px;
+          border: 1px solid var(--border-color);
+          cursor: pointer;
+        }
+        .employee-bottom-grid {
+          display: grid;
+          grid-template-columns: 1.4fr 1fr;
+          gap: 1.25rem;
+          margin-top: 1.25rem;
+        }
+        @media (max-width: 1024px) {
+          .employee-bottom-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .calendar-posts-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .calendar-post-row-premium {
+          display: flex;
+          gap: 1rem;
+          padding: 0.85rem;
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+        .calendar-post-row-premium:hover {
+          border-color: var(--accent-primary-glow);
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .calendar-date-badge {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          width: 45px;
+          height: 48px;
+          flex-shrink: 0;
+        }
+        .calendar-date-badge .month {
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: var(--accent-primary);
+          line-height: 1;
+        }
+        .calendar-date-badge .day {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          line-height: 1.2;
+          margin-top: 1px;
+        }
+        [data-theme="light"] .calendar-date-badge {
+          background: rgba(0, 0, 0, 0.02);
+        }
+        .calendar-post-details {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .calendar-post-project {
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+        .badge-post-type {
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          padding: 0.1rem 0.4rem;
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--text-secondary);
+        }
+        [data-theme="light"] .badge-post-type {
+          background: rgba(0, 0, 0, 0.04);
+        }
+        .badge-post-type.reel { background: rgba(162, 28, 175, 0.1); color: #f472b6; }
+        .badge-post-type.motion { background: rgba(3, 105, 161, 0.1); color: #38bdf8; }
+        .badge-post-type.carousel { background: rgba(217, 119, 6, 0.1); color: #fbbf24; }
+        .calendar-post-topic {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .calendar-post-content {
+          font-size: 0.72rem;
+          color: var(--text-secondary);
+          line-height: 1.35;
+          margin: 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .calendar-post-platforms {
+          display: flex;
+          gap: 0.35rem;
+          flex-wrap: wrap;
+          margin-top: 0.15rem;
+        }
+        .platform-tag {
+          font-size: 0.62rem;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border-color);
+          padding: 0.05rem 0.35rem;
+          border-radius: 4px;
+        }
+        [data-theme="light"] .platform-tag {
+          background: rgba(0, 0, 0, 0.02);
+        }
+        .calendar-post-status-col {
+          flex-shrink: 0;
+        }
+        .credentials-vault-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+        .cred-project-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+        }
+        .cred-project-header {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding-bottom: 0.35rem;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .cred-items-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .cred-item-card {
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 0.75rem 0.85rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+        }
+        .cred-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.15rem;
+        }
+        .cred-item-label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+        .cred-item-type-badge {
+          font-size: 0.65rem;
+          font-weight: 600;
+          background: var(--accent-secondary-glow);
+          color: var(--accent-secondary);
+          padding: 0.05rem 0.4rem;
+          border-radius: 4px;
+        }
+        .cred-field-row {
+          display: flex;
+          font-size: 0.75rem;
+          align-items: center;
+        }
+        .cred-field-name {
+          color: var(--text-muted);
+          width: 45px;
+          flex-shrink: 0;
+        }
+        .cred-field-link {
+          color: var(--accent-primary);
+          font-weight: 500;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+        .cred-field-link:hover {
+          text-decoration: underline;
+        }
+        .cred-field-val-container {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex: 1;
+          min-width: 0;
+          background: rgba(0, 0, 0, 0.20);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 0.15rem 0.4rem;
+        }
+        [data-theme="light"] .cred-field-val-container {
+          background: rgba(0, 0, 0, 0.03);
+        }
+        .cred-field-value {
+          color: var(--text-primary);
+          font-weight: 500;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+        .cred-field-value.password-font {
+          font-family: monospace;
+          letter-spacing: 0.05em;
+        }
+        .cred-copy-btn {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 3px;
+          transition: all 0.2s;
+        }
+        .cred-copy-btn:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.05);
         }
       `}</style>
     </div>

@@ -4,9 +4,15 @@ import Project from '@/models/Project';
 import Invoice from '@/models/Invoice';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function GET(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'clients', 'read');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to view client details' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
@@ -44,15 +50,17 @@ export async function GET(request, context) {
 
 export async function PUT(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'clients', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to edit clients' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
     const data = await request.json();
 
     const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot edit clients' }, { status: 403 });
-    }
     let query = { _id: id };
     if (role !== 'superadmin') {
       query.companyId = companyId;
@@ -83,14 +91,16 @@ export async function PUT(request, context) {
 
 export async function DELETE(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'clients', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete clients' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
 
     const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot delete clients' }, { status: 403 });
-    }
     let query = { _id: id };
     if (role !== 'superadmin') {
       query.companyId = companyId;

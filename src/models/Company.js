@@ -82,6 +82,18 @@ const CompanySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    projectLimit: {
+      type: Number,
+      default: 0, // 0 = unlimited
+    },
+    clientLimit: {
+      type: Number,
+      default: 0, // 0 = unlimited
+    },
+    employeeLimit: {
+      type: Number,
+      default: 0, // 0 = unlimited
+    },
   },
   {
     timestamps: true,

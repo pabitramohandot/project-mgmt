@@ -23,6 +23,11 @@ const UserSchema = new mongoose.Schema(
       enum: ['superadmin', 'company_admin', 'company_user'],
       required: true,
     },
+    customRole: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+      default: null,
+    },
     email: {
       type: String,
       trim: true,

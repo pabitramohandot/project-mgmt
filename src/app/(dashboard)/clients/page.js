@@ -55,24 +55,29 @@ const maskPhone = (phone) => {
 export default function ClientsPage() {
   const { showToast, showConfirm } = useNotification();
   const [role, setRole] = useState('');
+  const [clientLimit, setClientLimit] = useState(0);
+  const [clientCount, setClientCount] = useState(0);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    async function getRole() {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          setRole(data.role);
-        }
-      } catch (err) {
-        console.error('Failed to load user role', err);
+  const fetchLimits = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setRole(data.role);
+        if (data.company?.clientLimit !== undefined) setClientLimit(data.company.clientLimit);
+        if (data.clientCount !== undefined) setClientCount(data.clientCount);
       }
+    } catch (err) {
+      console.error('Failed to load user role/limits', err);
     }
-    getRole();
+  };
+
+  useEffect(() => {
+    fetchLimits();
   }, []);
 
   // Modals state
@@ -140,6 +145,10 @@ export default function ClientsPage() {
   };
 
   const handleOpenCreateModal = () => {
+    if (clientLimit > 0 && clientCount >= clientLimit) {
+      showToast(`Client creation limit reached (${clientLimit}).`, 'error');
+      return;
+    }
     setClientForm({
       _id: '',
       name: '',
@@ -220,6 +229,7 @@ export default function ClientsPage() {
       showToast(isEditing ? 'Client profile updated' : 'Client profile created', 'success');
       setIsFormModalOpen(false);
       fetchClients();
+      fetchLimits();
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -244,6 +254,7 @@ export default function ClientsPage() {
           showToast('Client profile deleted', 'success');
           setIsDetailModalOpen(false);
           fetchClients();
+          fetchLimits();
         } catch (err) {
           showToast(err.message, 'error');
         }
@@ -265,6 +276,25 @@ export default function ClientsPage() {
           <div>
             <h1 className="page-title">Clients</h1>
             <p className="page-subtitle">Manage client profiles, contact information, and billing histories.</p>
+            {clientLimit > 0 && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.25rem 0.65rem',
+                background: clientCount >= clientLimit ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 174, 239, 0.06)',
+                border: `1px solid ${clientCount >= clientLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 174, 239, 0.15)'}`,
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: clientCount >= clientLimit ? '#ef4444' : 'var(--accent-primary)',
+                marginTop: '0.5rem'
+              }}>
+                <Users size={12} />
+                <span>Limit: {clientCount} / {clientLimit} Clients</span>
+                {clientCount >= clientLimit && <span style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem', borderRadius: '4px', background: '#ef4444', color: '#fff', marginLeft: '4px' }}>MAX REACHED</span>}
+              </div>
+            )}
           </div>
           <button className="btn btn-primary" onClick={handleOpenCreateModal}>
             <Plus size={18} />

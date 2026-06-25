@@ -20,6 +20,7 @@ export default function PendingTasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [userCategory, setUserCategory] = useState('');
 
   useEffect(() => {
     async function fetchTasks() {
@@ -29,6 +30,9 @@ export default function PendingTasksPage() {
         if (!res.ok) throw new Error('Failed to fetch tasks data');
         const data = await res.json();
         setTasks(data.pendingTasks || []);
+        if (data.category) {
+          setUserCategory(data.category);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -46,6 +50,11 @@ export default function PendingTasksPage() {
     if (filter === 'project_pending') return task.type === 'project_pending';
     if (filter === 'calendar_pending') return task.type === 'calendar_pending';
     return true;
+  }).sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(a.date) - new Date(b.date);
   });
 
   const getTaskStyles = (type) => {
@@ -114,33 +123,37 @@ export default function PendingTasksPage() {
           >
             All ({tasks.length})
           </button>
-          <button 
-            onClick={() => setFilter('invoice_draft')} 
-            className={`btn ${filter === 'invoice_draft' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            Draft Invoices ({tasks.filter(t => t.type === 'invoice_draft').length})
-          </button>
-          <button 
-            onClick={() => setFilter('hosting_expiry')} 
-            className={`btn ${filter === 'hosting_expiry' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            Hosting Expiry ({tasks.filter(t => t.type === 'hosting_expiry').length})
-          </button>
-          <button 
-            onClick={() => setFilter('domain_expiry')} 
-            className={`btn ${filter === 'domain_expiry' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            Domain Expiry ({tasks.filter(t => t.type === 'domain_expiry').length})
-          </button>
+          {userCategory !== 'Employee' && (
+            <>
+              <button 
+                onClick={() => setFilter('invoice_draft')} 
+                className={`btn ${filter === 'invoice_draft' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+              >
+                Draft Invoices ({tasks.filter(t => t.type === 'invoice_draft').length})
+              </button>
+              <button 
+                onClick={() => setFilter('hosting_expiry')} 
+                className={`btn ${filter === 'hosting_expiry' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+              >
+                Hosting Expiry ({tasks.filter(t => t.type === 'hosting_expiry').length})
+              </button>
+              <button 
+                onClick={() => setFilter('domain_expiry')} 
+                className={`btn ${filter === 'domain_expiry' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+              >
+                Domain Expiry ({tasks.filter(t => t.type === 'domain_expiry').length})
+              </button>
+            </>
+          )}
           <button 
             onClick={() => setFilter('project_pending')} 
             className={`btn ${filter === 'project_pending' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            Overdue Projects ({tasks.filter(t => t.type === 'project_pending').length})
+            {userCategory === 'Employee' ? 'Overdue Tasks' : 'Overdue Projects'} ({tasks.filter(t => t.type === 'project_pending').length})
           </button>
           <button 
             onClick={() => setFilter('calendar_pending')} 
@@ -175,65 +188,62 @@ export default function PendingTasksPage() {
           <p>No pending tasks found for the selected filter.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredTasks.map((task) => {
-            const styles = getTaskStyles(task.type);
-            const TaskIcon = styles.icon;
+        <div className="table-container">
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Task Title</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.map((task) => {
+                const styles = getTaskStyles(task.type);
+                const TaskIcon = styles.icon;
 
-            return (
-              <div 
-                key={`${task.type}-${task.id}`} 
-                className="card pending-task-card"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '1.5rem',
-                  borderLeft: `4px solid ${styles.color}`,
-                  background: 'var(--bg-card)',
-                  gap: '1.5rem',
-                  flexWrap: 'wrap'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', flex: 1, minWidth: '280px' }}>
-                  <div style={{
-                    background: styles.bgLight,
-                    color: styles.color,
-                    padding: '0.75rem',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <TaskIcon size={24} />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                      <span className="badge" style={{ background: `${styles.color}20`, color: styles.color, fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}>
-                        {styles.badgeText}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Dated: {new Date(task.date).toLocaleDateString('en-IN')}
-                      </span>
-                    </div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                return (
+                  <tr key={`${task.type}-${task.id}`}>
+                    <td style={{ width: '200px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          background: styles.bgLight,
+                          color: styles.color,
+                          padding: '0.4rem',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <TaskIcon size={16} />
+                        </div>
+                        <span className="badge" style={{ background: `${styles.color}20`, color: styles.color, fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}>
+                          {styles.badgeText}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       {task.title}
-                    </h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.4 }}>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                       {task.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <Link href={task.link} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                    <span>Resolve Action</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {new Date(task.date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <Link href={task.link} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                        <span>Resolve Action</span>
+                        <ArrowRight size={12} />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

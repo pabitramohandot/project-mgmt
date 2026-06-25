@@ -1,16 +1,47 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from "@/components/Sidebar";
 import FooterFeedback from "@/components/FooterFeedback";
 import NotificationBell from "@/components/NotificationBell";
-import { Menu } from 'lucide-react';
+import { Menu, ShieldAlert } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [user, setUser] = useState(null);
   const [isSuspended, setIsSuspended] = useState(false);
+
+  // Route-guard check based on user permissions
+  const hasPageAccess = () => {
+    if (!user) return true; // Let user data load first
+    if (user.role === 'superadmin') return true;
+
+    // Block Employee category from direct URLs
+    if (user.category === 'Employee') {
+      if (
+        pathname.startsWith('/clients') ||
+        pathname.startsWith('/invoices') ||
+        pathname.startsWith('/settings/branding') ||
+        pathname.startsWith('/settings/profile')
+      ) {
+        return false;
+      }
+    }
+
+    const p = user.permissions || {};
+    if (pathname.startsWith('/superadmin') && user.role !== 'superadmin') return false;
+    if (pathname.startsWith('/ai-agents') && p.ai_agent === 'none') return false;
+    if (pathname.startsWith('/clients') && p.clients === 'none') return false;
+    if (pathname.startsWith('/invoices') && p.invoices === 'none') return false;
+    if (pathname.startsWith('/credentials') && p.credentials === 'none') return false;
+    if (pathname.startsWith('/tasks') && p.pending_tasks === 'none') return false;
+    if (pathname.startsWith('/announcements') && p.announcements === 'none') return false;
+    if (pathname.startsWith('/settings/branding') && p.branding === 'none') return false;
+    return true;
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar_collapsed') === 'true';
@@ -115,7 +146,27 @@ export default function DashboardLayout({ children }) {
       )}
 
       <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
-        {children}
+        {hasPageAccess() ? (
+          children
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            color: 'var(--text-secondary)',
+            gap: '1.25rem',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <ShieldAlert size={48} style={{ color: 'var(--status-overdue)', opacity: 0.8 }} />
+            <div>
+              <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Access Denied</h2>
+              <p style={{ fontSize: '0.875rem' }}>You do not have the required permissions to access this page.</p>
+            </div>
+          </div>
+        )}
       </main>
 
       {user?.role && user.role !== 'superadmin' && <FooterFeedback />}

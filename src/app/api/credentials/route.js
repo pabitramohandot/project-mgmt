@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import Credential from '@/models/Credential';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 function checkPasscode(request) {
   const passcode = request.headers.get('x-vault-passcode');
@@ -11,6 +12,11 @@ function checkPasscode(request) {
 
 export async function GET(request) {
   try {
+    const isAllowed = await hasPermission(request, 'credentials', 'read');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to view credentials' }, { status: 403 });
+    }
+
     if (!checkPasscode(request)) {
       return NextResponse.json({ error: 'Unauthorized. Invalid vault passcode.' }, { status: 401 });
     }
@@ -40,6 +46,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const isAllowed = await hasPermission(request, 'credentials', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to create credentials' }, { status: 403 });
+    }
+
     if (!checkPasscode(request)) {
       return NextResponse.json({ error: 'Unauthorized. Invalid vault passcode.' }, { status: 401 });
     }

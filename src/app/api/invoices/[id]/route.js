@@ -3,9 +3,15 @@ import Invoice from '@/models/Invoice';
 import Company from '@/models/Company';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function GET(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'invoices', 'read');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to view invoice details' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
@@ -75,6 +81,11 @@ export async function GET(request, context) {
 
 export async function PUT(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'invoices', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to edit invoices' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
@@ -83,9 +94,6 @@ export async function PUT(request, context) {
     const { pdfBase64, ...updateData } = data;
 
     const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot edit invoices' }, { status: 403 });
-    }
     let query = { _id: id, companyId };
 
     const invoice = await Invoice.findOne(query);
@@ -151,14 +159,16 @@ export async function PUT(request, context) {
 
 export async function DELETE(request, context) {
   try {
+    const isAllowed = await hasPermission(request, 'invoices', 'write');
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete invoices' }, { status: 403 });
+    }
+
     await dbConnect();
     const params = await context.params;
     const { id } = params;
 
-    const { companyId, role } = getRequestSession(request);
-    if (role === 'company_user') {
-      return NextResponse.json({ error: 'Forbidden: Company users cannot delete invoices' }, { status: 403 });
-    }
+    const { companyId } = getRequestSession(request);
     let query = { _id: id, companyId };
 
     const invoice = await Invoice.findOne(query);

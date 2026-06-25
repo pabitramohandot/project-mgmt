@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Company from "@/models/Company";
 import User from "@/models/User";
+import Role from "@/models/Role";
+import Project from "@/models/Project";
+import Client from "@/models/Client";
+import GlobalSettings from "@/models/GlobalSettings";
 import { verifyToken, hashPassword } from "@/lib/auth";
+import { getPermissionsForUser, getCategoryForUser } from "@/lib/permissions";
 
 export async function GET(request) {
   try {
@@ -14,13 +19,20 @@ export async function GET(request) {
     }
 
     await dbConnect();
-    const user = await User.findById(payload.userId).lean();
+    const user = await User.findById(payload.userId).populate('customRole').lean();
     if (!user) {
       return NextResponse.json({ loggedIn: false });
     }
 
+    const permissions = await getPermissionsForUser(user);
+    const category = await getCategoryForUser(user);
+
     let company = null;
     let companyUsers = [];
+    let projectCount = 0;
+    let clientCount = 0;
+    let employeeCount = 0;
+
     if (user.companyId) {
       company = await Company.findById(user.companyId).lean();
       if (company && company.isActive === false && user.role !== "superadmin") {
@@ -28,28 +40,44 @@ export async function GET(request) {
         response.cookies.delete("admin_token");
         return response;
       }
-      if (user.role === "company_admin" || user.role === "superadmin") {
-        companyUsers = await User.find({ companyId: user.companyId })
-          .select("username role email whatsapp createdAt")
-          .sort({ username: 1 })
-          .lean();
-      }
+      // Allow all company members to fetch list of teammates to support task assignment
+      companyUsers = await User.find({ companyId: user.companyId })
+        .select("username role email whatsapp createdAt")
+        .sort({ username: 1 })
+        .lean();
+        
+      projectCount = await Project.countDocuments({ companyId: user.companyId });
+      clientCount = await Client.countDocuments({ companyId: user.companyId });
+      employeeCount = companyUsers.length;
     }
+
+    // Fetch global platform settings (like uploadCode)
+    const globalSettings = await GlobalSettings.findOne({ key: "platform" }).lean();
+    const uploadCode = globalSettings?.uploadCode || "ABC012";
 
     return NextResponse.json({
       loggedIn: true,
       username: user.username,
       userId: user._id.toString(),
+      uploadCode,
       companyId: user.companyId ? user.companyId.toString() : null,
       role: user.role,
+      category,
       email: user.email || "",
       whatsapp: user.whatsapp || "",
+      permissions,
+      projectCount,
+      clientCount,
+      employeeCount,
       company: company
         ? {
             name: company.name,
             slug: company.slug,
             logo: company.logo,
             brandColors: company.brandColors,
+            projectLimit: company.projectLimit || 0,
+            clientLimit: company.clientLimit || 0,
+            employeeLimit: company.employeeLimit || 0,
             emailSettings: {
               user: company.emailSettings?.user || "",
               hasPassword: !!company.emailSettings?.pass,
@@ -103,7 +131,9 @@ export async function PUT(request) {
       companyEmailHost,
       companyEmailPort,
       companyEmailSecure,
-      companyEmailProviderType
+      companyEmailProviderType,
+      companyLogo,
+      uploadCode
     } = data;
 
     if (email !== undefined) user.email = email.trim();
@@ -115,13 +145,25 @@ export async function PUT(request) {
 
     await user.save();
 
-    // If company admin or super admin, save custom email settings
+    if (user.role === "superadmin" && uploadCode !== undefined) {
+      let globalSettings = await GlobalSettings.findOne({ key: "platform" });
+      if (!globalSettings) {
+        globalSettings = new GlobalSettings({ key: "platform" });
+      }
+      globalSettings.uploadCode = uploadCode.trim();
+      await globalSettings.save();
+    }
+
+    // If company admin or super admin, save custom email/logo settings
     if (
       user.companyId &&
       (user.role === "company_admin" || user.role === "superadmin")
     ) {
       const company = await Company.findById(user.companyId);
       if (company) {
+        if (companyLogo !== undefined) {
+          company.logo = companyLogo.trim();
+        }
         if (!company.emailSettings) {
           company.emailSettings = { user: "", pass: "" };
         }
