@@ -124,12 +124,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       </button>
 
       <div className="logo" style={{ justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
-        {company?.logo ? (
-          <img src={company.logo} alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '6px' }} />
-        ) : (
-          <LayoutDashboard size={28} />
-        )}
-        {!isCollapsed && <span>{company?.name || 'Workspace'}</span>}
+        <img src="https://uploads.worklanceai.com/uploads/2026/06/Final%20Logo-13.png" alt="Worklance Logo" style={{ height: '32px', objectFit: 'contain' }} />
       </div>
       <nav style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <ul className="menu-list">
@@ -178,14 +173,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       }} />
                     )}
                     {isCollapsed && item.tag && (
-                      <span style={{
+                      <span className="shimmer-tag" style={{
                         position: 'absolute',
                         top: '-2px',
                         right: '-4px',
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
                         border: '1.5px solid var(--bg-secondary)',
                         boxShadow: '0 0 6px var(--accent-primary)'
                       }} />
@@ -194,8 +188,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span>{item.name}</span>
                         {item.tag && (
-                          <span style={{
-                            background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+                          <span 
+                            className="shimmer-tag"
+                            style={{
                             color: '#ffffff',
                             fontSize: '0.58rem',
                             fontWeight: '800',

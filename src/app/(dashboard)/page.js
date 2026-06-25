@@ -719,21 +719,7 @@ export default function Dashboard() {
           <p className="dashboard-subtitle-text">Welcome back, {username.charAt(0).toUpperCase() + username.slice(1)}. Here is your workspace performance metrics.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <NotificationBell userRole={userRole} />
-          
-          <div className="select-container-custom">
-            <select
-              value={dashboardTimeframe}
-              onChange={(e) => setDashboardTimeframe(e.target.value)}
-              className="btn-filter-dropdown"
-              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="all">All Time</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </div>
-
+          {/* NotificationBell and Timeframe filter removed per user request */}
           {userCategory !== 'Management' && (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Link href="/projects" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
@@ -1315,7 +1301,7 @@ export default function Dashboard() {
           border-color: var(--accent-primary);
         }
         .dashboard-alerts-carousel-container {
-          margin-bottom: 2rem;
+          margin-bottom: 1rem;
           position: relative;
           display: flex;
           flex-direction: column;

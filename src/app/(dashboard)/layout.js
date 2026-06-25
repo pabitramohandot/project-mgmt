@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from "@/components/Sidebar";
 import FooterFeedback from "@/components/FooterFeedback";
 import NotificationBell from "@/components/NotificationBell";
+import TopHeader from "@/components/TopHeader";
 import { Menu, ShieldAlert } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
@@ -145,10 +146,12 @@ export default function DashboardLayout({ children }) {
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
       )}
 
-      <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
-        {hasPageAccess() ? (
-          children
-        ) : (
+      <div className={`main-content ${isCollapsed ? 'collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
+        <TopHeader user={user} />
+        <main className="main-content-inner" style={{ padding: '2.5rem', flex: 1 }}>
+          {hasPageAccess() ? (
+            children
+          ) : (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -167,9 +170,9 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         )}
-      </main>
-
-      {user?.role && user.role !== 'superadmin' && <FooterFeedback />}
+        </main>
+        {user?.role && user.role !== 'superadmin' && <FooterFeedback />}
+      </div>
 
       {/* Glassmorphic Non-dismissible Warning Modal overlay */}
       {isSuspended && (
