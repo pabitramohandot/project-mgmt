@@ -88,10 +88,34 @@ export default function RolesPage() {
 
     try {
       setCreating(true);
+      
       const defaultPerms = {};
       [...GLOBAL_PERMISSIONS, ...PROJECT_PERMISSIONS].forEach(p => {
         defaultPerms[p.key] = 'none';
       });
+
+      // Populate default permissions based on the role category
+      if (newRoleCategory === 'Admin') {
+        [...GLOBAL_PERMISSIONS, ...PROJECT_PERMISSIONS].forEach(p => {
+          defaultPerms[p.key] = 'write';
+        });
+      } else if (newRoleCategory === 'Management') {
+        [...GLOBAL_PERMISSIONS, ...PROJECT_PERMISSIONS].forEach(p => {
+          defaultPerms[p.key] = 'read';
+        });
+      } else {
+        // Employee default permissions
+        defaultPerms.ai_agent = 'read';
+        defaultPerms.credentials = 'read';
+        defaultPerms.pending_tasks = 'read';
+        defaultPerms.announcements = 'read';
+        defaultPerms.project_details = 'read';
+        defaultPerms.project_credential = 'read';
+        defaultPerms.project_links = 'read';
+        defaultPerms.project_status = 'read';
+        defaultPerms.project_tasks = 'write';
+        defaultPerms.project_calendar = 'write';
+      }
 
       const res = await fetch('/api/superadmin/roles', {
         method: 'POST',

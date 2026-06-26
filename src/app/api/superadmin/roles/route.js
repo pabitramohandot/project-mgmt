@@ -16,7 +16,7 @@ export async function GET(request) {
     
     let query = {};
     if (role === 'company_admin') {
-      query = { category: 'Employee' };
+      query = { isSystem: { $ne: true } };
     }
     
     const roles = await Role.find(query).sort({ name: 1 }).lean();

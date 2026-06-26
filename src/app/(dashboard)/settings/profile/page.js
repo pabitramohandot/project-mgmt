@@ -918,8 +918,11 @@ export default function ProfileSettingsPage() {
                   required
                   value={newEmployee.customRole}
                   onChange={(e) => setNewEmployee(prev => ({ ...prev, customRole: e.target.value }))}
+                  disabled={availableRoles.length === 0}
                 >
-                  <option value="">Select Role Category (Employee only)</option>
+                  <option value="">
+                    {availableRoles.length === 0 ? "No custom roles available" : "Select Custom Role"}
+                  </option>
                   {availableRoles.map(roleOpt => (
                     <option key={roleOpt._id} value={roleOpt._id}>{roleOpt.name}</option>
                   ))}

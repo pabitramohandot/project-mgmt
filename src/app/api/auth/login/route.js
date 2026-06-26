@@ -8,6 +8,7 @@ export async function POST(request) {
   try {
     await dbConnect();
     const { username, password } = await request.json();
+    console.log("LOGIN ATTEMPT:", username, password.length);
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -15,12 +16,13 @@ export async function POST(request) {
 
     const user = await User.findOne({ username: username.trim().toLowerCase() });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid username' }, { status: 401 });
     }
 
     const hashedPassword = await hashPassword(password);
-    if (user.password !== hashedPassword) {
-      return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+    const trimmedHashedPassword = await hashPassword(password.trim());
+    if (user.password !== hashedPassword && user.password !== trimmedHashedPassword) {
+      return NextResponse.json({ error: 'Invalid password (check for spaces)' }, { status: 401 });
     }
 
     // If company user, verify company isActive status

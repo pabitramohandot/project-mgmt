@@ -1276,21 +1276,28 @@ export default function AIChatBot() {
           gap: '0.5rem',
           alignItems: 'center'
         }}>
-          <input 
-            type="text"
+          <textarea 
             placeholder="Type a message or command (e.g. status report of project X)..."
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              e.target.style.height = '46px';
+              e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+            }}
             onKeyDown={async (e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!inputValue.trim() && !loading) return;
                 let updated = undefined;
                 if (loading) {
                   updated = await handleAbort();
                 }
                 handleSendMessage(undefined, updated);
+                e.target.style.height = '46px';
               }
             }}
             className="ai-chat-input"
+            rows={1}
             style={{
               flex: 1,
               background: 'var(--bg-primary)',
@@ -1300,7 +1307,15 @@ export default function AIChatBot() {
               color: 'var(--text-primary)',
               fontSize: '0.875rem',
               outline: 'none',
-              transition: 'all 0.2s ease'
+              transition: 'border 0.2s ease, box-shadow 0.2s ease',
+              resize: 'none',
+              fontFamily: 'inherit',
+              lineHeight: '1.5',
+              minHeight: '46px',
+              maxHeight: '150px',
+              overflowY: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
             }}
           />
           {loading && !inputValue.trim() ? (
@@ -1332,6 +1347,8 @@ export default function AIChatBot() {
                   updated = await handleAbort();
                 }
                 handleSendMessage(undefined, updated);
+                const inputEl = document.querySelector('.ai-chat-input');
+                if (inputEl) inputEl.style.height = '46px';
               }}
               disabled={!inputValue.trim()}
               style={{
@@ -1395,6 +1412,10 @@ export default function AIChatBot() {
         .ai-chat-input:focus {
           border-color: var(--accent-primary) !important;
           box-shadow: 0 0 0 3px var(--accent-primary-glow) !important;
+        }
+        
+        .ai-chat-input::-webkit-scrollbar {
+          display: none;
         }
         
         .dot-pulse {

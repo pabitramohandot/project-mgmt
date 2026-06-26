@@ -40,7 +40,11 @@ export async function middleware(request) {
 
   // 4. Enforce Super Admin protection
   const isSuperAdminRoute = pathname.startsWith('/superadmin') || pathname.startsWith('/api/superadmin');
-  if (isSuperAdminRoute && payload.role !== 'superadmin') {
+  
+  const isCompanyAdminException = payload.role === 'company_admin' && 
+    (pathname === '/api/superadmin/roles' || pathname === '/api/superadmin/users');
+
+  if (isSuperAdminRoute && payload.role !== 'superadmin' && !isCompanyAdminException) {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ error: 'Forbidden: Super Admin access required' }, { status: 403 });
     }

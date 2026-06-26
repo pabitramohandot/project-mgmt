@@ -64,8 +64,8 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Role specification is required' }, { status: 400 });
       }
       const roleDoc = await Role.findById(customRole).lean();
-      if (!roleDoc || roleDoc.category !== 'Employee') {
-        return NextResponse.json({ error: 'Company administrators can only create users under the Employee category' }, { status: 400 });
+      if (!roleDoc || roleDoc.isSystem) {
+        return NextResponse.json({ error: 'Company administrators can only assign custom roles' }, { status: 400 });
       }
 
       // Enforce Employee Limit

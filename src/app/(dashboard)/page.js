@@ -275,10 +275,84 @@ export default function Dashboard() {
   }, [activeAlerts.length]);
 
   if (loading || !userReady) {
+    const isEmployee = userCategory === 'Employee';
+
+    if (isEmployee) {
+      return (
+        <div className="animate-fade-in dashboard-page-wrapper">
+          <div className="dashboard-header-container">
+            <div>
+              <div className="skeleton skeleton-title" style={{ width: '250px' }}></div>
+              <div className="skeleton skeleton-text" style={{ width: '400px', maxWidth: '100%' }}></div>
+            </div>
+            <div>
+              <div className="skeleton" style={{ width: '130px', height: '42px', borderRadius: '8px' }}></div>
+            </div>
+          </div>
+
+          <div className="kanban-section" style={{ marginTop: '1.25rem' }}>
+            <div className="skeleton skeleton-title" style={{ width: '150px' }}></div>
+            <div className="kanban-board">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="kanban-column" style={{ background: 'transparent', border: 'none' }}>
+                  <div className="skeleton" style={{ height: '30px', marginBottom: '1rem', borderRadius: '8px' }}></div>
+                  <div className="skeleton skeleton-card" style={{ height: '120px', marginBottom: '1rem' }}></div>
+                  <div className="skeleton skeleton-card" style={{ height: '120px', marginBottom: '1rem' }}></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="empty-state">
-        <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
-        <h3>Loading your workspace dashboard...</h3>
+      <div className="animate-fade-in dashboard-page-wrapper">
+        <div className="dashboard-header-container">
+          <div>
+            <div className="skeleton skeleton-title" style={{ width: '250px' }}></div>
+            <div className="skeleton skeleton-text" style={{ width: '400px', maxWidth: '100%' }}></div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div className="skeleton" style={{ width: '130px', height: '42px', borderRadius: '8px' }}></div>
+            <div className="skeleton" style={{ width: '130px', height: '42px', borderRadius: '8px' }}></div>
+          </div>
+        </div>
+
+        <div className="dashboard-stats-grid">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="dashboard-stat-card-premium">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div className="skeleton" style={{ width: '28px', height: '28px', borderRadius: '8px' }}></div>
+                <div className="skeleton skeleton-text" style={{ width: '60%', margin: 0 }}></div>
+              </div>
+              <div className="skeleton" style={{ width: '40%', height: '28px', borderRadius: '6px', marginTop: '0.5rem' }}></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="dashboard-grid">
+          <div className="dashboard-left-col">
+            <div className="dashboard-card-premium" style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+              <div className="skeleton skeleton-title" style={{ width: '200px' }}></div>
+              <div className="skeleton skeleton-text" style={{ width: '120px', marginBottom: '2rem' }}></div>
+              <div className="skeleton" style={{ width: '100%', flex: 1, borderRadius: '8px' }}></div>
+            </div>
+          </div>
+          <div className="dashboard-right-col">
+            <div className="dashboard-card-premium" style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+              <div className="skeleton skeleton-title" style={{ width: '180px', marginBottom: '2rem' }}></div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i}>
+                    <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
+                    <div className="skeleton skeleton-text" style={{ width: '40%' }}></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

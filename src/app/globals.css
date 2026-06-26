@@ -1911,3 +1911,44 @@ select option {
   pointer-events: none;
   animation-delay: 1.5s;
 }
+
+/* Skeleton Loader Classes */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.3; }
+}
+
+.skeleton {
+  background: var(--border-color);
+  border-radius: 4px;
+  animation: skeletonPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.skeleton-text {
+  height: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  background: var(--border-color);
+}
+
+.skeleton-title {
+  height: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  width: 40%;
+  background: var(--border-color);
+}
+
+.skeleton-avatar {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  background: var(--border-color);
+}
+
+.skeleton-card {
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+}

@@ -128,103 +128,114 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       </div>
       <nav style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <ul className="menu-list">
-          {filteredMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.path === '/' 
-              ? pathname === '/' 
-              : pathname.startsWith(item.path);
-
-            return (
-              <li key={item.name} className={`menu-item ${isActive ? 'active' : ''}`}>
-                <Link 
-                   href={item.path} 
-                  onClick={onClose} 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: isCollapsed ? 'center' : 'space-between', 
-                    alignItems: 'center', 
-                    width: '100%',
-                    padding: isCollapsed ? '0.7rem 0' : undefined
-                  }}
-                  title={isCollapsed ? item.name : undefined}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', position: 'relative' }}>
-                    {item.path === '/ai-agents' ? (
-                      <Brain 
-                        size={20} 
-                        style={{ 
-                          color: '#ef4444', 
-                          filter: 'drop-shadow(0 0 3px rgba(239, 68, 68, 0.45))'
-                        }} 
-                      />
-                    ) : (
-                      <Icon size={20} />
-                    )}
-                    {isCollapsed && item.badge > 0 && (
-                      <span style={{
-                        position: 'absolute',
-                        top: '-2px',
-                        right: '-4px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: '#ef4444',
-                        border: '1.5px solid var(--bg-secondary)'
-                      }} />
-                    )}
-                    {isCollapsed && item.tag && (
-                      <span className="shimmer-tag" style={{
-                        position: 'absolute',
-                        top: '-2px',
-                        right: '-4px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        border: '1.5px solid var(--bg-secondary)',
-                        boxShadow: '0 0 6px var(--accent-primary)'
-                      }} />
-                    )}
-                    {!isCollapsed && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span>{item.name}</span>
-                        {item.tag && (
-                          <span 
-                            className="shimmer-tag"
-                            style={{
-                            color: '#ffffff',
-                            fontSize: '0.58rem',
-                            fontWeight: '800',
-                            padding: '0.15rem 0.35rem',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.02em',
-                            lineHeight: 1,
-                            boxShadow: '0 0 8px rgba(0, 174, 239, 0.4)'
-                          }}>
-                            {item.tag}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {!isCollapsed && item.badge > 0 && (
-                    <span style={{
-                      background: 'rgba(239, 68, 68, 0.15)',
-                      color: '#ef4444',
-                      fontSize: '0.72rem',
-                      fontWeight: '700',
-                      padding: '0.15rem 0.45rem',
-                      borderRadius: '9999px',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      lineHeight: 1
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
+          {!user ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="menu-item" style={{ padding: isCollapsed ? '0.7rem 0' : '0.85rem 1rem', display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', width: '100%', justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
+                  <div className="skeleton skeleton-avatar" style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0 }}></div>
+                  {!isCollapsed && <div className="skeleton skeleton-text" style={{ width: `${Math.random() * 30 + 40}%`, margin: 0, height: '14px' }}></div>}
+                </div>
               </li>
-            );
-          })}
+            ))
+          ) : (
+            filteredMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.path === '/' 
+                ? pathname === '/' 
+                : pathname.startsWith(item.path);
+
+              return (
+                <li key={item.name} className={`menu-item ${isActive ? 'active' : ''}`}>
+                  <Link 
+                     href={item.path} 
+                    onClick={onClose} 
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: isCollapsed ? 'center' : 'space-between', 
+                      alignItems: 'center', 
+                      width: '100%',
+                      padding: isCollapsed ? '0.7rem 0' : undefined
+                    }}
+                    title={isCollapsed ? item.name : undefined}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', position: 'relative' }}>
+                      {item.path === '/ai-agents' ? (
+                        <Brain 
+                          size={20} 
+                          style={{ 
+                            color: '#ef4444', 
+                            filter: 'drop-shadow(0 0 3px rgba(239, 68, 68, 0.45))'
+                          }} 
+                        />
+                      ) : (
+                        <Icon size={20} />
+                      )}
+                      {isCollapsed && item.badge > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-2px',
+                          right: '-4px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#ef4444',
+                          border: '1.5px solid var(--bg-secondary)'
+                        }} />
+                      )}
+                      {isCollapsed && item.tag && (
+                        <span className="shimmer-tag" style={{
+                          position: 'absolute',
+                          top: '-2px',
+                          right: '-4px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          border: '1.5px solid var(--bg-secondary)',
+                          boxShadow: '0 0 6px var(--accent-primary)'
+                        }} />
+                      )}
+                      {!isCollapsed && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>{item.name}</span>
+                          {item.tag && (
+                            <span 
+                              className="shimmer-tag"
+                              style={{
+                              color: '#ffffff',
+                              fontSize: '0.58rem',
+                              fontWeight: '800',
+                              padding: '0.15rem 0.35rem',
+                              borderRadius: '4px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.02em',
+                              lineHeight: 1,
+                              boxShadow: '0 0 8px rgba(0, 174, 239, 0.4)'
+                            }}>
+                              {item.tag}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {!isCollapsed && item.badge > 0 && (
+                      <span style={{
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#ef4444',
+                        fontSize: '0.72rem',
+                        fontWeight: '700',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '9999px',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        lineHeight: 1
+                      }}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })
+          )}
         </ul>
       </nav>
       
