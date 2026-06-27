@@ -86,6 +86,8 @@ export async function GET(request) {
               secure: company.emailSettings?.secure !== false,
               providerType: company.emailSettings?.providerType || "gmail",
             },
+            bankDetails: company.bankDetails || "",
+            bankQrCode: company.bankQrCode || "",
           }
         : null,
       companyUsers: companyUsers.map((u) => ({
@@ -133,7 +135,12 @@ export async function PUT(request) {
       companyEmailSecure,
       companyEmailProviderType,
       companyLogo,
-      uploadCode
+      uploadCode,
+      brandingTagline,
+      brandingPrimaryColor,
+      brandingSecondaryColor,
+      bankDetails,
+      bankQrCode
     } = data;
 
     if (email !== undefined) user.email = email.trim();
@@ -154,7 +161,7 @@ export async function PUT(request) {
       await globalSettings.save();
     }
 
-    // If company admin or super admin, save custom email/logo settings
+    // If company admin or super admin, save custom email/logo/branding settings
     if (
       user.companyId &&
       (user.role === "company_admin" || user.role === "superadmin")
@@ -163,6 +170,15 @@ export async function PUT(request) {
       if (company) {
         if (companyLogo !== undefined) {
           company.logo = companyLogo.trim();
+        }
+        if (brandingTagline !== undefined) {
+          company.tagline = brandingTagline.trim();
+        }
+        if (brandingPrimaryColor !== undefined || brandingSecondaryColor !== undefined) {
+          company.brandColors = {
+            primary: brandingPrimaryColor !== undefined ? brandingPrimaryColor.trim() : (company.brandColors?.primary || '#00aeef'),
+            secondary: brandingSecondaryColor !== undefined ? brandingSecondaryColor.trim() : (company.brandColors?.secondary || '#f26522'),
+          };
         }
         if (!company.emailSettings) {
           company.emailSettings = { user: "", pass: "" };
@@ -187,6 +203,12 @@ export async function PUT(request) {
         }
         if (companyEmailProviderType !== undefined) {
           company.emailSettings.providerType = companyEmailProviderType;
+        }
+        if (bankDetails !== undefined) {
+          company.bankDetails = bankDetails.trim();
+        }
+        if (bankQrCode !== undefined) {
+          company.bankQrCode = bankQrCode.trim();
         }
         await company.save();
       }

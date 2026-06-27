@@ -46,9 +46,9 @@
   --border-color: rgba(15, 45, 74, 0.08); /* Navy border tint */
   --border-color-hover: rgba(0, 174, 239, 0.25);
 
-  --text-primary: #0b1a30; /* Very dark navy text */
-  --text-secondary: #2c3e50; /* Sleek dark gray-blue for high legibility */
-  --text-muted: #4e5d6c; /* Muted text with high contrast */
+  --text-primary: #000000; /* Pure black text */
+  --text-secondary: #000000; /* Pure black text */
+  --text-muted: #000000; /* Pure black text */
 
   --accent-primary: #009fe3; /* Rich iNETWEB Blue */
   --accent-primary-glow: rgba(0, 159, 227, 0.08);
@@ -81,7 +81,7 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 0.875rem; /* Native app base sizing (14px) */
+  font-size: 0.95rem; /* Increased baseline font size for better legibility */
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
@@ -131,22 +131,22 @@ h6 {
 }
 
 h1 {
-  font-size: 1.5rem;
+  font-size: 1.7rem;
 }
 h2 {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
 }
 h3 {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
 }
 h4 {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 h5 {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
 }
 h6 {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 a {
@@ -731,6 +731,7 @@ select option {
 .invoice-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   border-bottom: 2px solid #f1f5f9;
   padding-bottom: 2.5rem;
   margin-bottom: 2.5rem;

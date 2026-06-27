@@ -42,7 +42,7 @@ export default function TopHeader({ user }) {
             <img 
               src={user.company.logo} 
               alt="Company Logo" 
-              style={{ height: '32px', maxWidth: '120px', objectFit: 'contain', borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}
+              style={{ height: 'auto', maxHeight: '32px', width: 'auto', maxWidth: '120px', objectFit: 'contain', borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}
             />
           )}
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

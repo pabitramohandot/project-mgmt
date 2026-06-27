@@ -118,6 +118,7 @@ export default function ProjectsPage() {
     clientName: '',
     clientEmail: '',
     client: '',
+    siteUrl: '',
     quotePrice: '',
     finalPrice: '',
     hostingPrice: '',
@@ -186,7 +187,7 @@ export default function ProjectsPage() {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch('/api/clients');
+      const res = await fetch('/api/clients?status=Active');
       if (res.ok) {
         const data = await res.json();
         setClients(data);
@@ -427,6 +428,7 @@ export default function ProjectsPage() {
         clientName: '',
         clientEmail: '',
         client: '',
+        siteUrl: '',
         quotePrice: '',
         finalPrice: '',
         hostingPrice: '',
@@ -509,6 +511,62 @@ export default function ProjectsPage() {
 
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
+  };
+
+  const handleEmailShare = async (project) => {
+    const clientEmail = project.clientEmail || project.client?.email;
+    if (!clientEmail) {
+      showToast(`Client ${project.clientName} has no email configured.`, 'error');
+      return;
+    }
+
+    const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
+      ? project.statusUpdates[project.statusUpdates.length - 1].message
+      : 'No updates yet';
+
+    const compName = typeof window !== 'undefined' ? localStorage.getItem('company_name') || 'Workspace' : 'Workspace';
+    const subject = `Update for your project: ${project.name}`;
+    const body = `Hi ${project.clientName},\n\nHere is the latest update for project "${project.name}":\n\n"${latestUpdate}"\n\nBest regards,\n${compName}`;
+
+    // Show a loading toast
+    showToast(`Sending email to ${clientEmail}...`, 'info');
+
+    try {
+      const res = await fetch(`/api/projects/${project._id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body })
+      });
+
+      if (res.ok) {
+        showToast(`Email sent successfully to ${clientEmail}!`, 'success');
+        return;
+      }
+
+      // If server fails, throw error to trigger fallback
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to send from server');
+    } catch (err) {
+      console.warn("Server email dispatch failed, falling back to local client:", err);
+      
+      // Fallback: Copy to clipboard and open mailto link
+      try {
+        await navigator.clipboard.writeText(body);
+        showToast("Project update copied to clipboard (Local client fallback)", "info");
+      } catch (clipErr) {
+        console.warn("Clipboard copy failed:", clipErr);
+      }
+
+      const url = `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      // Use dynamic link click to trigger mailto reliably
+      const link = document.createElement('a');
+      link.href = url;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   // Stats calculation
@@ -661,6 +719,27 @@ export default function ProjectsPage() {
                     <Link href={`/projects/${project._id}`} className="project-card-name-link">
                       {project.name}
                     </Link>
+                    {project.siteUrl && (
+                      <a 
+                        href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '3px', 
+                          fontSize: '0.72rem', 
+                          color: '#10b981', 
+                          textDecoration: 'none',
+                          marginTop: '-2px',
+                          marginBottom: '4px',
+                          alignSelf: 'flex-start'
+                        }}
+                        title="Visit website"
+                      >
+                        <ExternalLink size={10} /> Visit Site
+                      </a>
+                    )}
                     <p className="project-card-description">
                       {project.description || 'No description provided.'}
                     </p>
@@ -797,6 +876,7 @@ export default function ProjectsPage() {
               <thead>
                 <tr>
                   <th>Project Name</th>
+                  <th>Site URL</th>
                   <th>Client</th>
                   <th>Budget</th>
                   <th className="hide-mobile">Due Date</th>
@@ -820,6 +900,32 @@ export default function ProjectsPage() {
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {project.description || 'No description'}
                         </span>
+                      </td>
+                      <td>
+                        {project.siteUrl ? (
+                          <a 
+                            href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ 
+                              color: 'var(--accent-primary)', 
+                              fontSize: '0.8rem',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            className="hover-underline"
+                            title={project.siteUrl}
+                          >
+                            <ExternalLink size={12} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {project.siteUrl}
+                            </span>
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>-</span>
+                        )}
                       </td>
                       <td>{project.clientName}</td>
                       <td style={{ fontWeight: 600, color: 'var(--accent-secondary)' }}>{formatCurrency(project.budget)}</td>
@@ -868,20 +974,66 @@ export default function ProjectsPage() {
                           <button 
                             type="button"
                             onClick={() => handleWhatsAppShare(project)}
-                            className="btn btn-whatsapp" 
                             style={{ 
-                              padding: '0.35rem 0.75rem', 
-                              fontSize: '0.8rem',
+                              background: 'rgba(37, 211, 102, 0.08)',
+                              border: '1px solid rgba(37, 211, 102, 0.15)',
+                              padding: '0.4rem',
+                              borderRadius: '50%',
+                              cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '0.35rem'
+                              justifyContent: 'center',
+                              transition: 'all 0.2s ease',
+                              width: '32px',
+                              height: '32px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(37, 211, 102, 0.18)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(37, 211, 102, 0.08)';
+                              e.currentTarget.style.transform = 'none';
                             }}
                             title="Send update via WhatsApp"
                           >
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.16 1.449 4.815 1.451 5.432.002 9.851-4.416 9.854-9.852.002-2.633-1.02-5.107-2.88-6.97C16.565 1.96 14.094.939 11.465.939c-5.437 0-9.857 4.418-9.859 9.856 0 1.76.47 3.47 1.365 4.978l-1.026 3.75 3.864-.986zm11.215-6.738c-.29-.144-1.711-.844-1.977-.94-.266-.097-.46-.144-.652.144-.193.289-.748.94-.917 1.133-.17.192-.338.217-.628.072-.29-.144-1.226-.452-2.335-1.442-.863-.77-1.447-1.72-1.616-2.01-.17-.29-.018-.447.127-.59.13-.129.29-.338.435-.507.145-.168.193-.289.29-.482.097-.193.048-.36-.024-.507-.072-.145-.652-1.57-.893-2.147-.234-.565-.47-.488-.652-.497-.17-.008-.362-.01-.555-.01-.193 0-.507.072-.772.36-.266.289-1.014.992-1.014 2.418 0 1.427 1.038 2.808 1.183 3.001.145.193 2.043 3.12 4.949 4.373.69.298 1.23.476 1.65.61.694.22 1.326.19 1.825.115.556-.083 1.711-.699 1.953-1.374.242-.675.242-1.253.17-1.374-.073-.12-.266-.193-.556-.34z"/>
-                            </svg>
-                            <span>WhatsApp</span>
+                            <img 
+                              src="/whatsapp-icon.svg" 
+                              alt="WhatsApp" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleEmailShare(project)}
+                            style={{ 
+                              background: 'rgba(59, 130, 246, 0.08)',
+                              border: '1px solid rgba(59, 130, 246, 0.15)',
+                              padding: '0.4rem',
+                              borderRadius: '50%',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s ease',
+                              width: '32px',
+                              height: '32px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.18)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)';
+                              e.currentTarget.style.transform = 'none';
+                            }}
+                            title="Send update via Email"
+                          >
+                            <img 
+                              src="/email-icon.svg" 
+                              alt="Email" 
+                              style={{ width: '16px', height: '16px' }} 
+                            />
                           </button>
                         </div>
                       </td>
@@ -1135,6 +1287,18 @@ export default function ProjectsPage() {
                       required 
                       placeholder="e.g., E-Commerce Site Redesign"
                       value={newProject.name}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Site URL</label>
+                    <input 
+                      type="url" 
+                      name="siteUrl"
+                      className="form-input" 
+                      placeholder="e.g., https://example.com"
+                      value={newProject.siteUrl || ''}
                       onChange={handleInputChange}
                     />
                   </div>

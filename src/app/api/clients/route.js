@@ -15,9 +15,16 @@ export async function GET(request) {
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const status = searchParams.get('status');
 
     const { companyId } = getRequestSession(request);
     let query = { companyId };
+
+    if (status === 'Active') {
+      query.status = { $ne: 'Inactive' };
+    } else if (status) {
+      query.status = status;
+    }
 
     if (search) {
       query.$or = [

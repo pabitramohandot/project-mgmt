@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2 } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function ProfileSettingsPage() {
@@ -20,6 +20,7 @@ export default function ProfileSettingsPage() {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [creatingEmployee, setCreatingEmployee] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
   const [newEmployee, setNewEmployee] = useState({
     username: '',
     password: '',
@@ -43,7 +44,12 @@ export default function ProfileSettingsPage() {
     companyEmailSecure: true,
     companyEmailProviderType: 'gmail',
     companyLogo: '',
-    uploadCode: ''
+    uploadCode: '',
+    brandingTagline: '',
+    brandingPrimaryColor: '#00aeef',
+    brandingSecondaryColor: '#f26522',
+    bankDetails: '',
+    bankQrCode: '',
   });
 
   const loadUserProfile = async (showLoadingSpinner = true) => {
@@ -72,7 +78,12 @@ export default function ProfileSettingsPage() {
           companyEmailSecure: data.company?.emailSettings?.secure !== false,
           companyEmailProviderType: data.company?.emailSettings?.providerType || 'gmail',
           companyLogo: data.company?.logo || '',
-          uploadCode: data.uploadCode || ''
+          uploadCode: data.uploadCode || '',
+          brandingTagline: data.company?.tagline || '',
+          brandingPrimaryColor: data.company?.brandColors?.primary || '#00aeef',
+          brandingSecondaryColor: data.company?.brandColors?.secondary || '#f26522',
+          bankDetails: data.company?.bankDetails || '',
+          bankQrCode: data.company?.bankQrCode || '',
         });
 
         if (data.role === 'company_admin') {
@@ -129,6 +140,11 @@ export default function ProfileSettingsPage() {
         payload.companyEmailSecure = form.companyEmailSecure;
         payload.companyEmailProviderType = form.companyEmailProviderType;
         payload.companyLogo = form.companyLogo;
+        payload.brandingTagline = form.brandingTagline;
+        payload.brandingPrimaryColor = form.brandingPrimaryColor;
+        payload.brandingSecondaryColor = form.brandingSecondaryColor;
+        payload.bankDetails = form.bankDetails;
+        payload.bankQrCode = form.bankQrCode;
       }
 
       if (role === 'superadmin') {
@@ -143,6 +159,11 @@ export default function ProfileSettingsPage() {
 
       if (res.ok) {
         showToast('Account settings updated successfully!', 'success');
+        if (role === 'company_admin' || role === 'superadmin') {
+          document.documentElement.style.setProperty('--accent-primary', form.brandingPrimaryColor);
+          document.documentElement.style.setProperty('--accent-secondary', form.brandingSecondaryColor);
+          setCompanyLogo(form.companyLogo);
+        }
         setForm(prev => ({
           ...prev,
           password: '',
@@ -270,7 +291,7 @@ export default function ProfileSettingsPage() {
   const badge = getRoleBadge(role);
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '950px' }}>
+    <div className="animate-fade-in" style={{ width: '100%' }}>
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title">Account Settings</h1>
@@ -291,6 +312,14 @@ export default function ProfileSettingsPage() {
 
         {(role === 'company_admin' || role === 'superadmin') && (
           <>
+            <button
+              type="button"
+              onClick={() => setActiveTab('banking')}
+              className={`tab-btn ${activeTab === 'banking' ? 'active' : ''}`}
+            >
+              <CreditCard size={16} />
+              <span>Banking Details</span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab('smtp')}
@@ -331,6 +360,7 @@ export default function ProfileSettingsPage() {
         )}
       </div>
 
+
       <div className={activeTab === 'account' ? "grid-2col" : ""} style={{ display: activeTab === 'account' ? 'grid' : 'block', alignItems: 'start' }}>
         
         {/* Form Panel */}
@@ -355,35 +385,6 @@ export default function ProfileSettingsPage() {
                     readOnly
                   />
                 </div>
-
-                {(role === 'company_admin' || role === 'superadmin') && (
-                  <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                    <label className="form-label">Company Logo URL</label>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <input
-                        type="text"
-                        className="form-input"
-                        style={{ flex: 1 }}
-                        placeholder="e.g. https://domain.com/logo.png"
-                        value={form.companyLogo}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setForm(prev => ({ ...prev, companyLogo: val }));
-                          setCompanyLogo(val);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0.65rem 1rem' }}
-                        onClick={() => setIsUploadModalOpen(true)}
-                      >
-                        <ExternalLink size={16} />
-                        <span>Get URL</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="form-row">
                   <div className="form-group">
@@ -410,7 +411,7 @@ export default function ProfileSettingsPage() {
                   </div>
                 </div>
 
-                <div style={{ height: '1px', background: 'var(--border-color)', margin: '2rem 0' }}></div>
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '1rem 0 1.5rem 0' }}></div>
 
                 <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
                   <Lock size={18} style={{ color: 'var(--accent-secondary)' }} />
@@ -443,6 +444,108 @@ export default function ProfileSettingsPage() {
                     />
                   </div>
                 </div>
+
+                {/* Company Branding Settings */}
+                {(role === 'company_admin' || role === 'superadmin') && (
+                  <div style={{ marginTop: '2rem' }}>
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '1rem 0 1.5rem 0' }}></div>
+                    <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                      <Palette size={18} style={{ color: 'var(--accent-primary)' }} />
+                      Company Branding Settings
+                    </h2>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                      Configure custom brand colors and logos to personalize your workspace interface.
+                    </p>
+
+                    <div className="form-group">
+                      <label className="form-label">Active Company (Read-Only)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)' }}
+                        value={companyName}
+                        readOnly
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                      <label className="form-label">Company Logo URL</label>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ flex: 1 }}
+                          placeholder="e.g. https://domain.com/logo.png"
+                          value={form.companyLogo}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(prev => ({ ...prev, companyLogo: val }));
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0.65rem 1rem' }}
+                          onClick={() => setIsUploadModalOpen(true)}
+                        >
+                          <ExternalLink size={16} />
+                          <span>Get URL</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Company Tagline / Subtitle</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="e.g. Development & Consulting Services"
+                        value={form.brandingTagline}
+                        onChange={(e) => setForm(prev => ({ ...prev, brandingTagline: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Primary Accent Color</label>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <input
+                            type="color"
+                            className="form-input"
+                            style={{ width: "45px", height: "38px", padding: "2px", cursor: "pointer" }}
+                            value={form.brandingPrimaryColor}
+                            onChange={(e) => setForm((prev) => ({ ...prev, brandingPrimaryColor: e.target.value }))}
+                          />
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={form.brandingPrimaryColor}
+                            onChange={(e) => setForm((prev) => ({ ...prev, brandingPrimaryColor: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Secondary Accent Color</label>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <input
+                            type="color"
+                            className="form-input"
+                            style={{ width: "45px", height: "38px", padding: "2px", cursor: "pointer" }}
+                            value={form.brandingSecondaryColor}
+                            onChange={(e) => setForm((prev) => ({ ...prev, brandingSecondaryColor: e.target.value }))}
+                          />
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={form.brandingSecondaryColor}
+                            onChange={(e) => setForm((prev) => ({ ...prev, brandingSecondaryColor: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -758,6 +861,102 @@ export default function ProfileSettingsPage() {
               </div>
             )}
 
+            {/* TAB 6: Banking Details */}
+            {activeTab === 'banking' && (role === 'company_admin' || role === 'superadmin') && (
+              <div className="animate-fade-in">
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                  <CreditCard size={18} style={{ color: 'var(--accent-primary)' }} />
+                  Banking Details
+                </h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.75rem', lineHeight: '1.6' }}>
+                  Add your bank account details and payment QR code. These will appear at the bottom of every generated invoice.
+                </p>
+
+                {/* Bank Details Textarea */}
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <CreditCard size={14} style={{ color: 'var(--accent-primary)' }} />
+                    Bank Account Details
+                  </label>
+                  <textarea
+                    className="form-input"
+                    rows={7}
+                    style={{
+                      resize: 'vertical',
+                      fontFamily: 'monospace',
+                      fontSize: '0.88rem',
+                      lineHeight: '1.7',
+                      minHeight: '150px',
+                    }}
+                    placeholder={`Bank Name: HDFC Bank\nAccount Name: Your Company Pvt. Ltd.\nAccount Number: 1234567890\nIFSC Code: HDFC0001234\nBranch: Mumbai Main Branch\nAccount Type: Current`}
+                    value={form.bankDetails}
+                    onChange={(e) => setForm(prev => ({ ...prev, bankDetails: e.target.value }))}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                    This text will be displayed on the invoice. You can include all payment instructions here.
+                  </p>
+                </div>
+
+                {/* QR Code URL */}
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <QrCode size={14} style={{ color: 'var(--accent-primary)' }} />
+                    Payment QR Code Image URL
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ flex: 1 }}
+                      placeholder="e.g. https://domain.com/your-upi-qr.png"
+                      value={form.bankQrCode}
+                      onChange={(e) => setForm(prev => ({ ...prev, bankQrCode: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', padding: '0.65rem 1rem' }}
+                      onClick={() => setIsUploadModalOpen(true)}
+                    >
+                      <ExternalLink size={16} />
+                      <span>Get URL</span>
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                    Upload your UPI / bank QR code image and paste the URL here. It will be shown on the invoice.
+                  </p>
+                </div>
+
+                {/* Live Preview of QR Code */}
+                {form.bankQrCode && (
+                  <div style={{
+                    background: 'rgba(0, 174, 239, 0.04)',
+                    border: '1px solid rgba(0, 174, 239, 0.15)',
+                    borderRadius: '14px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1.25rem',
+                  }}>
+                    <img
+                      src={form.bankQrCode}
+                      alt="Payment QR Code Preview"
+                      style={{ width: '90px', height: '90px', objectFit: 'contain', borderRadius: '8px', background: '#fff', padding: '6px', border: '1px solid rgba(0,0,0,0.08)' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <div>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                        QR Code Preview
+                      </p>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                        This QR image will appear on generated invoices for quick payment.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Save Settings Form Submit */}
             {activeTab !== 'team' && (
               <button
@@ -868,6 +1067,135 @@ export default function ProfileSettingsPage() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
               <CheckCircle2 size={13} style={{ color: 'var(--accent-primary)' }} />
               <span>Real-time identity preview card.</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Live Mock Layout Preview Panel for Branding */}
+      {activeTab === 'branding' && (
+        <div style={{ position: "sticky", top: "2rem" }}>
+          <div
+            className="card"
+            style={{
+              background: "rgba(255,255,255,0.01)",
+              borderStyle: "dashed",
+              padding: "2.5rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                borderBottom: "1px solid var(--border-color)",
+                paddingBottom: "0.75rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <Layout size={16} style={{ color: form.brandingPrimaryColor }} />
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 600 }}>
+                Live Mock Preview
+              </h3>
+            </div>
+
+            <div
+              style={{
+                padding: "1.5rem 1rem",
+                background: "var(--bg-secondary)",
+                borderRadius: "12px",
+                border: "1px solid var(--border-color)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                {form.companyLogo ? (
+                  <img
+                    src={form.companyLogo}
+                    alt="Branded Logo Preview"
+                    style={{ height: "auto", maxHeight: "22px", width: "auto", objectFit: "contain" }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "4px",
+                      background: form.brandingPrimaryColor,
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.65rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    LO
+                  </div>
+                )}
+                <span
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: "0.9rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {companyName || "Company Name"}
+                </span>
+              </div>
+              <div
+                style={{ height: "1px", background: "var(--border-color)" }}
+              ></div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    background: form.brandingPrimaryColor,
+                    color: "#fff",
+                    fontSize: "0.75rem",
+                    padding: "0.4rem",
+                  }}
+                >
+                  Branded Button
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: `1px solid ${form.brandingSecondaryColor}`,
+                    color: form.brandingSecondaryColor,
+                    fontSize: "0.75rem",
+                    padding: "0.4rem",
+                  }}
+                >
+                  Branded Border
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "1.1rem",
+                fontSize: "0.75rem",
+                color: "var(--text-muted)",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <Sparkles size={12} style={{ color: form.brandingSecondaryColor }} />
+              <span>Watch your brand identity update dynamically.</span>
             </div>
           </div>
         </div>
@@ -1026,7 +1354,9 @@ export default function ProfileSettingsPage() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
+
+
 
       {/* Styled JSX for Premium Animations and Effects */}
       <style jsx>{`
@@ -1038,12 +1368,14 @@ export default function ProfileSettingsPage() {
           background: var(--bg-secondary);
           border: 1px solid var(--border-color);
           border-radius: 14px;
-          width: fit-content;
+          width: 100%;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .tab-btn {
           display: flex;
           align-items: center;
+          justify-content: center;
+          flex: 1;
           gap: 0.6rem;
           padding: 0.7rem 1.35rem;
           border-radius: 10px;
@@ -1062,7 +1394,7 @@ export default function ProfileSettingsPage() {
         }
         .tab-btn.active {
           background: linear-gradient(135deg, var(--accent-primary) 0%, rgba(0, 174, 239, 0.8) 100%);
-          color: #ffffff;
+          color: #ffffff !important;
           box-shadow: 0 4px 14px var(--accent-primary-glow);
         }
         .team-list {

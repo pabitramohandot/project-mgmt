@@ -306,7 +306,7 @@ export default function InvoiceDetailPage() {
                   }
                   alt="Company Logo" 
                   crossOrigin="anonymous"
-                  style={{ height: '60px', maxWidth: '240px', objectFit: 'contain' }} 
+                  style={{ height: 'auto', maxHeight: '60px', width: 'auto', maxWidth: '240px', objectFit: 'contain' }} 
                 />
               ) : (
                 <>
@@ -433,15 +433,8 @@ export default function InvoiceDetailPage() {
 
           {/* Totals Section */}
           <div className="invoice-totals-grid">
-            {/* Notes */}
-            <div style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-              {invoice.notes && (
-                <>
-                  <h4 style={{ color: '#475569', fontWeight: 700, marginBottom: '0.5rem', fontSize: '0.8rem', textTransform: 'uppercase' }}>Notes & Terms</h4>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{invoice.notes}</div>
-                </>
-              )}
-            </div>
+            {/* Notes placeholder — moved to dedicated section below */}
+            <div />
 
             {/* Math calculation */}
             <div className="invoice-totals">
@@ -467,6 +460,93 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Banking / Payment Details Section */}
+          {(invoice.companyId?.bankDetails || invoice.companyId?.bankQrCode) && (
+            <div style={{
+              marginTop: '2rem',
+              borderTop: '2px solid #e2e8f0',
+              paddingTop: '1.5rem',
+            }}>
+              <h4 style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: '1rem',
+              }}>
+                Payment Details
+              </h4>
+              <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                {invoice.companyId?.bankDetails && (
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <pre style={{
+                      fontFamily: 'inherit',
+                      fontSize: '0.88rem',
+                      color: '#334155',
+                      lineHeight: '1.8',
+                      margin: 0,
+                      whiteSpace: 'pre-wrap',
+                    }}>
+                      {invoice.companyId.bankDetails}
+                    </pre>
+                  </div>
+                )}
+                {invoice.companyId?.bankQrCode && (
+                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <img
+                      src={
+                        invoice.companyId.bankQrCode.startsWith('data:')
+                          ? invoice.companyId.bankQrCode
+                          : `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(invoice.companyId.bankQrCode)}`
+                      }
+                      alt="Payment QR Code"
+                      crossOrigin="anonymous"
+                      style={{
+                        width: '200px',
+                        height: '200px',
+                        objectFit: 'contain',
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '8px',
+                        display: 'block',
+                      }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.4rem' }}>Scan to Pay</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Note Section */}
+          {invoice.notes && (
+            <div style={{
+              marginTop: '1.5rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderLeft: '4px solid #94a3b8',
+              borderRadius: '8px',
+              padding: '1rem 1.25rem',
+            }}>
+              <h4 style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: '0.5rem',
+              }}>
+                Note
+              </h4>
+              <div style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+                {invoice.notes}
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4rem', paddingTop: '1.5rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>

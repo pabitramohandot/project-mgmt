@@ -109,7 +109,8 @@ export default function ClientsPage() {
     phone: '',
     whatsapp: '',
     company: '',
-    address: ''
+    address: '',
+    status: 'Active'
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -156,7 +157,8 @@ export default function ClientsPage() {
       phone: '',
       whatsapp: '',
       company: '',
-      address: ''
+      address: '',
+      status: 'Active'
     });
     setFormError(null);
     setIsFormModalOpen(true);
@@ -170,7 +172,8 @@ export default function ClientsPage() {
       phone: client.phone || '',
       whatsapp: client.whatsapp || '',
       company: client.company || '',
-      address: client.address || ''
+      address: client.address || '',
+      status: client.status || 'Active'
     });
     setFormError(null);
     setIsFormModalOpen(true);
@@ -262,6 +265,42 @@ export default function ClientsPage() {
     });
   };
 
+  const handleToggleClientStatus = async (client, newStatus) => {
+    try {
+      const res = await fetch(`/api/clients/${client._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...client,
+          status: newStatus
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to update client status');
+      }
+
+      showToast(`Client ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully`, 'success');
+      
+      // Update details view if open
+      if (selectedClientData && selectedClientData.client._id === client._id) {
+        setSelectedClientData(prev => ({
+          ...prev,
+          client: {
+            ...prev.client,
+            status: newStatus
+          }
+        }));
+      }
+      
+      fetchClients();
+      fetchLimits();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -350,9 +389,14 @@ export default function ClientsPage() {
               {clients.map((client) => (
                 <tr key={client._id}>
                   <td>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {client.name}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {client.name}
+                      </span>
+                      <span className={`badge ${client.status === 'Inactive' ? 'badge-draft' : 'badge-completed'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', textTransform: 'none', letterSpacing: 'normal' }}>
+                        {client.status || 'Active'}
+                      </span>
+                    </div>
                   </td>
                   <td className="hide-mobile">
                     {client.company ? (
@@ -395,14 +439,29 @@ export default function ClientsPage() {
                     )}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button className="btn btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleViewDetails(client._id)}>
                         <Eye size={14} /> Profile
                       </button>
                       {role !== 'company_user' && (
-                        <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(client)}>
-                          <Edit size={14} />
-                        </button>
+                        <>
+                          <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(client)} title="Edit Profile">
+                            <Edit size={14} />
+                          </button>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ 
+                              padding: '0.35rem 0.55rem', 
+                              fontSize: '0.78rem', 
+                              color: client.status === 'Inactive' ? '#10b981' : '#ef4444',
+                              borderColor: client.status === 'Inactive' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                            }} 
+                            onClick={() => handleToggleClientStatus(client, client.status === 'Inactive' ? 'Active' : 'Inactive')}
+                            title={client.status === 'Inactive' ? "Activate Client" : "Deactivate Client"}
+                          >
+                            {client.status === 'Inactive' ? 'Activate' : 'Deactivate'}
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -507,6 +566,19 @@ export default function ClientsPage() {
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select
+                  name="status"
+                  className="form-select"
+                  value={clientForm.status || 'Active'}
+                  onChange={handleInputChange}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsFormModalOpen(false)}>
                   Cancel
@@ -541,7 +613,12 @@ export default function ClientsPage() {
                 {/* Client header information */}
                 <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{selectedClientData.client.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                      <h3 style={{ fontSize: '1.5rem', margin: 0 }}>{selectedClientData.client.name}</h3>
+                      <span className={`badge ${selectedClientData.client.status === 'Inactive' ? 'badge-draft' : 'badge-completed'}`} style={{ fontSize: '0.7rem', padding: '0.15rem 0.55rem', textTransform: 'none', letterSpacing: 'normal' }}>
+                        {selectedClientData.client.status || 'Active'}
+                      </span>
+                    </div>
                     {selectedClientData.client.company && (
                       <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '1rem' }}>
                         <Building size={14} /> {selectedClientData.client.company}
@@ -700,7 +777,26 @@ export default function ClientsPage() {
 
                 {/* Modal Footer */}
                 {role !== 'company_user' && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                    <div>
+                      {selectedClientData.client.status === 'Inactive' ? (
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', background: '#10b981', borderColor: '#10b981' }} 
+                          onClick={() => handleToggleClientStatus(selectedClientData.client, 'Active')}
+                        >
+                          Activate Client
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', color: '#ef4444', borderColor: '#ef4444' }} 
+                          onClick={() => handleToggleClientStatus(selectedClientData.client, 'Inactive')}
+                        >
+                          Deactivate Client
+                        </button>
+                      )}
+                    </div>
                     <button className="btn btn-danger" style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => handleDeleteClient(selectedClientData.client._id)}>
                       <Trash2 size={16} />
                       <span>Delete Profile</span>

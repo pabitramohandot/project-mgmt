@@ -6,6 +6,7 @@ import { getRequestSession } from "@/lib/auth";
 import { processProjectStatus } from "@/lib/projectUtils";
 
 import User from "@/models/User";
+import Client from "@/models/Client";
 import { getCategoryForUser } from "@/lib/permissions";
 
 export async function GET(request) {
@@ -146,16 +147,49 @@ export async function GET(request) {
 
     let projectQuery = { companyId };
     let invoiceQuery = { companyId };
+    let clientQuery = { companyId };
 
     const now = new Date();
-    if (timeframe === "monthly") {
+    let startLimit = null;
+    let endLimit = null;
+
+    if (timeframe === "daily") {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      startLimit = startOfToday;
+    } else if (timeframe === "monthly") {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      projectQuery.createdAt = { $gte: startOfMonth };
-      invoiceQuery.createdAt = { $gte: startOfMonth };
+      startLimit = startOfMonth;
     } else if (timeframe === "yearly") {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
-      projectQuery.createdAt = { $gte: startOfYear };
-      invoiceQuery.createdAt = { $gte: startOfYear };
+      startLimit = startOfYear;
+    } else if (timeframe === "custom") {
+      const startDateStr = searchParams.get("startDate");
+      const endDateStr = searchParams.get("endDate");
+      if (startDateStr) {
+        startLimit = new Date(startDateStr);
+        startLimit.setHours(0, 0, 0, 0);
+      }
+      if (endDateStr) {
+        endLimit = new Date(endDateStr);
+        endLimit.setHours(23, 59, 59, 999);
+      }
+    }
+
+    if (startLimit || endLimit) {
+      const dateRangeFilter = {};
+      if (startLimit) dateRangeFilter.$gte = startLimit;
+      if (endLimit) dateRangeFilter.$lte = endLimit;
+
+      projectQuery.$or = [
+        { startDate: dateRangeFilter },
+        { createdAt: dateRangeFilter }
+      ];
+      invoiceQuery.$or = [
+        { issueDate: dateRangeFilter },
+        { createdAt: dateRangeFilter }
+      ];
+      clientQuery.createdAt = dateRangeFilter;
     }
 
     // Background update category statuses to Pending if overdue
@@ -207,16 +241,59 @@ export async function GET(request) {
       console.error("Error auto-updating designStatus in dashboard:", err),
     );
 
-    // Fetch all projects and invoices in parallel using lean() for maximum performance
-    const [allProjects, allInvoices] = await Promise.all([
+    // Fetch all projects, invoices, clients, and users in parallel using lean() for maximum performance
+    const [allProjects, allInvoices, allClients, allUsers] = await Promise.all([
       Project.find(projectQuery).sort({ createdAt: -1 }).lean(),
       Invoice.find(invoiceQuery).sort({ createdAt: -1 }).lean(),
+      Client.find(clientQuery).sort({ createdAt: -1 }).lean(),
+      User.find({ companyId }).populate("customRole").lean(),
     ]);
 
     // Compute dynamic project status updates for current response (since DB update runs in background)
     const processedProjects = allProjects.map((proj) =>
       processProjectStatus(proj),
     );
+
+    // Client stats
+    const totalClients = allClients.length;
+    const activeClientsCount = allClients.filter(c => c.status !== 'Inactive').length;
+    const inactiveClientsCount = allClients.filter(c => c.status === 'Inactive').length;
+
+    // Employee stats
+    // Filter company users (employees) — category is computed, not stored; use role field
+    const employeeStats = allUsers.filter(u => u.role === 'company_user').map(emp => {
+      let assignedTasksCount = 0;
+      let completedTasksCount = 0;
+      const pendingTasksList = [];
+      for (const proj of allProjects) {
+        for (const t of (proj.tasks || [])) {
+          if (t.assignedTo === emp.username) {
+            assignedTasksCount++;
+            if (t.completed) {
+              completedTasksCount++;
+            } else {
+              pendingTasksList.push({
+                taskName: t.name,
+                projectName: proj.name,
+                projectId: proj._id,
+                dueDate: t.dueDate || null,
+                priority: t.priority || 'Medium',
+              });
+            }
+          }
+        }
+      }
+      return {
+        _id: emp._id,
+        username: emp.username,
+        email: emp.email,
+        role: emp.customRole?.name || emp.role || 'Employee',
+        assignedTasks: assignedTasksCount,
+        completedTasks: completedTasksCount,
+        pendingTasksCount: assignedTasksCount - completedTasksCount,
+        pendingTasks: pendingTasksList,
+      };
+    });
 
     // Project stats
     const totalProjects = processedProjects.length;
@@ -440,18 +517,17 @@ export async function GET(request) {
       status: "Paid",
     }).lean();
 
-    // 1. Monthly (last 7 months up to current month)
+    // 1. Monthly (Jan to Dec of the current year)
     const monthlyData = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const currentYear = now.getFullYear();
+    for (let month = 0; month < 12; month++) {
+      const d = new Date(currentYear, month, 1);
       const label = d.toLocaleString("default", { month: "short" });
-      const year = d.getFullYear();
-      const month = d.getMonth();
 
       let value = 0;
       for (const inv of chartInvoices) {
         const invDate = new Date(inv.issueDate || inv.createdAt);
-        if (invDate.getFullYear() === year && invDate.getMonth() === month) {
+        if (invDate.getFullYear() === currentYear && invDate.getMonth() === month) {
           value += inv.total || 0;
         }
       }
@@ -509,6 +585,11 @@ export async function GET(request) {
         totalEarnings,
         totalPendingAmount,
       },
+      clients: {
+        total: totalClients,
+        active: activeClientsCount,
+        inactive: inactiveClientsCount,
+      },
       billingPerformance: {
         weekly: weeklyData,
         monthly: monthlyData,
@@ -516,6 +597,8 @@ export async function GET(request) {
       },
       recentProjects,
       recentInvoices,
+      recentClients: allClients.slice(0, 5),
+      employeeStats,
       pendingTasks,
     });
   } catch (error) {

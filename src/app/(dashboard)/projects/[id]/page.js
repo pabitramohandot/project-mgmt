@@ -223,6 +223,7 @@ export default function ProjectDetailPage() {
     clientName: "",
     clientEmail: "",
     client: "",
+    siteUrl: "",
     quotePrice: "",
     finalPrice: "",
     hostingPrice: "",
@@ -467,6 +468,7 @@ export default function ProjectDetailPage() {
         clientName: projectData.project.clientName,
         clientEmail: projectData.project.clientEmail ?? "",
         client: matchedClientId,
+        siteUrl: projectData.project.siteUrl ?? "",
         quotePrice: projectData.project.quotePrice ?? "",
         finalPrice: projectData.project.finalPrice ?? "",
         hostingPrice: projectData.project.hostingPrice ?? "",
@@ -2416,6 +2418,7 @@ export default function ProjectDetailPage() {
         clientName: project.clientName,
         clientEmail: project.clientEmail ?? "",
         client: project.client ?? "",
+        siteUrl: project.siteUrl ?? "",
         quotePrice: project.quotePrice ?? "",
         finalPrice: project.finalPrice ?? "",
         hostingPrice: project.hostingPrice ?? "",
@@ -2729,6 +2732,7 @@ export default function ProjectDetailPage() {
         clientName: updatedProject.clientName,
         clientEmail: updatedProject.clientEmail ?? "",
         client: updatedProject.client ?? "",
+        siteUrl: updatedProject.siteUrl ?? "",
         quotePrice: updatedProject.quotePrice ?? "",
         finalPrice: updatedProject.finalPrice ?? "",
         hostingPrice: updatedProject.hostingPrice ?? "",
@@ -2871,10 +2875,15 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const completedTasks = project.tasks
-    ? project.tasks.filter((t) => t.completed).length
-    : 0;
-  const totalTasks = project.tasks ? project.tasks.length : 0;
+  const employeeFilteredTasks = (project?.tasks || []).filter((t) => {
+    if (category === "Employee") {
+      return t.assignedTo?.toLowerCase() === username?.toLowerCase();
+    }
+    return true;
+  });
+
+  const completedTasks = employeeFilteredTasks.filter((t) => t.completed).length;
+  const totalTasks = employeeFilteredTasks.length;
   const taskProgress =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -3719,6 +3728,24 @@ export default function ProjectDetailPage() {
                         />
                       </div>
 
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label
+                          className="form-label"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Site URL
+                        </label>
+                        <input
+                          type="url"
+                          className="form-input"
+                          value={editForm.siteUrl || ''}
+                          placeholder="e.g., https://example.com"
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, siteUrl: e.target.value })
+                          }
+                        />
+                      </div>
+
                       {/* Client Selection */}
                       <div
                         style={{
@@ -3835,9 +3862,9 @@ export default function ProjectDetailPage() {
                             <SearchableSelect
                               options={clients.map((c) => ({
                                 value: c._id,
-                                label: c.name,
-                                sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}`,
-                                searchText: `${c.name} ${c.company || ""} ${c.email}`,
+                                label: c.status === "Inactive" ? `${c.name} (Inactive)` : c.name,
+                                sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}${c.status === "Inactive" ? " (Inactive)" : ""}`,
+                                searchText: `${c.name} ${c.company || ""} ${c.email} ${c.status || ""}`,
                               }))}
                               placeholder="Search and select client..."
                               required={true}
@@ -5559,6 +5586,40 @@ export default function ProjectDetailPage() {
                           >
                             {project.description}
                           </p>
+                        </div>
+                      )}
+
+                      {project.siteUrl && (
+                        <div>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--text-muted)",
+                              display: "block",
+                              textTransform: "uppercase",
+                              marginBottom: "0.35rem",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Site URL
+                          </span>
+                          <a
+                            href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: "var(--accent-primary)",
+                              fontSize: "0.9rem",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              fontWeight: 500
+                            }}
+                            className="hover-underline"
+                          >
+                            <ExternalLink size={14} style={{ color: 'var(--accent-primary)' }} /> {project.siteUrl}
+                          </a>
                         </div>
                       )}
 
@@ -7815,7 +7876,7 @@ export default function ProjectDetailPage() {
                       className="table-container"
                       style={{ marginTop: "1rem", overflowX: "auto" }}
                     >
-                      {!project.tasks || project.tasks.length === 0 ? (
+                      {employeeFilteredTasks.length === 0 ? (
                         <div
                           style={{
                             textAlign: "center",
@@ -7824,7 +7885,7 @@ export default function ProjectDetailPage() {
                             fontSize: "0.9rem",
                           }}
                         >
-                          No tasks created yet.
+                          {category === "Employee" ? "No tasks assigned to you yet." : "No tasks created yet."}
                         </div>
                       ) : (
                         <table
@@ -7852,7 +7913,7 @@ export default function ProjectDetailPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {[...(project.tasks || [])]
+                            {[...employeeFilteredTasks]
                               .sort((a, b) => {
                                 if (!a.dueDate && !b.dueDate) return 0;
                                 if (!a.dueDate) return 1;
@@ -9845,9 +9906,9 @@ export default function ProjectDetailPage() {
                     <SearchableSelect
                       options={clients.map((c) => ({
                         value: c._id,
-                        label: c.name,
-                        sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}`,
-                        searchText: `${c.name} ${c.company || ""} ${c.email}`,
+                        label: c.status === "Inactive" ? `${c.name} (Inactive)` : c.name,
+                        sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}${c.status === "Inactive" ? " (Inactive)" : ""}`,
+                        searchText: `${c.name} ${c.company || ""} ${c.email} ${c.status || ""}`,
                       }))}
                       placeholder="Search and select client..."
                       value={selectedRecipientId}
@@ -10578,9 +10639,9 @@ export default function ProjectDetailPage() {
                     <SearchableSelect
                       options={clients.map((c) => ({
                         value: c._id,
-                        label: c.name,
-                        sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}`,
-                        searchText: `${c.name} ${c.company || ""} ${c.email}`,
+                        label: c.status === "Inactive" ? `${c.name} (Inactive)` : c.name,
+                        sublabel: `${c.company ? `${c.company} • ` : ""}${c.email}${c.status === "Inactive" ? " (Inactive)" : ""}`,
+                        searchText: `${c.name} ${c.company || ""} ${c.email} ${c.status || ""}`,
                       }))}
                       placeholder="Search and select client..."
                       value={selectedLinkRecipientId}

@@ -1,8 +1,9 @@
 import dbConnect from '@/lib/db';
 import Credential from '@/models/Credential';
+import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, getCategoryForUser } from '@/lib/permissions';
 
 function checkPasscode(request) {
   const passcode = request.headers.get('x-vault-passcode');
@@ -26,12 +27,20 @@ export async function PUT(request, context) {
     const { id } = params;
     const data = await request.json();
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, userId } = getRequestSession(request);
+    const user = await User.findById(userId).populate('customRole').lean();
+    const category = await getCategoryForUser(user);
+
     let query = { _id: id, companyId };
+
+    // Employees can only edit credentials they created
+    if (category === 'Employee') {
+      query.createdBy = userId;
+    }
 
     const credential = await Credential.findOne(query);
     if (!credential) {
-      return NextResponse.json({ error: 'Credential not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Credential not found or access denied' }, { status: 404 });
     }
 
     if (data.title !== undefined) credential.title = data.title.trim();
@@ -63,12 +72,20 @@ export async function DELETE(request, context) {
     const params = await context.params;
     const { id } = params;
 
-    const { companyId } = getRequestSession(request);
+    const { companyId, userId } = getRequestSession(request);
+    const user = await User.findById(userId).populate('customRole').lean();
+    const category = await getCategoryForUser(user);
+
     let query = { _id: id, companyId };
+
+    // Employees can only delete credentials they created
+    if (category === 'Employee') {
+      query.createdBy = userId;
+    }
 
     const credential = await Credential.findOne(query);
     if (!credential) {
-      return NextResponse.json({ error: 'Credential not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Credential not found or access denied' }, { status: 404 });
     }
 
     await Credential.deleteOne({ _id: id });

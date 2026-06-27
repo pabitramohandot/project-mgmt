@@ -35,6 +35,8 @@ export default function CredentialsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
+  const [category, setCategory] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
 
   useEffect(() => {
     async function getRole() {
@@ -43,6 +45,8 @@ export default function CredentialsPage() {
         if (res.ok) {
           const data = await res.json();
           setRole(data.role);
+          setCategory(data.category || '');
+          setCurrentUserId(data.userId || '');
         }
       } catch (err) {
         console.error('Failed to get user role:', err);
@@ -504,7 +508,21 @@ export default function CredentialsPage() {
                       )}
                     </td>
                     <td>
-                      {role !== 'company_user' ? (
+                      {/* Employees: only show actions for their own credentials; Admin/Management: show for all */}
+                      {category === 'Employee' ? (
+                        currentUserId && cred.createdBy && cred.createdBy.toString() === currentUserId ? (
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(cred)} title="Edit Credential">
+                              <Edit size={14} />
+                            </button>
+                            <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }} onClick={() => handleDelete(cred._id)} title="Delete Credential">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                        )
+                      ) : (
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => handleOpenEditModal(cred)} title="Edit Credential">
                             <Edit size={14} />
@@ -513,8 +531,6 @@ export default function CredentialsPage() {
                             <Trash2 size={14} />
                           </button>
                         </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
                       )}
                     </td>
                   </tr>

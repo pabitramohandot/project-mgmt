@@ -63,11 +63,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     );
   }
 
-  if (user?.role === 'company_admin' || user?.role === 'superadmin') {
-    menuItems.push(
-      { name: 'Branding', path: '/settings/branding', icon: Palette }
-    );
-  }
+
 
   menuItems.push(
     { name: 'Account Settings', path: '/settings/profile', icon: User }
@@ -81,7 +77,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       if (
         item.path === '/clients' || 
         item.path === '/invoices' || 
-        item.path === '/settings/branding' || 
         item.path === '/settings/profile'
       ) {
         return false;
@@ -133,7 +128,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               <li key={i} className="menu-item" style={{ padding: isCollapsed ? '0.7rem 0' : '0.85rem 1rem', display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '0.75rem', width: '100%', justifyContent: isCollapsed ? 'center' : 'flex-start' }}>
                   <div className="skeleton skeleton-avatar" style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0 }}></div>
-                  {!isCollapsed && <div className="skeleton skeleton-text" style={{ width: `${Math.random() * 30 + 40}%`, margin: 0, height: '14px' }}></div>}
+                  {!isCollapsed && <div className="skeleton skeleton-text" style={{ width: `${(i % 3) * 15 + 45}%`, margin: 0, height: '14px' }}></div>}
                 </div>
               </li>
             ))

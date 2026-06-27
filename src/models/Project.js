@@ -167,6 +167,10 @@ const ProjectSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Client',
     },
+    siteUrl: {
+      type: String,
+      trim: true,
+    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',

@@ -29,6 +29,11 @@ const ClientSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    status: {
+      type: String,
+      enum: ['Active', 'Inactive'],
+      default: 'Active',
+    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',

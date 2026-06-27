@@ -78,6 +78,16 @@ const CompanySchema = new mongoose.Schema(
       nvidia: { type: String, trim: true, default: '' },
       grok: { type: String, trim: true, default: '' },
     },
+    bankDetails: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    bankQrCode: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     isActive: {
       type: Boolean,
       default: true,

@@ -362,7 +362,7 @@ export default function NewCompanyPage() {
                   <img
                     src={form.logo}
                     alt="Logo Preview"
-                    style={{ height: "20px", objectFit: "contain" }}
+                    style={{ height: "auto", maxHeight: "20px", width: "auto", objectFit: "contain" }}
                     onError={(e) => {
                       e.target.style.display = "none";
                     }}
