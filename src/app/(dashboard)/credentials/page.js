@@ -26,6 +26,7 @@ export default function CredentialsPage() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
+  const [vaultPasscode, setVaultPasscode] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [passcodeError, setPasscodeError] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
@@ -72,41 +73,14 @@ export default function CredentialsPage() {
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [copiedId, setCopiedId] = useState(null);
 
-  // Check sessionStorage on mount
+  // Start locked on mount
   useEffect(() => {
-    const cachedPasscode = sessionStorage.getItem('vault_passcode');
-    if (cachedPasscode) {
-      const verifyCachedPasscode = async () => {
-        try {
-          setLoading(true);
-          const res = await fetch('/api/credentials', {
-            headers: {
-              'x-vault-passcode': cachedPasscode
-            }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setCredentials(data);
-            setIsAuthenticated(true);
-          } else {
-            sessionStorage.removeItem('vault_passcode');
-          }
-        } catch (err) {
-          console.error('Failed to verify cached passcode:', err);
-          sessionStorage.removeItem('vault_passcode');
-        } finally {
-          setLoading(false);
-        }
-      };
-      verifyCachedPasscode();
-    } else {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
   // Fetch list of credentials
   const fetchCredentials = async () => {
-    const activePasscode = sessionStorage.getItem('vault_passcode');
+    const activePasscode = vaultPasscode;
     if (!activePasscode) return;
     
     try {
@@ -160,7 +134,7 @@ export default function CredentialsPage() {
 
       const data = await res.json();
       setCredentials(data);
-      sessionStorage.setItem('vault_passcode', passcode);
+      setVaultPasscode(passcode);
       setIsAuthenticated(true);
       showToast('Vault unlocked successfully', 'success');
     } catch (err) {
@@ -172,9 +146,9 @@ export default function CredentialsPage() {
   };
 
   const handleLock = () => {
-    sessionStorage.removeItem('vault_passcode');
     setIsAuthenticated(false);
     setPasscode('');
+    setVaultPasscode('');
     setCredentials([]);
     setVisiblePasswords({});
     showToast('Vault locked', 'info');
@@ -227,7 +201,7 @@ export default function CredentialsPage() {
       return;
     }
 
-    const activePasscode = sessionStorage.getItem('vault_passcode');
+    const activePasscode = vaultPasscode;
     if (!activePasscode) {
       showToast('Session expired. Please re-authenticate.', 'error');
       setIsAuthenticated(false);
@@ -267,7 +241,7 @@ export default function CredentialsPage() {
   };
 
   const handleDelete = (id) => {
-    const activePasscode = sessionStorage.getItem('vault_passcode');
+    const activePasscode = vaultPasscode;
     if (!activePasscode) return;
 
     showConfirm({

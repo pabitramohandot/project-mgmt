@@ -577,7 +577,7 @@ a {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(4, 4, 8, 0.8);
+  background: rgba(15, 23, 42, 0.15);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -46,10 +46,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'AI Agent', path: '/ai-agents', icon: Brain, tag: 'Featured' },
     { name: 'Projects', path: '/projects', icon: Briefcase },
+    { name: 'All Tasks', path: '/tasks', icon: ClipboardList },
+    { name: 'Performance', path: '/performance', icon: TrendingUp },
     { name: 'Clients', path: '/clients', icon: Users },
     { name: 'Invoices', path: '/invoices', icon: FileSpreadsheet },
     { name: 'Credentials', path: '/credentials', icon: Key },
-    { name: 'Pending Tasks', path: '/tasks', icon: AlertTriangle, badge: pendingCount },
+    { name: 'Pending Tasks', path: '/pending-tasks', icon: AlertTriangle, badge: pendingCount },
     { name: 'Announcements', path: '/announcements', icon: Megaphone },
   ];
 
@@ -88,7 +90,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     if (item.path === '/clients') return p.clients && p.clients !== 'none';
     if (item.path === '/invoices') return p.invoices && p.invoices !== 'none';
     if (item.path === '/credentials') return p.credentials && p.credentials !== 'none';
-    if (item.path === '/tasks') return p.pending_tasks && p.pending_tasks !== 'none';
+    if (item.path === '/tasks') return p.project_tasks && p.project_tasks !== 'none';
+    if (item.path === '/performance') return user?.role === 'company_admin' || user?.role === 'superadmin';
+    if (item.path === '/pending-tasks') return p.pending_tasks && p.pending_tasks !== 'none';
     if (item.path === '/announcements') return p.announcements && p.announcements !== 'none';
     if (item.path === '/settings/branding') return p.branding && p.branding !== 'none';
     return true;

@@ -94,6 +94,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [activeStatusTab, setActiveStatusTab] = useState('all');
   const [userCategory, setUserCategory] = useState('');
   const [projectLimit, setProjectLimit] = useState(0);
   const [projectCount, setProjectCount] = useState(0);
@@ -569,6 +570,14 @@ export default function ProjectsPage() {
     }
   };
 
+  const filteredProjects = projects.filter(project => {
+    if (activeStatusTab === 'all') return true;
+    if (activeStatusTab === 'ongoing') return ['In Progress', 'Under Review', 'Pending'].includes(project.status);
+    if (activeStatusTab === 'planning') return project.status === 'Planning';
+    if (activeStatusTab === 'completed') return project.status === 'Completed';
+    return true;
+  });
+
   // Stats calculation
   const totalCount = projects.length;
   const inProgressCount = projects.filter(p => p.status === 'In Progress').length;
@@ -682,6 +691,43 @@ export default function ProjectsPage() {
           </select>
         </div>
 
+        {/* Status Tabs */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', flexWrap: 'wrap' }}>
+          {[
+            { id: 'all', label: 'All Projects', count: projects.length },
+            { id: 'ongoing', label: 'Ongoing', count: projects.filter(p => ['In Progress', 'Under Review', 'Pending'].includes(p.status)).length },
+            { id: 'planning', label: 'Planning', count: projects.filter(p => p.status === 'Planning').length },
+            { id: 'completed', label: 'Completed', count: projects.filter(p => p.status === 'Completed').length },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveStatusTab(tab.id)}
+              className={`btn ${activeStatusTab === tab.id ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span>{tab.label}</span>
+              <span className="badge" style={{
+                fontSize: '0.7rem',
+                padding: '0.1rem 0.4rem',
+                borderRadius: '6px',
+                background: activeStatusTab === tab.id ? 'rgba(255,255,255,0.2)' : 'var(--bg-card-hover)',
+                color: activeStatusTab === tab.id ? '#fff' : 'var(--text-secondary)',
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* Projects Listing View */}
         {loading && projects.length === 0 ? (
           <div className="empty-state">
@@ -699,11 +745,17 @@ export default function ProjectsPage() {
             <h3>No projects found</h3>
             <p>Try refining your search or create a new project to get started.</p>
           </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="empty-state">
+            <Briefcase size={48} />
+            <h3>No projects found in this tab</h3>
+            <p>Try switching to another tab or clear your search query.</p>
+          </div>
         ) : userCategory === 'Employee' ? (
           /* Cards Layout: 4 cards in a row */
           <>
             <div className="project-cards-grid">
-              {projects.map((project) => {
+              {filteredProjects.map((project) => {
                 const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
                   ? project.statusUpdates[project.statusUpdates.length - 1]
                   : null;
@@ -886,7 +938,7 @@ export default function ProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => {
+                {filteredProjects.map((project) => {
                   const latestUpdate = project.statusUpdates && project.statusUpdates.length > 0
                     ? project.statusUpdates[project.statusUpdates.length - 1]
                     : null;

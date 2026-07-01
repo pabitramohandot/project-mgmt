@@ -20,6 +20,7 @@ export default function SearchableSelect({
   placeholder = 'Select option...',
   disabledPlaceholder = 'No options available',
   required = false,
+  multiple = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -36,24 +37,51 @@ export default function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedOptions = multiple 
+    ? (Array.isArray(value) ? options.filter(opt => value.includes(opt.value)) : [])
+    : [options.find((opt) => opt.value === value)].filter(Boolean);
+
+  const selectedOption = selectedOptions[0];
 
   // Sync search input with selected label when closed
   useEffect(() => {
     if (!isOpen) {
-      setSearch(selectedOption ? (selectedOption.label || '') : '');
+      if (multiple) {
+        setSearch(selectedOptions.map(opt => opt.label || '').join(', '));
+      } else {
+        setSearch(selectedOption ? (selectedOption.label || '') : '');
+      }
     }
-  }, [isOpen, selectedOption]);
+  }, [isOpen, selectedOption, selectedOptions, multiple]);
 
   const handleSelect = (option) => {
-    onChange(option.value, option);
-    setSearch(option.label || '');
-    setIsOpen(false);
+    if (multiple) {
+      const currentValues = Array.isArray(value) ? value : [];
+      let nextValues;
+      let nextOptions;
+      if (currentValues.includes(option.value)) {
+        nextValues = currentValues.filter((v) => v !== option.value);
+        nextOptions = selectedOptions.filter((o) => o.value !== option.value);
+      } else {
+        nextValues = [...currentValues, option.value];
+        nextOptions = [...selectedOptions, option];
+      }
+      onChange(nextValues, nextOptions);
+      setSearch('');
+    } else {
+      onChange(option.value, option);
+      setSearch(option.label || '');
+      setIsOpen(false);
+    }
   };
 
   const handleClear = (e) => {
     e.stopPropagation();
-    onChange('', null);
+    if (multiple) {
+      onChange([], []);
+    } else {
+      onChange('', null);
+    }
     setSearch('');
   };
 
@@ -65,6 +93,8 @@ export default function SearchableSelect({
     const customMatch = opt.searchText?.toLowerCase().includes(term);
     return labelMatch || sublabelMatch || customMatch;
   });
+
+  const hasValue = multiple ? (Array.isArray(value) && value.length > 0) : !!value;
 
   return (
     <div className="searchable-select-container" ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: isOpen ? 50 : 1 }}>
@@ -87,13 +117,13 @@ export default function SearchableSelect({
           type="text"
           className="form-input"
           placeholder={options.length > 0 ? placeholder : disabledPlaceholder}
-          value={isOpen ? search : (selectedOption ? selectedOption.label : '')}
+          value={isOpen ? search : (multiple ? selectedOptions.map(opt => opt.label).join(', ') : (selectedOption ? selectedOption.label : ''))}
           onChange={(e) => {
             setSearch(e.target.value);
             setIsOpen(true);
           }}
           disabled={options.length === 0}
-          required={required && !value}
+          required={required && !hasValue}
           style={{
             width: '100%',
             paddingRight: '2.5rem',
@@ -113,7 +143,7 @@ export default function SearchableSelect({
             color: 'var(--text-secondary)',
           }}
         >
-          {value && (
+          {hasValue && (
             <button
               type="button"
               onClick={handleClear}
@@ -168,23 +198,27 @@ export default function SearchableSelect({
               No matches found
             </div>
           ) : (
-            filteredOptions.map((option) => (
-              <div
-                key={option.value}
-                onClick={() => handleSelect(option)}
-                className={`searchable-select-option ${value === option.value ? 'selected' : ''}`}
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  transition: 'all 0.15s ease',
-                  backgroundColor: value === option.value ? 'var(--accent-primary-glow)' : 'transparent',
-                  borderLeft: value === option.value ? '3px solid var(--accent-primary)' : 'none',
-                  paddingLeft: value === option.value ? 'calc(0.85rem - 3px)' : '0.85rem',
-                  marginBottom: '2px',
-                }}
-              >
+            filteredOptions.map((option) => {
+              const optionSelected = multiple
+                ? (Array.isArray(value) && value.includes(option.value))
+                : value === option.value;
+              return (
+                <div
+                  key={option.value}
+                  onClick={() => handleSelect(option)}
+                  className={`searchable-select-option ${optionSelected ? 'selected' : ''}`}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.15s ease',
+                    backgroundColor: optionSelected ? 'var(--accent-primary-glow)' : 'transparent',
+                    borderLeft: optionSelected ? '3px solid var(--accent-primary)' : 'none',
+                    paddingLeft: optionSelected ? 'calc(0.85rem - 3px)' : '0.85rem',
+                    marginBottom: '2px',
+                  }}
+                >
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{option.label}</div>
                 {option.sublabel && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -192,7 +226,8 @@ export default function SearchableSelect({
                   </div>
                 )}
               </div>
-            ))
+            );
+          })
           )}
         </div>
       )}

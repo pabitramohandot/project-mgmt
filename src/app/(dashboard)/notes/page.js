@@ -27,6 +27,7 @@ export default function NotesPage() {
   const [clients, setClients] = useState([]);
   const [companyUsers, setCompanyUsers] = useState([]);
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const editorRef = useRef(null);
 
   useEffect(() => {
@@ -148,10 +149,12 @@ export default function NotesPage() {
     }
   };
 
-  const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!confirm('Delete this note?')) return;
-    
+  const handleDelete = (id, e) => {
+    if (e) e.stopPropagation();
+    setDeleteConfirmId(id);
+  };
+
+  const executeDelete = async (id) => {
     try {
       const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -517,6 +520,77 @@ export default function NotesPage() {
                   {saving ? 'Saving...' : 'Save Note'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteConfirmId && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          animation: 'fadeIn 0.2s ease'
+        }} onClick={() => setDeleteConfirmId(null)}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '360px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Delete Note</h3>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  executeDelete(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

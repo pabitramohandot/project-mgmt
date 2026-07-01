@@ -157,12 +157,19 @@ export async function GET(request) {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
       startLimit = startOfToday;
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      endLimit = endOfToday;
     } else if (timeframe === "monthly") {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       startLimit = startOfMonth;
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      endLimit = endOfMonth;
     } else if (timeframe === "yearly") {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       startLimit = startOfYear;
+      const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+      endLimit = endOfYear;
     } else if (timeframe === "custom") {
       const startDateStr = searchParams.get("startDate");
       const endDateStr = searchParams.get("endDate");
@@ -242,8 +249,9 @@ export async function GET(request) {
     );
 
     // Fetch all projects, invoices, clients, and users in parallel using lean() for maximum performance
-    const [allProjects, allInvoices, allClients, allUsers] = await Promise.all([
+    const [allProjects, allTimeProjectsRaw, allInvoices, allClients, allUsers] = await Promise.all([
       Project.find(projectQuery).sort({ createdAt: -1 }).lean(),
+      Project.find({ companyId }).sort({ createdAt: -1 }).lean(),
       Invoice.find(invoiceQuery).sort({ createdAt: -1 }).lean(),
       Client.find(clientQuery).sort({ createdAt: -1 }).lean(),
       User.find({ companyId }).populate("customRole").lean(),
@@ -251,7 +259,11 @@ export async function GET(request) {
 
     // Compute dynamic project status updates for current response (since DB update runs in background)
     const processedProjects = allProjects.map((proj) =>
-      processProjectStatus(proj),
+      processProjectStatus(proj)
+    );
+
+    const allTimeProjects = allTimeProjectsRaw.map((proj) =>
+      processProjectStatus(proj)
     );
 
     // Client stats
@@ -264,20 +276,74 @@ export async function GET(request) {
     const employeeStats = allUsers.filter(u => u.role === 'company_user').map(emp => {
       let assignedTasksCount = 0;
       let completedTasksCount = 0;
-      const pendingTasksList = [];
-      for (const proj of allProjects) {
+      const allTasksList = [];
+      for (const proj of allTimeProjects) {
         for (const t of (proj.tasks || [])) {
           if (t.assignedTo === emp.username) {
             assignedTasksCount++;
             if (t.completed) {
               completedTasksCount++;
-            } else {
-              pendingTasksList.push({
+            }
+            allTasksList.push({
+              taskName: t.name,
+              projectName: proj.name,
+              projectId: proj._id,
+              dueDate: t.dueDate || null,
+              priority: t.priority || 'Medium',
+              completed: t.completed,
+              status: t.status
+            });
+          }
+        }
+      }
+      return {
+        _id: emp._id,
+        username: emp.username,
+        email: emp.email,
+        role: emp.customRole?.name || emp.role || 'Employee',
+        assignedTasks: assignedTasksCount,
+        completedTasks: completedTasksCount,
+        pendingTasksCount: assignedTasksCount - completedTasksCount,
+        allTasks: allTasksList,
+      };
+    });
+
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const monthlyEmployeeStats = allUsers.filter(u => u.role === 'company_user').map(emp => {
+      let assignedTasksCount = 0;
+      let completedTasksCount = 0;
+      const allTasksList = [];
+      for (const proj of allTimeProjects) {
+        for (const t of (proj.tasks || [])) {
+          if (t.assignedTo === emp.username) {
+            let isCurrentMonth = false;
+            if (t.dueDate) {
+              const dDate = new Date(t.dueDate);
+              if (dDate >= startOfCurrentMonth && dDate <= endOfCurrentMonth) {
+                isCurrentMonth = true;
+              }
+            } else if (proj.createdAt) {
+              const pDate = new Date(proj.createdAt);
+              if (pDate >= startOfCurrentMonth && pDate <= endOfCurrentMonth) {
+                isCurrentMonth = true;
+              }
+            }
+
+            if (isCurrentMonth) {
+              assignedTasksCount++;
+              if (t.completed) {
+                completedTasksCount++;
+              }
+              allTasksList.push({
                 taskName: t.name,
                 projectName: proj.name,
                 projectId: proj._id,
                 dueDate: t.dueDate || null,
                 priority: t.priority || 'Medium',
+                completed: t.completed,
+                status: t.status
               });
             }
           }
@@ -291,7 +357,7 @@ export async function GET(request) {
         assignedTasks: assignedTasksCount,
         completedTasks: completedTasksCount,
         pendingTasksCount: assignedTasksCount - completedTasksCount,
-        pendingTasks: pendingTasksList,
+        allTasks: allTasksList,
       };
     });
 
@@ -340,6 +406,21 @@ export async function GET(request) {
         description: `Draft invoice for ${inv.clientName} has not been sent. Review and email this invoice to collect payment.`,
         link: `/invoices/${inv._id}`,
         date: inv.createdAt,
+      });
+    }
+
+    // 1.5. Overdue Invoices (Not paid by due date)
+    const overdueInvoices = allInvoices.filter(
+      (inv) => inv.status !== "Paid" && inv.dueDate && new Date(inv.dueDate) < now
+    );
+    for (const inv of overdueInvoices) {
+      pendingTasks.push({
+        id: inv._id,
+        type: "invoice_overdue",
+        title: `Overdue Payment: ${inv.invoiceNumber}`,
+        description: `Invoice for ${inv.clientName} has not been paid. Due date was ${new Date(inv.dueDate).toLocaleDateString("en-IN")}. Total amount: ₹${inv.total ? inv.total.toLocaleString('en-IN') : 0}.`,
+        link: `/invoices/${inv._id}`,
+        date: inv.dueDate,
       });
     }
 
@@ -595,10 +676,13 @@ export async function GET(request) {
         monthly: monthlyData,
         quarterly: quarterlyData,
       },
+      allProjects: processedProjects,
+      allTimeProjects,
       recentProjects,
       recentInvoices,
       recentClients: allClients.slice(0, 5),
       employeeStats,
+      monthlyEmployeeStats,
       pendingTasks,
     });
   } catch (error) {

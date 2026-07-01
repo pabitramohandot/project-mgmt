@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Printer, Check, Clock, AlertCircle, Download } from 'lucide-react';
+import { ArrowLeft, Printer, Check, Clock, AlertCircle, Download, X } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function InvoiceDetailPage() {
@@ -18,6 +18,8 @@ export default function InvoiceDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [hasAutoSent, setHasAutoSent] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
 
   const fetchInvoice = async () => {
     try {
@@ -136,7 +138,7 @@ export default function InvoiceDetailPage() {
     }
   }, [invoice]);
 
-  const handleUpdateStatus = async (newStatus) => {
+  const handleUpdateStatus = async (newStatus, paymentMethod = '') => {
     try {
       setUpdating(true);
       let pdfBase64 = null;
@@ -167,15 +169,21 @@ export default function InvoiceDetailPage() {
         }
       }
 
+      const payload = { status: newStatus, pdfBase64 };
+      if (newStatus === 'Paid') {
+        payload.paymentMethod = paymentMethod;
+      }
+
       const res = await fetch(`/api/invoices/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, pdfBase64 }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Failed to update status');
       const updatedInvoice = await res.json();
       setInvoice(updatedInvoice);
       showToast(`Invoice marked as ${newStatus}`, 'success');
+      setIsPaymentModalOpen(false);
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -264,7 +272,7 @@ export default function InvoiceDetailPage() {
               <button 
                 className="btn btn-secondary" 
                 style={{ color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' }}
-                onClick={() => handleUpdateStatus('Paid')}
+                onClick={() => setIsPaymentModalOpen(true)}
                 disabled={updating}
               >
                 <Check size={16} />
@@ -398,10 +406,15 @@ export default function InvoiceDetailPage() {
                 </>
               )}
             </div>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span className={`badge badge-${invoice.status.toLowerCase()}`} style={{ padding: '0.35rem 0.85rem' }}>
                 {invoice.status}
               </span>
+              {invoice.status === 'Paid' && invoice.paymentMethod && (
+                <span className="no-print" style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.08)', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
+                  via {invoice.paymentMethod}
+                </span>
+              )}
             </div>
           </div>
 
@@ -554,6 +567,54 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Method Selector Modal */}
+      {isPaymentModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsPaymentModalOpen(false)}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Select Payment Method</h2>
+              <button onClick={() => setIsPaymentModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              Specify how the client paid this invoice:
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>Payment Type</label>
+              <select 
+                className="form-select"
+                value={selectedPaymentMethod}
+                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.9rem' }}
+              >
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsPaymentModalOpen(false)} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => handleUpdateStatus('Paid', selectedPaymentMethod)} 
+                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', background: '#10b981', borderColor: '#10b981' }}
+                disabled={updating}
+              >
+                Confirm & Mark Paid
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,177 +3,198 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  AlertTriangle, 
-  Clock, 
-  FileText, 
-  Server, 
-  CheckCircle,
+  ClipboardList, 
+  Search, 
   Briefcase, 
+  User, 
+  CalendarDays, 
+  CheckCircle2, 
+  Circle, 
   ArrowRight,
-  Filter,
-  Globe,
-  Calendar
+  ExternalLink,
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
+import { useNotification } from '@/components/NotificationProvider';
 
-export default function PendingTasksPage() {
-  const [tasks, setTasks] = useState([]);
+export default function AllTasksPage() {
+  const { showToast } = useNotification();
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all');
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
   const [userCategory, setUserCategory] = useState('');
 
-  useEffect(() => {
-    async function fetchTasks() {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/dashboard');
-        if (!res.ok) throw new Error('Failed to fetch tasks data');
-        const data = await res.json();
-        setTasks(data.pendingTasks || []);
-        if (data.category) {
-          setUserCategory(data.category);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/dashboard');
+      if (!res.ok) throw new Error('Failed to fetch tasks data');
+      const data = await res.json();
+      setProjects(data.allTimeProjects || []);
+      if (data.category) {
+        setUserCategory(data.category);
       }
-    }
-    fetchTasks();
-  }, []);
-
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
-    if (filter === 'invoice_draft') return task.type === 'invoice_draft';
-    if (filter === 'hosting_expiry') return task.type === 'hosting_expiry';
-    if (filter === 'domain_expiry') return task.type === 'domain_expiry';
-    if (filter === 'project_pending') return task.type === 'project_pending';
-    if (filter === 'calendar_pending') return task.type === 'calendar_pending';
-    return true;
-  }).sort((a, b) => {
-    if (!a.date && !b.date) return 0;
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return new Date(a.date) - new Date(b.date);
-  });
-
-  const getTaskStyles = (type) => {
-    switch (type) {
-      case 'hosting_expiry':
-        return {
-          icon: Server,
-          color: '#ec4899',
-          bgLight: 'rgba(236, 72, 153, 0.1)',
-          badgeText: 'HOSTING EXPIRY'
-        };
-      case 'domain_expiry':
-        return {
-          icon: Globe,
-          color: '#8b5cf6',
-          bgLight: 'rgba(139, 92, 246, 0.1)',
-          badgeText: 'DOMAIN EXPIRY'
-        };
-      case 'project_pending':
-        return {
-          icon: Briefcase,
-          color: '#f59e0b',
-          bgLight: 'rgba(245, 158, 11, 0.1)',
-          badgeText: 'PROJECT OVERDUE'
-        };
-      case 'invoice_draft':
-        return {
-          icon: FileText,
-          color: '#3b82f6',
-          bgLight: 'rgba(59, 130, 246, 0.1)',
-          badgeText: 'INVOICE DRAFT'
-        };
-      case 'calendar_pending':
-        return {
-          icon: Calendar,
-          color: '#06b6d4',
-          bgLight: 'rgba(6, 182, 212, 0.1)',
-          badgeText: 'POST PENDING'
-        };
-      default:
-        return {
-          icon: AlertTriangle,
-          color: 'var(--accent-primary)',
-          bgLight: 'rgba(139, 92, 246, 0.1)',
-          badgeText: 'ACTION REQUIRED'
-        };
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // Extract all tasks from projects (Exclude completed tasks)
+  const allTasks = [];
+  projects.forEach(project => {
+    if (project.tasks && Array.isArray(project.tasks)) {
+      project.tasks.forEach(task => {
+        if (!task.completed) {
+          allTasks.push({
+            ...task,
+            projectId: project._id,
+            projectName: project.name
+          });
+        }
+      });
+    }
+  });
+
+  // Toggle task completion
+  const handleToggleComplete = async (projectId, taskId, currentCompleted, currentStatus) => {
+    try {
+      const project = projects.find(p => p._id === projectId);
+      if (!project) return;
+
+      const updatedTasks = project.tasks.map(t => {
+        if (t._id === taskId) {
+          const nextCompleted = !currentCompleted;
+          return {
+            ...t,
+            completed: nextCompleted,
+            status: nextCompleted ? 'Completed' : 'In Progress'
+          };
+        }
+        return t;
+      });
+
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: updatedTasks }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update task status');
+      
+      showToast('Task marked as completed', 'success');
+      fetchProjects(); // Reload task data
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // Apply search and filters
+  const filteredTasks = allTasks.filter(task => {
+    const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (task.projectName && task.projectName.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || 
+                          (statusFilter === 'todo' && task.status === 'Todo') ||
+                          (statusFilter === 'in-progress' && task.status === 'In Progress');
+                          
+    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    const matchesProject = projectFilter === 'all' || task.projectId === projectFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+  });
+
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 className="page-title">Pending Tasks</h1>
-          <p className="page-subtitle">Action required items regarding invoices, project statuses, and system hosting dates.</p>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ClipboardList size={28} style={{ color: 'var(--accent-primary)' }} />
+            <span>All Tasks</span>
+          </h1>
+          <p className="page-subtitle">Track, filter, and manage tasks across all active company projects.</p>
         </div>
       </div>
 
-      {/* Filter and Stats Segment */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => setFilter('all')} 
-            className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            All ({tasks.length})
-          </button>
-          {userCategory !== 'Employee' && (
-            <>
-              <button 
-                onClick={() => setFilter('invoice_draft')} 
-                className={`btn ${filter === 'invoice_draft' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-              >
-                Draft Invoices ({tasks.filter(t => t.type === 'invoice_draft').length})
-              </button>
-              <button 
-                onClick={() => setFilter('hosting_expiry')} 
-                className={`btn ${filter === 'hosting_expiry' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-              >
-                Hosting Expiry ({tasks.filter(t => t.type === 'hosting_expiry').length})
-              </button>
-              <button 
-                onClick={() => setFilter('domain_expiry')} 
-                className={`btn ${filter === 'domain_expiry' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-              >
-                Domain Expiry ({tasks.filter(t => t.type === 'domain_expiry').length})
-              </button>
-            </>
-          )}
-          <button 
-            onClick={() => setFilter('project_pending')} 
-            className={`btn ${filter === 'project_pending' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            {userCategory === 'Employee' ? 'Overdue Tasks' : 'Overdue Projects'} ({tasks.filter(t => t.type === 'project_pending').length})
-          </button>
-          <button 
-            onClick={() => setFilter('calendar_pending')} 
-            className={`btn ${filter === 'calendar_pending' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-          >
-            Pending Posts ({tasks.filter(t => t.type === 'calendar_pending').length})
-          </button>
-        </div>
+      {/* Filters Segment */}
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          
+          {/* Search Box */}
+          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input 
+              type="text" 
+              placeholder="Search tasks or projects..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ paddingLeft: '36px', width: '100%', borderRadius: '8px' }}
+            />
+          </div>
 
-        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Filter size={16} />
-          <span>Showing {filteredTasks.length} tasks</span>
+          {/* Status Filter */}
+          <div style={{ minWidth: '150px' }}>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)} 
+              className="form-select"
+              style={{ borderRadius: '8px', width: '100%' }}
+            >
+              <option value="all">All Statuses</option>
+              <option value="todo">To Do</option>
+              <option value="in-progress">In Progress</option>
+            </select>
+          </div>
+
+          {/* Priority Filter */}
+          <div style={{ minWidth: '150px' }}>
+            <select 
+              value={priorityFilter} 
+              onChange={(e) => setPriorityFilter(e.target.value)} 
+              className="form-select"
+              style={{ borderRadius: '8px', width: '100%' }}
+            >
+              <option value="all">All Priorities</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+
+          {/* Project Filter */}
+          <div style={{ minWidth: '200px' }}>
+            <select 
+              value={projectFilter} 
+              onChange={(e) => setProjectFilter(e.target.value)} 
+              className="form-select"
+              style={{ borderRadius: '8px', width: '100%' }}
+            >
+              <option value="all">All Projects</option>
+              {projects.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
         </div>
       </div>
 
       {loading ? (
         <div className="empty-state">
-          <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
-          <h3>Loading your tasks...</h3>
+          <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%' }}></div>
+          <h3 style={{ marginTop: '1rem' }}>Loading all tasks...</h3>
         </div>
       ) : error ? (
         <div className="empty-state" style={{ color: '#ef4444' }}>
@@ -183,60 +204,79 @@ export default function PendingTasksPage() {
         </div>
       ) : filteredTasks.length === 0 ? (
         <div className="empty-state">
-          <CheckCircle size={48} style={{ color: '#10b981' }} />
-          <h3>All caught up!</h3>
-          <p>No pending tasks found for the selected filter.</p>
+          <CheckCircle2 size={48} style={{ color: '#10b981', opacity: 0.7 }} />
+          <h3>No tasks found</h3>
+          <p>Try modifying your search query or filter options.</p>
         </div>
       ) : (
-        <div className="table-container">
+        <div className="table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Type</th>
+                <th style={{ width: '40px' }}></th>
                 <th>Task Title</th>
-                <th>Description</th>
-                <th>Date</th>
+                <th>Project</th>
+                <th>Assigned To</th>
+                <th>Due Date</th>
+                <th>Priority</th>
+                <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTasks.map((task) => {
-                const styles = getTaskStyles(task.type);
-                const TaskIcon = styles.icon;
-
+                const isOverdue = !task.completed && task.dueDate && new Date(task.dueDate) < new Date();
+                
                 return (
-                  <tr key={`${task.type}-${task.id}`}>
-                    <td style={{ width: '200px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{
-                          background: styles.bgLight,
-                          color: styles.color,
-                          padding: '0.4rem',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <TaskIcon size={16} />
-                        </div>
-                        <span className="badge" style={{ background: `${styles.color}20`, color: styles.color, fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}>
-                          {styles.badgeText}
-                        </span>
+                  <tr key={task._id} className="premium-table-row">
+                    <td>
+                      <button 
+                        onClick={() => handleToggleComplete(task.projectId, task._id, task.completed, task.status)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: task.completed ? 'var(--status-completed, #10b981)' : 'var(--text-muted)' }}
+                        title={task.completed ? "Mark incomplete" : "Mark completed"}
+                      >
+                        {task.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                      </button>
+                    </td>
+                    <td style={{ fontWeight: 600, color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                      {task.name}
+                    </td>
+                    <td>
+                      <Link href={`/projects/${task.projectId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
+                        <Briefcase size={12} />
+                        <span>{task.projectName}</span>
+                      </Link>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        <User size={12} />
+                        <span>{task.assignedTo || 'Unassigned'}</span>
                       </div>
                     </td>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {task.title}
+                    <td>
+                      {task.dueDate ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: isOverdue ? 'var(--status-overdue, #ef4444)' : 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: isOverdue ? 700 : 500 }}>
+                          <CalendarDays size={12} />
+                          <span>{new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                      )}
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      {task.description}
+                    <td>
+                      <span className={`badge-post-type ${task.priority?.toLowerCase() === 'high' ? 'reel' : task.priority?.toLowerCase() === 'low' ? 'motion' : 'carousel'}`} style={{ fontSize: '0.72rem', padding: '0.15rem 0.55rem', borderRadius: '4px', textTransform: 'capitalize' }}>
+                        {task.priority || 'Medium'}
+                      </span>
                     </td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {new Date(task.date).toLocaleDateString('en-IN')}
+                    <td>
+                      <span className={`badge ${task.completed ? 'completed' : task.status === 'In Progress' ? 'progress' : 'planning'}`} style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem' }}>
+                        {task.completed ? 'Completed' : task.status || 'Todo'}
+                      </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <Link href={task.link} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                        <span>Resolve Action</span>
-                        <ArrowRight size={12} />
+                      <Link href={`/projects/${task.projectId}`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                        <span>Project</span>
+                        <ExternalLink size={12} />
                       </Link>
                     </td>
                   </tr>

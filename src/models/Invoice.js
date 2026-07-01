@@ -92,6 +92,11 @@ const InvoiceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    paymentMethod: {
+      type: String,
+      enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque', ''],
+      default: '',
+    },
   },
   {
     timestamps: true,

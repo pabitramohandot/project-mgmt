@@ -88,7 +88,7 @@ export default function Dashboard() {
   });
   const [activeBar, setActiveBar] = useState(null);
   const [chartTimeframe, setChartTimeframe] = useState('Monthly');
-  const [dashboardTimeframe, setDashboardTimeframe] = useState('monthly');
+  const [dashboardTimeframe, setDashboardTimeframe] = useState('yearly');
   const [customStartDate, setCustomStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30); // Default to last 30 days
@@ -457,9 +457,8 @@ export default function Dashboard() {
   const activeLabel = chartData[activeBarIndex]?.label ?? 'Current';
 
   // Ongoing tasks calculator
-  const ongoingProjects = (stats?.recentProjects || [])
+  const ongoingProjects = (stats?.allTimeProjects || [])
     .filter(p => ['Planning', 'In Progress', 'Under Review', 'Pending'].includes(p.status))
-    .slice(0, 3)
     .map(proj => {
       const totalTasks = proj.tasks?.length || 0;
       let progress = 0;
@@ -519,97 +518,185 @@ export default function Dashboard() {
 
     const brandColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') || '#00aeef';
 
-    let tableHeaders = '';
-    let tableRows = '';
-
-    if (boxName === 'Billing Performance') {
-      tableHeaders = '<th>Time Period</th><th>Revenue / Billings</th>';
-      const chartRows = chartData.map(d => `<tr><td>${d.label}</td><td>${formatCurrency(d.value)}</td></tr>`).join('');
-      tableRows = `
-        ${chartRows}
-        <tr class="total-row"><td>Total Value</td><td>${formatCurrency(stats?.projects?.totalBudget ?? 0)}</td></tr>
-        <tr class="total-row"><td>Total Earnings</td><td>${formatCurrency(stats?.invoices?.totalEarnings ?? 0)}</td></tr>
-        <tr class="total-row"><td>Outstanding Amount</td><td>${formatCurrency(stats?.invoices?.totalPendingAmount ?? 0)}</td></tr>
-      `;
-    } else if (boxName === 'Projects Overview') {
-      tableHeaders = '<th>Project Name</th><th>Site URL</th><th>Client</th><th>Type</th><th>Budget</th><th>Status</th>';
-      tableRows = (stats?.recentProjects || []).map(p => `
-        <tr>
-          <td><strong>${p.name}</strong></td>
-          <td>${p.siteUrl || '—'}</td>
-          <td>${p.clientName || '—'}</td>
-          <td>${p.projectType || '—'}</td>
-          <td>${formatCurrency(p.budget)}</td>
-          <td><span class="badge ${p.status.toLowerCase().replace(' ', '')}">${p.status}</span></td>
-        </tr>
-      `).join('');
-      if ((stats?.recentProjects || []).length === 0) {
-        tableRows = '<tr><td colspan="6" style="text-align:center;">No projects found.</td></tr>';
-      }
-    } else if (boxName === 'Clients Overview') {
-      tableHeaders = '<th>Client Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Status</th>';
-      tableRows = (stats?.recentClients || []).map(c => `
-        <tr>
-          <td><strong>${c.name}</strong></td>
-          <td>${c.company || '—'}</td>
-          <td>${c.email}</td>
-          <td>${c.phone || '—'}</td>
-          <td><span class="badge ${c.status === 'Inactive' ? 'inactive' : 'active'}">${c.status || 'Active'}</span></td>
-        </tr>
-      `).join('');
-      if ((stats?.recentClients || []).length === 0) {
-        tableRows = '<tr><td colspan="5" style="text-align:center;">No clients found.</td></tr>';
-      }
-    } else if (boxName === 'Ongoing Projects') {
-      tableHeaders = '<th>Project Name</th><th>Client</th><th>Timeline</th><th>Progress</th><th>Status</th>';
-      tableRows = ongoingProjects.map(p => `
-        <tr>
-          <td><strong>${p.name}</strong></td>
-          <td>${p.clientName || '—'}</td>
-          <td>${p.startDate ? new Date(p.startDate).toLocaleDateString() : '—'} to ${p.endDate ? new Date(p.endDate).toLocaleDateString() : '—'}</td>
-          <td>${p.progress}% completed</td>
-          <td><span class="badge ${p.status.toLowerCase().replace(' ', '')}">${p.status}</span></td>
-        </tr>
-      `).join('');
-      if (ongoingProjects.length === 0) {
-        tableRows = '<tr><td colspan="5" style="text-align:center;">No ongoing projects found.</td></tr>';
-      }
-    } else if (boxName === 'Ongoing Tasks') {
-      tableHeaders = '<th>Task Name</th><th>Project</th><th>Priority</th><th>Due Date</th><th>Status</th>';
-      const tasks = [];
-      (stats?.recentProjects || []).forEach(p => {
-        (p.tasks || []).forEach(t => {
-          if (!t.completed) {
-            tasks.push({ ...t, projectName: p.name });
-          }
-        });
+    // Filter ongoing tasks by timeframe selection
+    const rawTasks = [];
+    (stats?.allTimeProjects || []).forEach(p => {
+      (p.tasks || []).forEach(t => {
+        if (!t.completed) {
+          rawTasks.push({ ...t, projectName: p.name });
+        }
       });
-      tableRows = tasks.map(t => `
-        <tr>
-          <td><strong>${t.name}</strong></td>
-          <td>${t.projectName}</td>
-          <td>${t.priority || 'Medium'}</td>
-          <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</td>
-          <td><span class="badge pending">Todo</span></td>
-        </tr>
-      `).join('');
-      if (tasks.length === 0) {
-        tableRows = '<tr><td colspan="5" style="text-align:center;">No ongoing tasks found.</td></tr>';
+    });
+
+    const filteredTasks = rawTasks; // All-time ongoing tasks without timeframe filter
+
+    let contentHtml = '';
+
+    if (boxName === 'All') {
+      contentHtml = `
+        <h2 style="font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 30px; color: #0f172a;">Billing & Financial Summary</h2>
+        <table>
+          <thead>
+            <tr><th>Time Period</th><th>Revenue / Billings</th></tr>
+          </thead>
+          <tbody>
+            ${chartData.map(d => `<tr><td>${d.label}</td><td>${formatCurrency(d.value)}</td></tr>`).join('')}
+            <tr class="total-row"><td>Total Value</td><td>${formatCurrency(stats?.projects?.totalBudget ?? 0)}</td></tr>
+            <tr class="total-row"><td>Total Earnings</td><td>${formatCurrency(stats?.invoices?.totalEarnings ?? 0)}</td></tr>
+            <tr class="total-row"><td>Outstanding Amount</td><td>${formatCurrency(stats?.invoices?.totalPendingAmount ?? 0)}</td></tr>
+          </tbody>
+        </table>
+
+        <h2 style="font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; color: #0f172a; page-break-before: always;">Ongoing Projects</h2>
+        <table>
+          <thead>
+            <tr><th>Project Name</th><th>Client</th><th>Timeline</th><th>Progress</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${ongoingProjects.map(p => `
+              <tr>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.clientName || '—'}</td>
+                <td>${p.startDate ? new Date(p.startDate).toLocaleDateString() : '—'} to ${p.endDate ? new Date(p.endDate).toLocaleDateString() : '—'}</td>
+                <td>${p.progress}% completed</td>
+                <td><span class="badge ${p.status.toLowerCase().replace(' ', '')}">${p.status}</span></td>
+              </tr>
+            `).join('') || '<tr><td colspan="5" style="text-align:center;">No ongoing projects found.</td></tr>'}
+          </tbody>
+        </table>
+
+        <h2 style="font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; color: #0f172a; page-break-before: always;">Ongoing Tasks</h2>
+        <table>
+          <thead>
+            <tr><th>Task Name</th><th>Project</th><th>Priority</th><th>Due Date</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${filteredTasks.map(t => `
+              <tr>
+                <td><strong>${t.name}</strong></td>
+                <td>${t.projectName}</td>
+                <td>${t.priority || 'Medium'}</td>
+                <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</td>
+                <td><span class="badge pending">Todo</span></td>
+              </tr>
+            `).join('') || '<tr><td colspan="5" style="text-align:center;">No ongoing tasks found.</td></tr>'}
+          </tbody>
+        </table>
+
+        <h2 style="font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; color: #0f172a; page-break-before: always;">Employees & Assignments</h2>
+        <table>
+          <thead>
+            <tr><th>Username</th><th>Role</th><th>Category</th><th>Assigned Tasks</th><th>Completed Tasks</th></tr>
+          </thead>
+          <tbody>
+            ${(stats?.employeeStats || []).map(emp => `
+              <tr>
+                <td><strong>${emp.username}</strong></td>
+                <td>${emp.role}</td>
+                <td>${emp.category || 'Employee'}</td>
+                <td>${emp.assignedTasks}</td>
+                <td>${emp.completedTasks}</td>
+              </tr>
+            `).join('') || '<tr><td colspan="5" style="text-align:center;">No employee records found.</td></tr>'}
+          </tbody>
+        </table>
+      `;
+    } else {
+      let tableHeaders = '';
+      let tableRows = '';
+
+      if (boxName === 'Billing Performance') {
+        tableHeaders = '<th>Time Period</th><th>Revenue / Billings</th>';
+        const chartRows = chartData.map(d => `<tr><td>${d.label}</td><td>${formatCurrency(d.value)}</td></tr>`).join('');
+        tableRows = `
+          ${chartRows}
+          <tr class="total-row"><td>Total Value</td><td>${formatCurrency(stats?.projects?.totalBudget ?? 0)}</td></tr>
+          <tr class="total-row"><td>Total Earnings</td><td>${formatCurrency(stats?.invoices?.totalEarnings ?? 0)}</td></tr>
+          <tr class="total-row"><td>Outstanding Amount</td><td>${formatCurrency(stats?.invoices?.totalPendingAmount ?? 0)}</td></tr>
+        `;
+      } else if (boxName === 'Projects Overview') {
+        tableHeaders = '<th>Project Name</th><th>Site URL</th><th>Client</th><th>Type</th><th>Budget</th><th>Status</th>';
+        tableRows = (stats?.recentProjects || []).map(p => `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.siteUrl || '—'}</td>
+            <td>${p.clientName || '—'}</td>
+            <td>${p.projectType || '—'}</td>
+            <td>${formatCurrency(p.budget)}</td>
+            <td><span class="badge ${p.status.toLowerCase().replace(' ', '')}">${p.status}</span></td>
+          </tr>
+        `).join('');
+        if ((stats?.recentProjects || []).length === 0) {
+          tableRows = '<tr><td colspan="6" style="text-align:center;">No projects found.</td></tr>';
+        }
+      } else if (boxName === 'Clients Overview') {
+        tableHeaders = '<th>Client Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Status</th>';
+        tableRows = (stats?.recentClients || []).map(c => `
+          <tr>
+            <td><strong>${c.name}</strong></td>
+            <td>${c.company || '—'}</td>
+            <td>${c.email}</td>
+            <td>${c.phone || '—'}</td>
+            <td><span class="badge ${c.status === 'Inactive' ? 'inactive' : 'active'}">${c.status || 'Active'}</span></td>
+          </tr>
+        `).join('');
+        if ((stats?.recentClients || []).length === 0) {
+          tableRows = '<tr><td colspan="5" style="text-align:center;">No clients found.</td></tr>';
+        }
+      } else if (boxName === 'Ongoing Projects') {
+        tableHeaders = '<th>Project Name</th><th>Client</th><th>Timeline</th><th>Progress</th><th>Status</th>';
+        tableRows = ongoingProjects.map(p => `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.clientName || '—'}</td>
+            <td>${p.startDate ? new Date(p.startDate).toLocaleDateString() : '—'} to ${p.endDate ? new Date(p.endDate).toLocaleDateString() : '—'}</td>
+            <td>${p.progress}% completed</td>
+            <td><span class="badge ${p.status.toLowerCase().replace(' ', '')}">${p.status}</span></td>
+          </tr>
+        `).join('');
+        if (ongoingProjects.length === 0) {
+          tableRows = '<tr><td colspan="5" style="text-align:center;">No ongoing projects found.</td></tr>';
+        }
+      } else if (boxName === 'Ongoing Tasks') {
+        tableHeaders = '<th>Task Name</th><th>Project</th><th>Priority</th><th>Due Date</th><th>Status</th>';
+        tableRows = filteredTasks.map(t => `
+          <tr>
+            <td><strong>${t.name}</strong></td>
+            <td>${t.projectName}</td>
+            <td>${t.priority || 'Medium'}</td>
+            <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</td>
+            <td><span class="badge pending">Todo</span></td>
+          </tr>
+        `).join('');
+        if (filteredTasks.length === 0) {
+          tableRows = '<tr><td colspan="5" style="text-align:center;">No ongoing tasks found.</td></tr>';
+        }
+      } else if (boxName === 'Employees') {
+        tableHeaders = '<th>Username</th><th>Role</th><th>Category</th><th>Assigned Tasks</th><th>Completed Tasks</th>';
+        tableRows = (stats?.employeeStats || []).map(emp => `
+          <tr>
+            <td><strong>${emp.username}</strong></td>
+            <td>${emp.role}</td>
+            <td>${emp.category || 'Employee'}</td>
+            <td>${emp.assignedTasks}</td>
+            <td>${emp.completedTasks}</td>
+          </tr>
+        `).join('');
+        if ((stats?.employeeStats || []).length === 0) {
+          tableRows = '<tr><td colspan="5" style="text-align:center;">No employee records found.</td></tr>';
+        }
       }
-    } else if (boxName === 'Employees') {
-      tableHeaders = '<th>Username</th><th>Role</th><th>Category</th><th>Assigned Tasks</th><th>Completed Tasks</th>';
-      tableRows = (stats?.employeeStats || []).map(emp => `
-        <tr>
-          <td><strong>${emp.username}</strong></td>
-          <td>${emp.role}</td>
-          <td>${emp.category || 'Employee'}</td>
-          <td>${emp.assignedTasks}</td>
-          <td>${emp.completedTasks}</td>
-        </tr>
-      `).join('');
-      if ((stats?.employeeStats || []).length === 0) {
-        tableRows = '<tr><td colspan="5" style="text-align:center;">No employee records found.</td></tr>';
-      }
+
+      contentHtml = `
+        <table>
+          <thead>
+            <tr>${tableHeaders}</tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      `;
     }
 
     const htmlContent = `
@@ -733,14 +820,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <table>
-          <thead>
-            <tr>${tableHeaders}</tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
+        ${contentHtml}
 
         <div class="footer">
           This report is auto-generated by the IONETWEB Workspace management console. Confidentially for internal use only.
@@ -1066,18 +1146,30 @@ export default function Dashboard() {
             )}
           </div>
 
-          {userCategory !== 'Management' && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Link href="/projects" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
-                <Plus size={16} />
-                <span>New Project</span>
-              </Link>
-              <Link href="/invoices" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {userRole?.toLowerCase() === 'admin' && (
+              <button 
+                onClick={() => handleExportReport('All')}
+                className="btn btn-secondary" 
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}
+              >
                 <FileText size={16} />
-                <span>New Invoice</span>
-              </Link>
-            </div>
-          )}
+                <span>Export All Data</span>
+              </button>
+            )}
+            {userCategory !== 'Management' && (
+              <>
+                <Link href="/projects" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
+                  <Plus size={16} />
+                  <span>New Project</span>
+                </Link>
+                <Link href="/invoices" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 1rem' }}>
+                  <FileText size={16} />
+                  <span>New Invoice</span>
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1566,7 +1658,7 @@ export default function Dashboard() {
           <div className="item-list dashboard-scroller">
             {(() => {
               const ongoingTasks = [];
-              (stats?.recentProjects || []).forEach(p => {
+              (stats?.allTimeProjects || []).forEach(p => {
                 (p.tasks || []).forEach(t => {
                   if (!t.completed) {
                     ongoingTasks.push({ ...t, projectId: p._id, projectName: p.name });
@@ -1574,7 +1666,7 @@ export default function Dashboard() {
                 });
               });
 
-              if (ongoingTasks.length === 0) {
+               if (ongoingTasks.length === 0) {
                 return (
                   <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                     No ongoing tasks currently active.
@@ -1582,7 +1674,9 @@ export default function Dashboard() {
                 );
               }
 
-              return ongoingTasks.slice(0, 5).map(task => {
+              const displayedTasks = ongoingTasks.slice(0, 5);
+
+              return displayedTasks.map(task => {
                 const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
                 return (
                   <div key={task._id} className="item-row" style={{ padding: '0.55rem 0.75rem', gap: '0.5rem' }}>
@@ -1604,6 +1698,12 @@ export default function Dashboard() {
                 );
               });
             })()}
+          </div>
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.1rem', display: 'flex', justifyContent: 'center' }}>
+            <Link href="/tasks" style={{ fontSize: '0.82rem', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, textDecoration: 'none' }} className="view-all-link">
+              <span>View all Tasks</span>
+              <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
 
@@ -1703,13 +1803,14 @@ export default function Dashboard() {
                 <th>Client</th>
                 <th>Amount</th>
                 <th>Due Date</th>
+                <th>Payment Type</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {(stats?.recentInvoices || []).length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No invoices generated yet. Create one to collect payments!
                   </td>
                 </tr>
@@ -1723,6 +1824,15 @@ export default function Dashboard() {
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{displayPrice(invoice.total)}</td>
                     <td style={{ color: 'var(--text-secondary)' }}>
                       {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : 'Upon Receipt'}
+                    </td>
+                    <td>
+                      {invoice.status === 'Paid' ? (
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {invoice.paymentMethod || '—'}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                      )}
                     </td>
                     <td>
                       <span className={`badge badge-${invoice.status.toLowerCase()}`}>
@@ -1754,9 +1864,9 @@ export default function Dashboard() {
             Add a task to a project and assign it to a teammate.
           </p>
 
-          <form onSubmit={handleEmployeeAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Title *</label>
+          <form onSubmit={handleEmployeeAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Title *</label>
               <input 
                 type="text" 
                 className="form-input" 
@@ -1764,36 +1874,56 @@ export default function Dashboard() {
                 placeholder="What needs to be done?"
                 value={taskForm.name}
                 onChange={(e) => setTaskForm(prev => ({ ...prev, name: e.target.value }))}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Associated Project *</label>
-              <select
-                required
-                className="form-select"
-                value={taskForm.projectId}
-                onChange={(e) => setTaskForm(prev => ({ ...prev, projectId: e.target.value }))}
-              >
-                <option value="">Select a project...</option>
-                {allProjects.map((proj) => (
-                  <option key={proj._id} value={proj._id}>
-                    {proj.name}
-                  </option>
-                ))}
-                {allProjects.length === 0 && (
-                  <option disabled value="">No projects found</option>
-                )}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Associated Project *</label>
+                <select
+                  required
+                  className="form-select"
+                  value={taskForm.projectId}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, projectId: e.target.value }))}
+                  style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
+                >
+                  <option value="">Select a project...</option>
+                  {allProjects.map((proj) => (
+                    <option key={proj._id} value={proj._id}>
+                      {proj.name}
+                    </option>
+                  ))}
+                  {allProjects.length === 0 && (
+                    <option disabled value="">No projects found</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Assign To (optional)</label>
+                <select 
+                  className="form-select"
+                  value={taskForm.assignedTo}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, assignedTo: e.target.value }))}
+                  style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
+                >
+                  <option value="">Add assignees...</option>
+                  {companyUsers.map(u => (
+                    <option key={u.id} value={u.username}>{u.username}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Priority</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Priority</label>
                 <select 
                   className="form-select"
                   value={taskForm.priority}
                   onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
+                  style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
                 >
                   <option value="Low">Low</option>
                   <option value="Medium">Medium</option>
@@ -1801,47 +1931,35 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Due Date / Reminder</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Due Date / Reminder</label>
                 <input 
                   type="date" 
                   className="form-input"
                   value={taskForm.dueDate}
                   onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                  style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
                 />
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Assign To (optional)</label>
-              <select 
-                className="form-select"
-                value={taskForm.assignedTo}
-                onChange={(e) => setTaskForm(prev => ({ ...prev, assignedTo: e.target.value }))}
-              >
-                <option value="">Add assignees...</option>
-                {companyUsers.map(u => (
-                  <option key={u.id} value={u.username}>{u.username}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Notes (optional)</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '0.25rem' }}>Notes (optional)</label>
               <textarea 
                 className="form-textarea"
                 placeholder="Add details..."
-                rows={4}
+                rows={2}
                 value={taskForm.notes}
                 onChange={(e) => setTaskForm(prev => ({ ...prev, notes: e.target.value }))}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem', minHeight: '50px' }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setIsAddTaskOpen(false)}>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddTaskOpen(false)} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" disabled={isSubmittingTask}>
+              <button type="submit" className="btn btn-primary" disabled={isSubmittingTask} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
                 {isSubmittingTask ? 'Creating...' : 'Create Task'}
               </button>
             </div>
@@ -2157,7 +2275,7 @@ export default function Dashboard() {
         }
 
         .dashboard-scroller {
-          max-height: 280px;
+          height: 380px;
           overflow-y: auto;
           padding-right: 6px;
         }
