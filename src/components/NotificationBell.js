@@ -23,6 +23,43 @@ export default function NotificationBell({ userRole }) {
     }
   }, []);
 
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+
+      // Tone 1 (A5 chime)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.15, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+
+      // Tone 2 (E5 chime, starts slightly later and fades at 1s)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, now + 0.1);
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.setValueAtTime(0.15, now + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+      osc2.start(now + 0.1);
+      osc2.stop(now + 1.0);
+    } catch (e) {
+      console.error('AudioContext sound playback failed:', e);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const res = await fetch('/api/notifications');
@@ -44,6 +81,9 @@ export default function NotificationBell({ userRole }) {
                 });
               });
             }
+
+            // Play the 1-second chime sound
+            playNotificationSound();
 
             // Auto-trigger professional modal pop-up on page for any new reminder
             const reminderAlert = newUnread.find(n => n.reminderId);
