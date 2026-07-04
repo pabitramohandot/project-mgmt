@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Video, Calendar, Clock, AlertCircle, X } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
@@ -307,7 +308,7 @@ export default function NotificationBell({ userRole }) {
       )}
 
       {/* Professional Reminder Modal Popup */}
-      {activeModalReminder && (
+      {activeModalReminder && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed',
           top: 0,
@@ -479,7 +480,8 @@ export default function NotificationBell({ userRole }) {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style jsx>{`
