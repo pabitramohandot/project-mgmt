@@ -52,15 +52,26 @@ export async function GET(request) {
   try {
     await dbConnect();
     const session = getRequestSession(request);
-    if (!session || !session.companyId || !session.userId) {
+    if (!session || !session.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isSuper = session.role === 'superadmin';
+    const companyId = session.companyId;
+
+    if (!isSuper && !companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 1. Evaluate pending reminders and generate notifications
-    const activeReminders = await Reminder.find({
-      companyId: session.companyId,
-      isCompleted: false
-    });
+    let reminderQuery = { isCompleted: false };
+    if (companyId) {
+      reminderQuery.companyId = companyId;
+    } else {
+      reminderQuery.createdBy = session.userId;
+    }
+
+    const activeReminders = await Reminder.find(reminderQuery);
 
     const now = new Date();
     for (const reminder of activeReminders) {
@@ -98,7 +109,7 @@ export async function GET(request) {
 
         // Create notification
         await Notification.create({
-          companyId: session.companyId,
+          companyId: reminder.companyId || null,
           reminderId: reminder._id,
           message: `[Reminder] ${reminder.title}: Starting at ${reminder.time} (${reminder.duration})`,
           isRead: false
@@ -107,7 +118,19 @@ export async function GET(request) {
     }
 
     // 2. Fetch notifications and populate reminder details
-    const notifications = await Notification.find({ companyId: session.companyId })
+    let notificationQuery = {};
+    if (companyId) {
+      notificationQuery.companyId = companyId;
+    } else {
+      notificationQuery = {
+        $or: [
+          { companyId: null },
+          { reminderId: { $in: await Reminder.find({ createdBy: session.userId }).distinct('_id') } }
+        ]
+      };
+    }
+
+    const notifications = await Notification.find(notificationQuery)
       .populate('reminderId')
       .sort({ createdAt: -1 })
       .limit(50)
