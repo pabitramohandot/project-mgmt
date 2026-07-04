@@ -163,7 +163,7 @@ export async function POST(request) {
           date, time, duration,
           meetingType: meetingType || 'online',
           location: location || '',
-          meetingUrl: meetingUrl || '',
+          meetingUrl: finalMeetingUrl || '',
           description: description || '',
           companyId: session.companyId
         });
