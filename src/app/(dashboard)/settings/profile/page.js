@@ -916,102 +916,103 @@ export default function ProfileSettingsPage() {
                   {/* Collapsible Body */}
                   {expandedPanel === 'google' && (
                     <div style={{ padding: '1.75rem', borderTop: '1px solid var(--border-color, #e5e7eb)' }}>
-                      {role === 'superadmin' || role === 'company_admin' || userPermissions.google_meet === 'write' ? (
-                        <>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
-                            Synchronize your meeting schedules directly with Google Calendar to streamline workflow automation.
-                          </p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                        Synchronize your meeting schedules directly with Google Calendar to streamline workflow automation.
+                      </p>
 
-                          <div style={{ 
-                            border: '1px solid var(--border-color, #e5e7eb)', 
-                            borderRadius: '12px', 
-                            padding: '1.25rem', 
-                            background: '#f9fafb',
-                            marginBottom: '1.5rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1.25rem'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Integration Account Info</span>
-                              <span style={{ fontSize: '0.82rem', color: googleConnected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                {googleConnected ? googleEmail || 'No Account Linked' : 'No Account Linked'}
-                              </span>
+                      <div style={{ 
+                        border: '1px solid var(--border-color, #e5e7eb)', 
+                        borderRadius: '12px', 
+                        padding: '1.25rem', 
+                        background: '#f9fafb',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.25rem'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Integration Account Info</span>
+                          <span style={{ fontSize: '0.82rem', color: googleConnected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                            {googleConnected ? googleEmail || 'No Account Linked' : 'No Account Linked'}
+                          </span>
+                        </div>
+
+                        {googleConnected && (
+                          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span>Selected Calendar:</span>
+                              <strong style={{ color: 'var(--text-primary)' }}>Primary Workspace Calendar</strong>
                             </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>API Sync State:</span>
+                              <strong style={{ color: '#10b981' }}>Active (Real-time)</strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                            {googleConnected && (
-                              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                  <span>Selected Calendar:</span>
-                                  <strong style={{ color: 'var(--text-primary)' }}>Primary Workspace Calendar</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>API Sync State:</span>
-                                  <strong style={{ color: '#10b981' }}>Active (Real-time)</strong>
-                                </div>
-                              </div>
+                      {role === 'superadmin' || role === 'company_admin' || userPermissions.google_meet === 'write' ? (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                          <button
+                            type="button"
+                            onClick={handleToggleGoogleCalendar}
+                            disabled={connectingGoogle}
+                            style={{
+                              background: googleConnected ? 'transparent' : 'var(--accent-primary, #ea580c)',
+                              color: googleConnected ? 'var(--text-primary, #111827)' : '#ffffff',
+                              border: googleConnected ? '1px solid var(--border-color, #e5e7eb)' : 'none',
+                              padding: '0.6rem 1.25rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              cursor: 'pointer',
+                              boxShadow: googleConnected ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)',
+                              transition: 'opacity 0.2s',
+                              height: 'auto'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                          >
+                            {connectingGoogle ? (
+                              <RefreshCw size={14} className="animate-spin" />
+                            ) : (
+                              <CalendarIcon size={14} />
                             )}
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                            <button
-                              type="button"
-                              onClick={handleToggleGoogleCalendar}
-                              disabled={connectingGoogle}
-                              style={{
-                                background: googleConnected ? 'transparent' : 'var(--accent-primary, #ea580c)',
-                                color: googleConnected ? 'var(--text-primary, #111827)' : '#ffffff',
-                                border: googleConnected ? '1px solid var(--border-color, #e5e7eb)' : 'none',
-                                padding: '0.6rem 1.25rem',
-                                borderRadius: '8px',
-                                fontWeight: 700,
-                                fontSize: '0.85rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                cursor: 'pointer',
-                                boxShadow: googleConnected ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)',
-                                transition: 'opacity 0.2s',
-                                height: 'auto'
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-                              onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-                            >
-                              {connectingGoogle ? (
-                                <RefreshCw size={14} className="animate-spin" />
-                              ) : (
-                                <CalendarIcon size={14} />
-                              )}
-                              <span>
-                                {connectingGoogle 
-                                  ? 'Connecting Google...' 
-                                  : googleConnected 
-                                    ? 'Disconnect Account' 
-                                    : 'Connect Google Calendar'}
-                              </span>
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          padding: '1rem',
-                          borderRadius: '8px',
-                          background: '#fef2f2',
-                          border: '1px solid #fca5a5',
-                          color: '#b91c1c',
-                          fontSize: '0.85rem',
-                          lineHeight: '1.5'
-                        }}>
-                          <Shield size={18} style={{ flexShrink: 0 }} />
-                          <div>
-                            <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '2px' }}>Integration Disabled</strong>
-                            <span style={{ color: '#7f1d1d' }}>
-                              Google Calendar & Meet integration is restricted for your role. Please contact your workspace administrator to request access.
+                            <span>
+                              {connectingGoogle 
+                                ? 'Connecting Google...' 
+                                : googleConnected 
+                                  ? 'Disconnect Account' 
+                                  : 'Connect Google Calendar'}
                             </span>
-                          </div>
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                          <button
+                            type="button"
+                            disabled
+                            style={{
+                              background: '#cbd5e1',
+                              color: '#64748b',
+                              border: 'none',
+                              padding: '0.6rem 1.25rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              cursor: 'not-allowed',
+                              height: 'auto'
+                            }}
+                          >
+                            <Shield size={14} />
+                            <span>Contact Admin to Connect</span>
+                          </button>
                         </div>
                       )}
                     </div>
