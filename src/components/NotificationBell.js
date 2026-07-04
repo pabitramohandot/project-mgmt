@@ -73,6 +73,7 @@ export default function NotificationBell({ userRole }) {
           const newUnread = data.filter(n => !n.isRead && !prevIds.has(n._id));
 
           if (newUnread.length > 0) {
+            console.log('[Notification Debug] newUnread notifications detected:', newUnread);
             // Trigger browser notification
             if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
               newUnread.forEach(n => {
@@ -88,7 +89,9 @@ export default function NotificationBell({ userRole }) {
 
             // Auto-trigger professional modal pop-up on page for any new reminder
             const reminderAlert = newUnread.find(n => n.reminderId);
+            console.log('[Notification Debug] reminderAlert found:', reminderAlert);
             if (reminderAlert) {
+              console.log('[Notification Debug] Setting activeModalReminder to:', reminderAlert.reminderId);
               setActiveModalReminder(reminderAlert.reminderId);
               setActiveModalNotificationId(reminderAlert._id);
             }
