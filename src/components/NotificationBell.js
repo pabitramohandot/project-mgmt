@@ -378,7 +378,7 @@ export default function NotificationBell({ userRole }) {
                   {activeModalReminder.title}
                 </h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  {activeModalReminder.message}
+                  {activeModalReminder.description || 'No description provided'}
                 </p>
               </div>
 
@@ -392,19 +392,19 @@ export default function NotificationBell({ userRole }) {
                 flexDirection: 'column',
                 gap: '0.6rem'
               }}>
-                {activeModalReminder.triggerDate && (
+                {activeModalReminder.date && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <Calendar size={14} style={{ color: 'var(--accent-primary)' }} />
                     <strong>Scheduled Date:</strong>
-                    <span>{new Date(activeModalReminder.triggerDate).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
+                    <span>{new Date(activeModalReminder.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
                   </div>
                 )}
                 
-                {activeModalReminder.triggerTime && (
+                {activeModalReminder.time && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <Clock size={14} style={{ color: 'var(--accent-primary)' }} />
                     <strong>Trigger Time:</strong>
-                    <span>{activeModalReminder.triggerTime}</span>
+                    <span>{activeModalReminder.time}</span>
                   </div>
                 )}
 
