@@ -105,7 +105,7 @@ export default function NotificationBell({ userRole }) {
   };
 
   useEffect(() => {
-    if (userRole) {
+    if (userRole && userRole !== 'superadmin') {
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
