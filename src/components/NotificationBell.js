@@ -258,10 +258,18 @@ export default function NotificationBell({ userRole }) {
                 <div 
                   key={item._id}
                   onClick={(e) => {
-                    if (item.reminderId) {
-                      setActiveModalReminder(item.reminderId);
-                      setActiveModalNotificationId(item._id);
-                    }
+                    const targetReminder = item.reminderId || {
+                      title: item.message.startsWith('[Reminder]') 
+                        ? item.message.replace('[Reminder] ', '').split(':')[0] 
+                        : 'Notification Alert',
+                      description: item.message,
+                      date: item.createdAt,
+                      time: item.message.includes('Starting at') 
+                        ? item.message.split('Starting at')[1].split('(')[0].trim() 
+                        : ''
+                    };
+                    setActiveModalReminder(targetReminder);
+                    setActiveModalNotificationId(item._id);
                     if (!item.isRead) {
                       handleMarkAsRead(item._id, e);
                     }
