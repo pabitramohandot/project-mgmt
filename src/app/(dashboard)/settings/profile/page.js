@@ -951,7 +951,7 @@ export default function ProfileSettingsPage() {
                         )}
                       </div>
 
-                      {role === 'superadmin' || role === 'company_admin' || userPermissions.google_meet === 'write' ? (
+                      {role === 'superadmin' || userPermissions.google_meet === 'write' ? (
                         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                           <button
                             type="button"

@@ -1382,7 +1382,7 @@ Description: ${reminder.description || 'N/A'}`;
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div 
                     onClick={() => {
-                      const hasGoogleMeetAccess = currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write';
+                      const hasGoogleMeetAccess = currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write';
                       if (!hasGoogleMeetAccess) {
                         showToast('Please connect with admin to enable Google Calendar integration.', 'warning');
                         return;
@@ -1408,8 +1408,8 @@ Description: ${reminder.description || 'N/A'}`;
                       border: '1px solid #e5e7eb',
                       borderRadius: '6px',
                       background: '#ffffff',
-                      cursor: (currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write') && googleCalendarConnected ? 'pointer' : 'not-allowed',
-                      opacity: (currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write') && googleCalendarConnected ? 1 : 0.65
+                      cursor: (currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write') && googleCalendarConnected ? 'pointer' : 'not-allowed',
+                      opacity: (currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write') && googleCalendarConnected ? 1 : 0.65
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1418,12 +1418,12 @@ Description: ${reminder.description || 'N/A'}`;
                         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1f2937' }}>Add Google Meet</div>
                         <div style={{ 
                           fontSize: '0.72rem', 
-                          color: !(currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write') 
+                          color: !(currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write') 
                             ? '#ef4444' 
                             : googleCalendarConnected ? '#10b981' : '#6b7280', 
-                          fontWeight: (!(currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write') || googleCalendarConnected) ? 600 : 400 
+                          fontWeight: (!(currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write') || googleCalendarConnected) ? 600 : 400 
                         }}>
-                          {!(currentUser?.role === 'superadmin' || currentUser?.role === 'company_admin' || currentUser?.permissions?.google_meet === 'write')
+                          {!(currentUser?.role === 'superadmin' || currentUser?.permissions?.google_meet === 'write')
                             ? 'Please connect with admin to enable Google Calendar integration.'
                             : googleCalendarConnected ? '● Synced with Google Calendar' : 'Connect Google Calendar in Settings to enable'}
                         </div>
