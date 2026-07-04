@@ -47,7 +47,7 @@ export async function getValidAccessToken(userId) {
   }
 }
 
-function getEventDateTime(dateVal, timeStr, durationStr) {
+function getEventDateTime(dateVal, timeStr, durationStr, timezone = 'UTC') {
   const baseDate = new Date(dateVal);
   let hours = 0;
   let minutes = 0;
@@ -71,9 +71,13 @@ function getEventDateTime(dateVal, timeStr, durationStr) {
     }
   }
   
-  const startDate = new Date(baseDate);
-  startDate.setHours(hours, minutes, 0, 0);
-  
+  const year = baseDate.getFullYear();
+  const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+  const day = String(baseDate.getDate()).padStart(2, '0');
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(minutes).padStart(2, '0');
+  const startLocalStr = `${year}-${month}-${day}T${hh}:${mm}:00`;
+
   let durationMs = 60 * 60 * 1000; // default 1 hour
   if (durationStr) {
     const amount = parseInt(durationStr, 10);
@@ -84,11 +88,25 @@ function getEventDateTime(dateVal, timeStr, durationStr) {
     }
   }
   
-  const endDate = new Date(startDate.getTime() + durationMs);
+  const startObj = new Date(year, baseDate.getMonth(), baseDate.getDate(), hours, minutes, 0);
+  const endObj = new Date(startObj.getTime() + durationMs);
+
+  const endYear = endObj.getFullYear();
+  const endMonth = String(endObj.getMonth() + 1).padStart(2, '0');
+  const endDay = String(endObj.getDate()).padStart(2, '0');
+  const endHh = String(endObj.getHours()).padStart(2, '0');
+  const endMm = String(endObj.getMinutes()).padStart(2, '0');
+  const endLocalStr = `${endYear}-${endMonth}-${endDay}T${endHh}:${endMm}:00`;
   
   return {
-    start: startDate.toISOString(),
-    end: endDate.toISOString()
+    start: {
+      dateTime: startLocalStr,
+      timeZone: timezone
+    },
+    end: {
+      dateTime: endLocalStr,
+      timeZone: timezone
+    }
   };
 }
 
@@ -96,14 +114,14 @@ export async function createGoogleCalendarEvent(userId, reminderData) {
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken) return null;
 
-  const { title, description, date, time, duration, attendees, addGoogleMeet } = reminderData;
-  const { start, end } = getEventDateTime(date, time, duration);
+  const { title, description, date, time, duration, attendees, addGoogleMeet, timezone } = reminderData;
+  const { start, end } = getEventDateTime(date, time, duration, timezone);
 
   const eventBody = {
     summary: title,
     description: description || '',
-    start: { dateTime: start },
-    end: { dateTime: end },
+    start,
+    end,
   };
 
   if (attendees && attendees.trim()) {
@@ -160,14 +178,14 @@ export async function updateGoogleCalendarEvent(userId, googleEventId, reminderD
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken || !googleEventId) return null;
 
-  const { title, description, date, time, duration, attendees, addGoogleMeet, meetingUrl } = reminderData;
-  const { start, end } = getEventDateTime(date, time, duration);
+  const { title, description, date, time, duration, attendees, addGoogleMeet, meetingUrl, timezone } = reminderData;
+  const { start, end } = getEventDateTime(date, time, duration, timezone);
 
   const eventBody = {
     summary: title,
     description: description || '',
-    start: { dateTime: start },
-    end: { dateTime: end },
+    start,
+    end,
   };
 
   if (attendees && attendees.trim()) {

@@ -69,7 +69,8 @@ export async function POST(request) {
       meetingUrl, 
       meetingType,
       location,
-      remindMe 
+      remindMe,
+      timezone
     } = body;
 
     if (!title || !title.trim()) {
@@ -94,7 +95,8 @@ export async function POST(request) {
         time,
         duration,
         attendees,
-        addGoogleMeet: !!addGoogleMeet
+        addGoogleMeet: !!addGoogleMeet,
+        timezone: timezone || 'Asia/Kolkata' // Default to IST if not passed
       });
 
       if (gcalResult) {

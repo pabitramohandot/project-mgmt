@@ -46,7 +46,8 @@ export async function PUT(request, context) {
       meetingType,
       location,
       remindMe,
-      isCompleted
+      isCompleted,
+      timezone
     } = body;
 
     if (!title || !title.trim()) {
@@ -86,7 +87,8 @@ export async function PUT(request, context) {
             duration,
             attendees,
             addGoogleMeet: !!addGoogleMeet,
-            meetingUrl: finalMeetingUrl
+            meetingUrl: finalMeetingUrl,
+            timezone: timezone || 'Asia/Kolkata'
           });
           if (gcalResult) {
             finalMeetingUrl = gcalResult.meetingUrl;
@@ -100,7 +102,8 @@ export async function PUT(request, context) {
           time,
           duration,
           attendees,
-          addGoogleMeet: !!addGoogleMeet
+          addGoogleMeet: !!addGoogleMeet,
+          timezone: timezone || 'Asia/Kolkata'
         });
         if (gcalResult) {
           googleEventId = gcalResult.googleEventId;

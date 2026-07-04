@@ -323,7 +323,8 @@ export default function RemindersPage() {
           meetingUrl: finalMeetingUrl,
           meetingType,
           location,
-          remindMe
+          remindMe,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         })
       });
 
