@@ -5,6 +5,48 @@ import User from '@/models/User';
 import { getRequestSession } from '@/lib/auth';
 import { getPermissionsForUser } from '@/lib/permissions';
 
+function getUtcDate(dateVal, timeStr, timezone = 'Asia/Kolkata') {
+  const baseDate = new Date(dateVal);
+  let hours = 0;
+  let minutes = 0;
+  if (timeStr) {
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
+      if (ampm === 'PM' && hours < 12) {
+        hours += 12;
+      } else if (ampm === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    } else {
+      const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+      if (match24) {
+        hours = parseInt(match24[1], 10);
+        minutes = parseInt(match24[2], 10);
+      }
+    }
+  }
+
+  const year = baseDate.getUTCFullYear();
+  const month = baseDate.getUTCMonth();
+  const day = baseDate.getUTCDate();
+  
+  const isoStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`;
+  
+  try {
+    const locDate = new Date(isoStr + 'Z');
+    const targetLocStr = locDate.toLocaleString('en-US', { timeZone: timezone });
+    const parsedTargetLoc = new Date(targetLocStr);
+    const diff = locDate.getTime() - parsedTargetLoc.getTime();
+    return new Date(locDate.getTime() + diff);
+  } catch (e) {
+    const utcMidnight = Date.UTC(year, month, day, hours, minutes);
+    return new Date(utcMidnight - 5.5 * 60 * 60 * 1000);
+  }
+}
+
 export async function GET(request) {
   try {
     await dbConnect();
@@ -29,7 +71,6 @@ export async function GET(request) {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
       .lean();
-
     return NextResponse.json(reminders);
   } catch (error) {
     console.error('Reminders GET API Error:', error);
@@ -112,6 +153,9 @@ export async function POST(request) {
       finalMeetingUrl = `https://meet.google.com/${genSeg(3)}-${genSeg(4)}-${genSeg(3)}`;
     }
 
+    const resolvedTimezone = timezone || 'Asia/Kolkata';
+    const startAt = getUtcDate(date, time, resolvedTimezone);
+
     const newReminder = await Reminder.create({
       companyId: session.companyId,
       title: title.trim(),
@@ -128,7 +172,9 @@ export async function POST(request) {
       remindMe: remindMe || '15 minutes before',
       createdBy: session.userId,
       isCompleted: false,
-      googleEventId: googleEventId || null
+      googleEventId: googleEventId || null,
+      timezone: resolvedTimezone,
+      startAt
     });
 
     // Send invitation email to both client AND attendees

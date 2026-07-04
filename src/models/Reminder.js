@@ -70,6 +70,13 @@ const ReminderSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    timezone: {
+      type: String,
+      default: 'Asia/Kolkata',
+    },
+    startAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
