@@ -13,6 +13,7 @@ export const DEFAULT_USER_PERMISSIONS = {
   announcements: 'read',
   branding: 'none',
   reminders: 'read',
+  google_meet: 'none',
 
   project_details: 'read',
   project_credential: 'read',
@@ -34,6 +35,7 @@ export const MANAGEMENT_PERMISSIONS = {
   announcements: 'read',
   branding: 'read',
   reminders: 'read',
+  google_meet: 'none',
 
   project_details: 'read',
   project_credential: 'read',
@@ -54,6 +56,7 @@ export const ADMIN_PERMISSIONS = {
   announcements: 'write',
   branding: 'write',
   reminders: 'write',
+  google_meet: 'write',
 
   project_details: 'write',
   project_credential: 'write',

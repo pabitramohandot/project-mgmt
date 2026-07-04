@@ -14,6 +14,7 @@ const GLOBAL_PERMISSIONS = [
   { key: 'announcements', label: 'Announcements', desc: 'Access to post system-wide notices' },
   { key: 'branding', label: 'Branding Settings', desc: 'Access to configure branding logo and colors' },
   { key: 'reminders', label: 'Reminders', desc: 'Access to configure or view company-wide reminders' },
+  { key: 'google_meet', label: 'Google Meet Integration', desc: 'Allows connecting Google Calendar & generating live GMeet links' },
 ];
 
 const PROJECT_PERMISSIONS = [
@@ -35,7 +36,7 @@ const SYSTEM_ROLES = [
     isReadOnly: true,
     category: 'Admin',
     permissions: {
-      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write', reminders: 'write',
+      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write', reminders: 'write', google_meet: 'write',
       project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
     }
   }
@@ -111,6 +112,7 @@ export default function RolesPage() {
         defaultPerms.pending_tasks = 'read';
         defaultPerms.announcements = 'read';
         defaultPerms.reminders = 'read';
+        defaultPerms.google_meet = 'none';
         defaultPerms.project_details = 'read';
         defaultPerms.project_credential = 'read';
         defaultPerms.project_links = 'read';

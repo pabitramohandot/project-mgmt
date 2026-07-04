@@ -10,6 +10,7 @@ export default function ProfileSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [role, setRole] = useState('');
+  const [userPermissions, setUserPermissions] = useState({});
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogo] = useState('');
   const [employeeLimit, setEmployeeLimit] = useState(0);
@@ -63,6 +64,7 @@ export default function ProfileSettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setRole(data.role);
+        setUserPermissions(data.permissions || {});
         setCompanyName(data.company?.name || 'Workspace');
         setCompanyLogo(data.company?.logo || '');
         setCompanyUsers(data.companyUsers || []);
@@ -949,44 +951,51 @@ export default function ProfileSettingsPage() {
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                        <button
-                          type="button"
-                          onClick={handleToggleGoogleCalendar}
-                          disabled={connectingGoogle}
-                          style={{
-                            background: googleConnected ? 'transparent' : 'var(--accent-primary, #ea580c)',
-                            color: googleConnected ? 'var(--text-primary, #111827)' : '#ffffff',
-                            border: googleConnected ? '1px solid var(--border-color, #e5e7eb)' : 'none',
-                            padding: '0.6rem 1.25rem',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            cursor: 'pointer',
-                            boxShadow: googleConnected ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)',
-                            transition: 'opacity 0.2s',
-                            height: 'auto'
-                          }}
-                          onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-                          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-                        >
-                          {connectingGoogle ? (
-                            <RefreshCw size={14} className="animate-spin" />
-                          ) : (
-                            <CalendarIcon size={14} />
-                          )}
-                          <span>
-                            {connectingGoogle 
-                              ? 'Connecting Google...' 
-                              : googleConnected 
-                                ? 'Disconnect Account' 
-                                : 'Connect Google Calendar'}
-                          </span>
-                        </button>
-                      </div>
+                      {role === 'superadmin' || role === 'company_admin' || userPermissions.google_meet === 'write' ? (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                          <button
+                            type="button"
+                            onClick={handleToggleGoogleCalendar}
+                            disabled={connectingGoogle}
+                            style={{
+                              background: googleConnected ? 'transparent' : 'var(--accent-primary, #ea580c)',
+                              color: googleConnected ? 'var(--text-primary, #111827)' : '#ffffff',
+                              border: googleConnected ? '1px solid var(--border-color, #e5e7eb)' : 'none',
+                              padding: '0.6rem 1.25rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              cursor: 'pointer',
+                              boxShadow: googleConnected ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)',
+                              transition: 'opacity 0.2s',
+                              height: 'auto'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                          >
+                            {connectingGoogle ? (
+                              <RefreshCw size={14} className="animate-spin" />
+                            ) : (
+                              <CalendarIcon size={14} />
+                            )}
+                            <span>
+                              {connectingGoogle 
+                                ? 'Connecting Google...' 
+                                : googleConnected 
+                                  ? 'Disconnect Account' 
+                                  : 'Connect Google Calendar'}
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 0', color: '#ef4444', fontSize: '0.825rem', fontWeight: 600 }}>
+                          <Shield size={16} />
+                          <span>Please connect with admin to enable Google Calendar & Meet integration.</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

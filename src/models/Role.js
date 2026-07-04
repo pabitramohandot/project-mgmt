@@ -27,6 +27,7 @@ const RoleSchema = new mongoose.Schema(
       announcements: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       branding: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       reminders: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
+      google_meet: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
 
       // Inside Project Tabs
       project_details: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
