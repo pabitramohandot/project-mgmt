@@ -587,11 +587,19 @@ export async function sendMeetingInvitationEmail({ attendees, clientEmail, title
 
   // Send email to all attendees asynchronously
   const sendPromises = emails.map(email => {
+    let personalizedHtml = htmlContent;
+    if (meetingUrl && meetingUrl.includes('meet.google.com')) {
+      const personalizedUrl = meetingUrl.includes('?') 
+        ? `${meetingUrl}&authuser=${encodeURIComponent(email)}` 
+        : `${meetingUrl}?authuser=${encodeURIComponent(email)}`;
+      personalizedHtml = htmlContent.split(meetingUrl).join(personalizedUrl);
+    }
+
     const mailOptions = {
       from: fromAddress,
       to: email,
       subject,
-      html: htmlContent
+      html: personalizedHtml
     };
     return activeTransporter.sendMail(mailOptions).catch(err => {
       console.error(`Failed to send invitation to ${email}:`, err);
