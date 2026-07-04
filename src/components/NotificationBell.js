@@ -328,159 +328,206 @@ export default function NotificationBell({ userRole }) {
           animation: 'fadeIn 0.25s ease'
         }}>
           <div style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
-            borderRadius: '24px',
+            background: '#f8fafc',
+            borderRadius: '28px',
             width: '100%',
-            maxWidth: '480px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
-            overflow: 'hidden',
+            maxWidth: '420px',
+            boxShadow: '0 30px 60px -15px rgba(15, 23, 42, 0.3)',
+            position: 'relative',
+            overflow: 'visible',
             display: 'flex',
             flexDirection: 'column',
-            animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            border: '1px solid rgba(255, 255, 255, 0.8)'
           }}>
-            {/* Header Badge */}
+            {/* Floating Bell Icon on Top-Left */}
             <div style={{
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
-              padding: '1.25rem 1.5rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              color: '#ffffff'
+              position: 'absolute',
+              top: '-32px',
+              left: '-24px',
+              zIndex: 10
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bell size={20} className="animate-bounce" />
-                <span style={{ fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Meeting & Task Reminder</span>
-              </div>
-              <button 
-                onClick={() => {
-                  setActiveModalReminder(null);
-                  setActiveModalNotificationId(null);
-                }}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  border: 'none',
+              <div style={{ position: 'relative', width: '64px', height: '64px', filter: 'drop-shadow(0 10px 15px rgba(234, 179, 8, 0.4))' }}>
+                <span style={{ fontSize: '48px', display: 'block', transform: 'rotate(-10deg)' }} className="animate-bounce">🔔</span>
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '5px',
+                  background: '#ef4444',
                   color: '#ffffff',
-                  width: '28px',
-                  height: '28px',
                   borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s'
-                }}
-              >
-                <X size={16} />
-              </button>
+                  border: '2px solid #f8fafc'
+                }}>1</span>
+              </div>
             </div>
 
+            {/* Red Circle Close Button on Top-Right */}
+            <button 
+              onClick={() => {
+                setActiveModalReminder(null);
+                setActiveModalNotificationId(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '18px',
+                right: '18px',
+                background: '#ef4444',
+                border: 'none',
+                color: '#ffffff',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 8px rgba(239, 68, 68, 0.3)',
+                zIndex: 11
+              }}
+            >
+              <X size={14} strokeWidth={3} />
+            </button>
+
             {/* Body Details */}
-            <div style={{ padding: '1.75rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>
+            <div style={{ padding: '2.5rem 1.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0.5rem 0 0.75rem 0', textAlign: 'center' }}>
+                App Notification
+              </h3>
+              
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.5rem 0' }}>
                   {activeModalReminder.title}
-                </h3>
-                <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                </h4>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '0 0 1.25rem 0', lineHeight: 1.45 }}>
                   {activeModalReminder.description || 'No description provided'}
                 </p>
+
+                {/* Date and Time block */}
+                <div style={{
+                  background: '#f1f5f9',
+                  borderRadius: '12px',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.82rem',
+                  color: '#475569',
+                  display: 'inline-flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  border: '1px solid #e2e8f0',
+                  margin: '0 auto'
+                }}>
+                  {activeModalReminder.date && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calendar size={13} style={{ color: '#8b5cf6' }} />
+                      <strong>Date:</strong>
+                      <span>{new Date(activeModalReminder.date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</span>
+                    </div>
+                  )}
+                  {activeModalReminder.time && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={13} style={{ color: '#8b5cf6' }} />
+                      <strong>Time:</strong>
+                      <span>{activeModalReminder.time}</span>
+                    </div>
+                  )}
+                </div>
               </div>
+            </div>
 
-              {/* Time Configuration Metadata */}
-              <div style={{
-                background: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: '12px',
-                padding: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.6rem'
-              }}>
-                {activeModalReminder.date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
-                    <Calendar size={14} style={{ color: '#8b5cf6' }} />
-                    <strong>Scheduled Date:</strong>
-                    <span>{new Date(activeModalReminder.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
-                  </div>
-                )}
-                
-                {activeModalReminder.time && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
-                    <Clock size={14} style={{ color: '#8b5cf6' }} />
-                    <strong>Trigger Time:</strong>
-                    <span>{activeModalReminder.time}</span>
-                  </div>
-                )}
-
-                {activeModalReminder.recurrence && activeModalReminder.recurrence !== 'none' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
-                    <Clock size={14} style={{ color: '#22c55e' }} />
-                    <strong>Recurrence:</strong>
-                    <span style={{ textTransform: 'capitalize' }}>{activeModalReminder.recurrence}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Meeting Link Call-To-Action */}
-              {activeModalReminder.meetingUrl && (
+            {/* Actions Grid separated by Borders */}
+            <div style={{
+              display: 'flex',
+              borderTop: '1px solid #e2e8f0',
+              width: '100%',
+              background: '#f8fafc',
+              borderBottomLeftRadius: '28px',
+              borderBottomRightRadius: '28px',
+              overflow: 'hidden'
+            }}>
+              {activeModalReminder.meetingUrl ? (
                 <a 
                   href={activeModalReminder.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '1rem',
+                    color: '#16a34a',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    fontSize: '0.95rem',
+                    borderRight: '1px solid #e2e8f0',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px',
-                    padding: '0.85rem',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    fontSize: '0.9rem',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                    transition: 'transform 0.2s'
+                    gap: '6px',
+                    transition: 'background 0.2s',
+                    cursor: 'pointer'
                   }}
+                  onMouseEnter={(e) => e.target.style.background = '#f0fdf4'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
                 >
-                  <Video size={18} />
-                  <span>Join Live Meeting Now</span>
+                  <Video size={16} />
+                  Accept
                 </a>
-              )}
-            </div>
-
-            {/* Actions Footer */}
-            <div style={{
-              padding: '1rem 1.5rem',
-              borderTop: '1px solid #1e293b',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.75rem',
-              background: 'rgba(255, 255, 255, 0.01)'
-            }}>
-              <button 
-                onClick={() => {
-                  setActiveModalReminder(null);
-                  setActiveModalNotificationId(null);
-                }}
-                className="btn btn-secondary"
-                style={{ borderRadius: '10px', fontSize: '0.85rem' }}
-              >
-                Dismiss
-              </button>
-              {activeModalNotificationId && (
+              ) : (
                 <button 
-                  onClick={async (e) => {
-                    await handleMarkAsRead(activeModalNotificationId, e);
+                  onClick={() => {
                     setActiveModalReminder(null);
                     setActiveModalNotificationId(null);
                   }}
-                  className="btn btn-primary"
-                  style={{ borderRadius: '10px', fontSize: '0.85rem', background: '#8b5cf6' }}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '1rem',
+                    color: '#16a34a',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRight: '1px solid #e2e8f0',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#f0fdf4'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
                 >
-                  Mark as Read
+                  Accept
                 </button>
               )}
+
+              <button 
+                onClick={async (e) => {
+                  if (activeModalNotificationId) {
+                    await handleMarkAsRead(activeModalNotificationId, e);
+                  }
+                  setActiveModalReminder(null);
+                  setActiveModalNotificationId(null);
+                }}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '1rem',
+                  color: '#dc2626',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
+                onMouseLeave={(e) => e.target.style.background = 'transparent'}
+              >
+                Decline
+              </button>
             </div>
           </div>
         </div>,
