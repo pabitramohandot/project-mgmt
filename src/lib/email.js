@@ -395,6 +395,8 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
 }
 
 export async function sendMeetingInvitationEmail({ attendees, clientEmail, title, client, date, time, duration, meetingType, location, meetingUrl, description, companyId }) {
+  const cleanMeetingUrl = (meetingUrl && meetingUrl.includes('meet.google.com')) ? meetingUrl : '';
+  
   // Build full recipient list: client email + comma-separated attendees, deduplicated
   const allEmails = new Set();
   if (clientEmail && clientEmail.trim()) allEmails.add(clientEmail.trim().toLowerCase());
@@ -544,10 +546,10 @@ export async function sendMeetingInvitationEmail({ attendees, clientEmail, title
                         <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;vertical-align:top;">${location}</td>
                       </tr>` : ''}
 
-                      ${meetingType === 'online' && meetingUrl ? `
+                      ${meetingType === 'online' && cleanMeetingUrl ? `
                       <tr>
                         <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Meeting Link</td>
-                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:top;"><a href="${meetingUrl}" style="color:${brandColors.primary};font-weight:600;word-break:break-all;text-decoration:none;">${meetingUrl}</a></td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:top;"><a href="${cleanMeetingUrl}" style="color:${brandColors.primary};font-weight:600;word-break:break-all;text-decoration:none;">${cleanMeetingUrl}</a></td>
                       </tr>` : ''}
 
                       ${description ? `
@@ -561,10 +563,10 @@ export async function sendMeetingInvitationEmail({ attendees, clientEmail, title
                 </tr>
 
                 <!-- JOIN BUTTON -->
-                ${meetingType === 'online' && meetingUrl ? `
+                ${meetingType === 'online' && cleanMeetingUrl ? `
                 <tr>
                   <td style="padding:4px 40px 36px;text-align:center;">
-                    <a href="${meetingUrl}" style="display:inline-block;background:${brandColors.primary};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 38px;border-radius:8px;">
+                    <a href="${cleanMeetingUrl}" style="display:inline-block;background:${brandColors.primary};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 38px;border-radius:8px;">
                       Join Meeting
                     </a>
                   </td>
@@ -588,11 +590,11 @@ export async function sendMeetingInvitationEmail({ attendees, clientEmail, title
   // Send email to all attendees asynchronously
   const sendPromises = emails.map(email => {
     let personalizedHtml = htmlContent;
-    if (meetingUrl && meetingUrl.includes('meet.google.com')) {
-      const personalizedUrl = meetingUrl.includes('?') 
-        ? `${meetingUrl}&authuser=${encodeURIComponent(email)}` 
-        : `${meetingUrl}?authuser=${encodeURIComponent(email)}`;
-      personalizedHtml = htmlContent.split(meetingUrl).join(personalizedUrl);
+    if (cleanMeetingUrl) {
+      const personalizedUrl = cleanMeetingUrl.includes('?') 
+        ? `${cleanMeetingUrl}&authuser=${encodeURIComponent(email)}` 
+        : `${cleanMeetingUrl}?authuser=${encodeURIComponent(email)}`;
+      personalizedHtml = htmlContent.split(cleanMeetingUrl).join(personalizedUrl);
     }
 
     const mailOptions = {

@@ -166,7 +166,7 @@ export async function createGoogleCalendarEvent(userId, reminderData) {
 
     return {
       googleEventId: data.id,
-      meetingUrl: meetingUrl || data.htmlLink,
+      meetingUrl: meetingUrl || '',
     };
   } catch (error) {
     console.error('Google Calendar Event Create Network Error:', error);
@@ -231,7 +231,7 @@ export async function updateGoogleCalendarEvent(userId, googleEventId, reminderD
 
     return {
       googleEventId: data.id,
-      meetingUrl: updatedMeetingUrl || data.htmlLink,
+      meetingUrl: updatedMeetingUrl || '',
     };
   } catch (error) {
     console.error('Google Calendar Event Update Network Error:', error);

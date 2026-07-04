@@ -35,6 +35,38 @@ export default function ProfileSettingsPage() {
   const [expandedPanel, setExpandedPanel] = useState('smtp');
   const [companyUsers, setCompanyUsers] = useState([]);
   const [testingSmtp, setTestingSmtp] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState('default');
+  const [playChime, setPlayChime] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if ('Notification' in window) {
+        setNotificationPermission(window.Notification.permission);
+      }
+      const savedChime = localStorage.getItem('play_reminder_chime');
+      setPlayChime(savedChime !== 'false');
+    }
+  }, []);
+
+  const handleToggleChime = () => {
+    const newVal = !playChime;
+    setPlayChime(newVal);
+    localStorage.setItem('play_reminder_chime', String(newVal));
+    showToast(`Notification sound chime ${newVal ? 'enabled' : 'disabled'}.`, 'success');
+  };
+
+  const handleRequestNotificationPermission = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      const permission = await window.Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        showToast('Browser notifications successfully enabled!', 'success');
+      } else if (permission === 'denied') {
+        showToast('Browser notifications blocked. Please enable them in browser settings.', 'warning');
+      }
+    }
+  };
+
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -1015,6 +1047,143 @@ export default function ProfileSettingsPage() {
                           </button>
                         </div>
                       )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion Item 3: Browser Notifications & Sound */}
+                <div style={{
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e5e7eb)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01)',
+                  overflow: 'hidden',
+                  transition: 'all 0.25s ease',
+                  marginTop: '1.25rem'
+                }}>
+                  {/* Header Row */}
+                  <div 
+                    onClick={() => setExpandedPanel(expandedPanel === 'notifications' ? null : 'notifications')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '1.25rem 1.5rem',
+                      cursor: 'pointer',
+                      background: expandedPanel === 'notifications' ? 'var(--bg-secondary, #f9fafb)' : 'transparent',
+                      userSelect: 'none',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => { if (expandedPanel !== 'notifications') e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseOut={(e) => { if (expandedPanel !== 'notifications') e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: 'rgba(139, 92, 246, 0.08)',
+                        color: '#8b5cf6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Bell size={18} />
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>Browser Notifications</h3>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Manage meeting popups, audio chimes, and system alert permissions.</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                        background: notificationPermission === 'granted' ? 'rgba(16, 185, 129, 0.1)' : notificationPermission === 'denied' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: notificationPermission === 'granted' ? '#10b981' : notificationPermission === 'denied' ? '#ef4444' : '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        textTransform: 'capitalize'
+                      }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: notificationPermission === 'granted' ? '#10b981' : notificationPermission === 'denied' ? '#ef4444' : '#6b7280' }} />
+                        {notificationPermission}
+                      </span>
+                      {expandedPanel === 'notifications' ? <ChevronUp size={16} style={{ color: '#9ca3af' }} /> : <ChevronDown size={16} style={{ color: '#9ca3af' }} />}
+                    </div>
+                  </div>
+
+                  {/* Collapsible Body */}
+                  {expandedPanel === 'notifications' && (
+                    <div style={{ padding: '1.75rem', borderTop: '1px solid var(--border-color, #e5e7eb)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
+                        Configure how alerts and scheduled reminders are dispatched to your browser screen and audio speakers.
+                      </p>
+
+                      {/* Request Permission Control */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color, #e5e7eb)' }}>
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px' }}>System Screen Alerts</strong>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Deliver push notifications directly to the desktop sidebar notifications tray.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRequestNotificationPermission}
+                          disabled={notificationPermission === 'granted'}
+                          style={{
+                            background: notificationPermission === 'granted' ? '#f1f5f9' : 'var(--accent-primary, #ea580c)',
+                            color: notificationPermission === 'granted' ? '#94a3b8' : '#ffffff',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: notificationPermission === 'granted' ? 'default' : 'pointer',
+                            transition: 'opacity 0.2s',
+                            height: 'auto'
+                          }}
+                          onMouseOver={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '0.9'; }}
+                          onMouseOut={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '1'; }}
+                        >
+                          {notificationPermission === 'granted' ? 'Allowed' : 'Enable Alerts'}
+                        </button>
+                      </div>
+
+                      {/* Audio Chime Toggle */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifySelf: 'stretch', justifyContent: 'space-between' }}>
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px' }}>Audio Reminder Chime</strong>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Play a 1-second chime sound when a scheduled reminder popup triggers.</span>
+                        </div>
+                        <div 
+                          onClick={handleToggleChime}
+                          style={{
+                            width: '40px',
+                            height: '24px',
+                            borderRadius: '12px',
+                            background: playChime ? 'var(--accent-primary, #ea580c)' : '#cbd5e1',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: playChime ? 'flex-end' : 'flex-start',
+                            transition: 'background-color 0.2s ease',
+                            cursor: 'pointer',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: '#ffffff',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.2s ease'
+                          }} />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -84,8 +84,10 @@ export default function NotificationBell({ userRole }) {
               });
             }
 
-            // Play the 1-second chime sound
-            playNotificationSound();
+            // Play the 1-second chime sound if enabled
+            if (typeof window !== 'undefined' && localStorage.getItem('play_reminder_chime') !== 'false') {
+              playNotificationSound();
+            }
 
             // Auto-trigger professional modal pop-up on page for any new reminder
             const reminderAlert = newUnread.find(n => n.reminderId);
