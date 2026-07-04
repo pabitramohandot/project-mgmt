@@ -12,6 +12,7 @@ export const DEFAULT_USER_PERMISSIONS = {
   pending_tasks: 'read',
   announcements: 'read',
   branding: 'none',
+  reminders: 'read',
 
   project_details: 'read',
   project_credential: 'read',
@@ -32,6 +33,7 @@ export const MANAGEMENT_PERMISSIONS = {
   pending_tasks: 'read',
   announcements: 'read',
   branding: 'read',
+  reminders: 'read',
 
   project_details: 'read',
   project_credential: 'read',
@@ -51,6 +53,7 @@ export const ADMIN_PERMISSIONS = {
   pending_tasks: 'write',
   announcements: 'write',
   branding: 'write',
+  reminders: 'write',
 
   project_details: 'write',
   project_credential: 'write',
@@ -137,6 +140,7 @@ export async function getPermissionsForUser(user) {
         pending_tasks: p.pending_tasks || 'none',
         announcements: p.announcements || 'none',
         branding: p.branding || 'none',
+        reminders: p.reminders || 'none',
         project_details: p.project_details || 'none',
         project_credential: p.project_credential || 'none',
         project_links: p.project_links || 'none',
@@ -167,6 +171,7 @@ export async function getPermissionsForUser(user) {
       pending_tasks: p.pending_tasks || 'none',
       announcements: p.announcements || 'none',
       branding: p.branding || 'none',
+      reminders: p.reminders || 'none',
       project_details: p.project_details || 'none',
       project_credential: p.project_credential || 'none',
       project_links: p.project_links || 'none',

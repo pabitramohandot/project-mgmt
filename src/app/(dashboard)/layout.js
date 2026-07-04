@@ -42,6 +42,7 @@ export default function DashboardLayout({ children }) {
     if (pathname.startsWith('/tasks') && p.project_tasks === 'none') return false;
     if (pathname.startsWith('/pending-tasks') && p.pending_tasks === 'none') return false;
     if (pathname.startsWith('/announcements') && p.announcements === 'none') return false;
+    if (pathname.startsWith('/reminders') && p.reminders === 'none') return false;
     if (pathname.startsWith('/settings/branding') && p.branding === 'none') return false;
     return true;
   };

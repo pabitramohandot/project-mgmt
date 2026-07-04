@@ -26,6 +26,7 @@ const RoleSchema = new mongoose.Schema(
       pending_tasks: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       announcements: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       branding: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
+      reminders: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
 
       // Inside Project Tabs
       project_details: { type: String, enum: ['none', 'read', 'write'], default: 'none' },

@@ -136,7 +136,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
                 <img src="${companyLogo}" alt="${companyName}" style="height: 56px; max-height: 70px; max-width: 220px; object-fit: contain; display: inline-block;" />
               </div>
             ` : ''}
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.025em;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ea580c; letter-spacing: -0.025em;">
               ${companyName}
             </h1>
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280; font-weight: 500;">${companyTagline}</p>
@@ -219,7 +219,7 @@ export async function sendInvoiceEmail(invoice, project, pdfBase64 = null) {
           </div>
           
           <!-- Footer -->
-          <div style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+          <div style="background-color: #ea580c; padding: 24px; text-align: center; font-size: 12px; color: #ffffff; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; font-weight: 500;">
             This is an automated email from the team at ${companyName}.
           </div>
         </div>
@@ -361,7 +361,7 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
                 <img src="${companyLogo}" alt="${companyName}" style="height: 56px; max-height: 70px; max-width: 220px; object-fit: contain; display: inline-block;" />
               </div>
             ` : ''}
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.025em;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ea580c; letter-spacing: -0.025em;">
               ${companyName} Announcement
             </h1>
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280; font-weight: 500;">Official Broadcast Update</p>
@@ -374,7 +374,7 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
           </div>
           
           <!-- Footer -->
-          <div style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+          <div style="background-color: #ea580c; padding: 24px; text-align: center; font-size: 12px; color: #ffffff; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; font-weight: 500;">
             This email was sent by the management system of ${companyName}.
           </div>
         </div>
@@ -393,3 +393,213 @@ export async function sendAnnouncementEmail(clientEmail, clientName, subject, bo
   console.log(`Announcement Email sent successfully to ${clientEmail}: ${info.messageId}`);
   return info;
 }
+
+export async function sendMeetingInvitationEmail({ attendees, clientEmail, title, client, date, time, duration, meetingType, location, meetingUrl, description, companyId }) {
+  // Build full recipient list: client email + comma-separated attendees, deduplicated
+  const allEmails = new Set();
+  if (clientEmail && clientEmail.trim()) allEmails.add(clientEmail.trim().toLowerCase());
+  if (attendees && attendees.trim()) {
+    attendees.split(',').map(e => e.trim()).filter(Boolean).forEach(e => allEmails.add(e.toLowerCase()));
+  }
+  if (allEmails.size === 0) return { skipped: true, reason: 'No recipients (no client email and no attendees)' };
+  const emails = Array.from(allEmails);
+  console.log(`[Meeting Invite] Sending invitation to ${emails.length} recipient(s):`, emails);
+
+  // Load company details dynamically
+  let companyName = 'IONETWEB';
+  let companyLogo = null;
+  let companyEmailSettings = null;
+  let brandColors = { primary: '#00aeef', secondary: '#f26522' };
+
+  try {
+    if (companyId) {
+      const Company = (await import('@/models/Company')).default;
+      const company = await Company.findById(companyId).lean();
+      if (company) {
+        companyName = company.name || 'IONETWEB';
+        companyLogo = company.logo;
+        if (company.brandColors) {
+          brandColors = company.brandColors;
+        }
+        if (company.emailSettings?.user && company.emailSettings?.pass) {
+          companyEmailSettings = company.emailSettings;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load company details for meeting email:', e);
+  }
+
+  if (companyLogo && !companyLogo.startsWith('http://') && !companyLogo.startsWith('https://') && !companyLogo.startsWith('data:')) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    companyLogo = `${baseUrl}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}`;
+  }
+
+  // Resolve transporter to use
+  let activeTransporter = transporter;
+  let fromAddress = `"${companyName} Meetings" <${process.env.EMAIL_USER || 'ionetweb@gmail.com'}>`;
+
+  if (companyEmailSettings) {
+    let smtpConfig;
+    if (companyEmailSettings.providerType === 'custom') {
+      smtpConfig = {
+        host: companyEmailSettings.host ? companyEmailSettings.host.trim() : '',
+        port: Number(companyEmailSettings.port) || 465,
+        secure: companyEmailSettings.secure !== false,
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    } else {
+      smtpConfig = {
+        service: 'gmail',
+        auth: {
+          user: companyEmailSettings.user,
+          pass: companyEmailSettings.pass,
+        },
+      };
+    }
+    activeTransporter = nodemailer.createTransport(smtpConfig);
+    fromAddress = `"${companyName} Meetings" <${companyEmailSettings.user}>`;
+  } else {
+    if (!process.env.EMAIL_PASS) {
+      console.warn('WARNING: System EMAIL_PASS is not configured. Custom connection not set. Email send skipped.');
+      return { skipped: true, reason: 'No SMTP credentials configured' };
+    }
+  }
+
+  // Format date display
+  const formattedDate = new Date(date).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const subject = `Invitation: ${title} on ${formattedDate}`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 0;">
+          <tr>
+            <td align="center">
+              <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 4px 16px rgba(0,0,0,0.07);">
+
+                <!-- LOGO / HEADER -->
+                <tr>
+                  <td style="padding:36px 40px 20px;text-align:center;border-bottom:1px solid #f1f5f9;">
+                    ${companyLogo
+                      ? `<img src="${companyLogo}" alt="${companyName}" style="max-height:52px;display:block;margin:0 auto 14px;" />`
+                      : `<div style="font-size:22px;font-weight:800;color:${brandColors.primary};margin-bottom:10px;">${companyName}</div>`
+                    }
+                    <h2 style="margin:0;font-size:19px;font-weight:700;color:${brandColors.primary};">New Meeting Scheduled</h2>
+                  </td>
+                </tr>
+
+                <!-- INVITE LABEL + TITLE -->
+                <tr>
+                  <td style="padding:26px 40px 6px;">
+                    <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:#111827;">You have been invited to a meeting:</p>
+                    <h3 style="margin:0;font-size:18px;font-weight:700;color:${brandColors.primary};">${title}</h3>
+                  </td>
+                </tr>
+
+                <!-- DETAILS TABLE -->
+                <tr>
+                  <td style="padding:14px 40px 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+
+                      ${client && client !== 'No client (personal meeting)' ? `
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;width:130px;vertical-align:top;">Client</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;vertical-align:top;">${client}</td>
+                      </tr>` : ''}
+
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;width:130px;vertical-align:top;">Date</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;vertical-align:top;">${formattedDate}</td>
+                      </tr>
+
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Time</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;vertical-align:top;">${time} <span style="color:#6b7280;">(${duration})</span></td>
+                      </tr>
+
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Type</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-transform:capitalize;vertical-align:top;">${meetingType}</td>
+                      </tr>
+
+                      ${meetingType === 'offline' && location ? `
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Location</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;vertical-align:top;">${location}</td>
+                      </tr>` : ''}
+
+                      ${meetingType === 'online' && meetingUrl ? `
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Meeting Link</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:top;"><a href="${meetingUrl}" style="color:${brandColors.primary};font-weight:600;word-break:break-all;text-decoration:none;">${meetingUrl}</a></td>
+                      </tr>` : ''}
+
+                      ${description ? `
+                      <tr>
+                        <td style="padding:8px 20px 8px 0;font-size:13px;font-weight:700;color:#374151;vertical-align:top;">Description</td>
+                        <td style="padding:8px 0;font-size:13px;color:#374151;vertical-align:top;">${description}</td>
+                      </tr>` : ''}
+
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- JOIN BUTTON -->
+                ${meetingType === 'online' && meetingUrl ? `
+                <tr>
+                  <td style="padding:4px 40px 36px;text-align:center;">
+                    <a href="${meetingUrl}" style="display:inline-block;background:${brandColors.primary};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 38px;border-radius:8px;">
+                      Join Meeting
+                    </a>
+                  </td>
+                </tr>` : `<tr><td style="height:20px;"></td></tr>`}
+
+                <!-- FOOTER BAR -->
+                <tr>
+                  <td style="background:${brandColors.primary};padding:18px 40px;text-align:center;">
+                    <p style="margin:0;color:#ffffff;font-size:12px;font-weight:500;">This is an automated invitation from the team at ${companyName}.</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  // Send email to all attendees asynchronously
+  const sendPromises = emails.map(email => {
+    const mailOptions = {
+      from: fromAddress,
+      to: email,
+      subject,
+      html: htmlContent
+    };
+    return activeTransporter.sendMail(mailOptions).catch(err => {
+      console.error(`Failed to send invitation to ${email}:`, err);
+    });
+  });
+
+  await Promise.all(sendPromises);
+  console.log(`Meeting invitations sent to ${emails.length} recipient(s): ${emails.join(', ')}`);
+  return { success: true, count: emails.length };
+}
+

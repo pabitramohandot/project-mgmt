@@ -10,7 +10,12 @@ const NotificationSchema = new mongoose.Schema(
     feedbackId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Feedback',
-      required: true,
+      required: false,
+    },
+    reminderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Reminder',
+      required: false,
     },
     message: {
       type: String,

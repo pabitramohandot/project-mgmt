@@ -397,7 +397,7 @@ export default function UsersPage() {
                     badgeText = 'Full Global Access';
                     badgeColor = 'var(--status-overdue)';
                     p = {
-                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write',
+                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write', reminders: 'write',
                       project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
                     };
                   } else if (selectedVal === 'company_admin') {
@@ -406,7 +406,7 @@ export default function UsersPage() {
                     badgeColor = 'var(--status-progress)';
                     const dbRole = globalRoles.find(r => r.name === 'Company Admin');
                     p = dbRole ? dbRole.permissions : {
-                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write',
+                      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write', reminders: 'write',
                       project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
                     };
                   } else if (selectedVal === 'company_user') {
@@ -415,7 +415,7 @@ export default function UsersPage() {
                     badgeColor = 'var(--status-planning)';
                     const dbRole = globalRoles.find(r => r.name === 'Company User (Default)');
                     p = dbRole ? dbRole.permissions : {
-                      ai_agent: 'read', clients: 'read', invoices: 'read', credentials: 'none', pending_tasks: 'read', announcements: 'read', branding: 'none',
+                      ai_agent: 'read', clients: 'read', invoices: 'read', credentials: 'none', pending_tasks: 'read', announcements: 'read', branding: 'none', reminders: 'read',
                       project_details: 'read', project_credential: 'none', project_links: 'read', project_pricing: 'read', project_invoice: 'read', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
                     };
                   } else {

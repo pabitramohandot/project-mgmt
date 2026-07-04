@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode, Calendar as CalendarIcon, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function ProfileSettingsPage() {
@@ -28,6 +28,10 @@ export default function ProfileSettingsPage() {
   });
 
   const [activeTab, setActiveTab] = useState('account');
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [expandedPanel, setExpandedPanel] = useState('smtp');
   const [companyUsers, setCompanyUsers] = useState([]);
   const [testingSmtp, setTestingSmtp] = useState(false);
   const [form, setForm] = useState({
@@ -221,6 +225,61 @@ export default function ProfileSettingsPage() {
     }
   };
 
+  const handleToggleGoogleCalendar = async () => {
+    if (googleConnected) {
+      setConnectingGoogle(true);
+      try {
+        const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
+        if (res.ok) {
+          setGoogleConnected(false);
+          setGoogleEmail('');
+          localStorage.setItem('google_calendar_connected', 'false');
+          showToast('Google Calendar disconnected successfully.', 'success');
+        } else {
+          showToast('Failed to disconnect Google Calendar.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Network error disconnecting Google Calendar.', 'error');
+      } finally {
+        setConnectingGoogle(false);
+      }
+    } else {
+      setConnectingGoogle(true);
+      window.location.href = '/api/auth/google';
+    }
+  };
+
+  useEffect(() => {
+    async function checkGoogleStatus() {
+      try {
+        const res = await fetch('/api/auth/google/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGoogleConnected(data.connected);
+          setGoogleEmail(data.email || '');
+          localStorage.setItem('google_calendar_connected', data.connected ? 'true' : 'false');
+        }
+      } catch (err) {
+        console.error('Failed to check Google status:', err);
+      }
+    }
+    checkGoogleStatus();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('google_connected') === 'true') {
+        showToast('Google Calendar connected successfully!', 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get('error')) {
+        showToast(`Failed to connect Google Calendar: ${params.get('error')}`, 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
+
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
     if (!newEmployee.username || !newEmployee.password || !newEmployee.customRole) {
@@ -325,8 +384,8 @@ export default function ProfileSettingsPage() {
               onClick={() => setActiveTab('smtp')}
               className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`}
             >
-              <Mail size={16} />
-              <span>SMTP Integrations</span>
+              <LinkIcon size={16} />
+              <span>Integrations</span>
             </button>
             <button
               type="button"
@@ -388,13 +447,30 @@ export default function ProfileSettingsPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Email Address</label>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      Email Address
+                      {(role === 'admin' || role === 'company_admin') && (
+                        <span title="Email is locked for Company Admins as it is linked to integrations and system notifications." style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '3px',
+                          background: '#fef3c7', color: '#92400e',
+                          fontSize: '0.68rem', fontWeight: 600,
+                          padding: '1px 6px', borderRadius: '99px',
+                          border: '1px solid #fde68a', cursor: 'default'
+                        }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          Read-Only
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="email"
                       className="form-input"
                       placeholder="e.g. name@domain.com"
                       value={form.email}
                       onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                      readOnly={role === 'admin' || role === 'company_admin'}
+                      title={role === 'admin' || role === 'company_admin' ? 'Email is locked for Company Admins. It is used for integrations and cannot be changed.' : ''}
+                      style={role === 'admin' || role === 'company_admin' ? { background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)', cursor: 'not-allowed' } : {}}
                       required
                     />
                   </div>
@@ -549,156 +625,372 @@ export default function ProfileSettingsPage() {
               </div>
             )}
 
-            {/* TAB 2: SMTP Integrations */}
+            {/* TAB 2: Integrations */}
             {activeTab === 'smtp' && (role === 'company_admin' || role === 'superadmin') && (
-              <div className="animate-fade-in">
-                <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-                  <Mail size={18} style={{ color: 'var(--accent-primary)' }} />
-                  SMTP Mail Integration
-                </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.75rem', lineHeight: '1.6' }}>
-                  Configure your workspace outbound email account credentials so system alerts, invoice notifications, and broadcast messages are sent directly from your own email.
-                </p>
-
-                <div className="form-group" style={{ marginBottom: '1.75rem' }}>
-                  <label className="form-label">Email Provider Type</label>
-                  <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="radio" 
-                        name="providerType" 
-                        value="gmail" 
-                        checked={form.companyEmailProviderType === 'gmail'}
-                        onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'gmail' }))}
-                      />
-                      <span>Gmail / Google Workspace</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="radio" 
-                        name="providerType" 
-                        value="custom" 
-                        checked={form.companyEmailProviderType === 'custom'}
-                        onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'custom' }))}
-                      />
-                      <span>Custom SMTP (Zoho, cPanel, etc.)</span>
-                    </label>
-                  </div>
-                </div>
-
-                {form.companyEmailProviderType === 'gmail' ? (
-                  <div style={{ 
-                    background: 'rgba(0, 174, 239, 0.04)', 
-                    border: '1px solid rgba(0, 174, 239, 0.15)', 
-                    borderRadius: '12px', 
-                    padding: '1rem', 
-                    marginBottom: '1.5rem', 
-                    fontSize: '0.82rem',
-                    lineHeight: '1.5',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '4px' }}>🔒 Security Note & Guide:</strong>
-                    Google requires a 16-character <strong>App Password</strong> rather than your primary Google password. 
-                    To generate one, go to your <em>Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords</em>.
-                  </div>
-                ) : (
-                  <div style={{ 
-                    background: 'rgba(16, 185, 129, 0.04)', 
-                    border: '1px solid rgba(16, 185, 129, 0.15)', 
-                    borderRadius: '12px', 
-                    padding: '1rem', 
-                    marginBottom: '1.5rem', 
-                    fontSize: '0.82rem',
-                    lineHeight: '1.5',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    <strong style={{ color: '#10b981', display: 'block', marginBottom: '4px' }}>⚙️ Custom SMTP Settings Help:</strong>
-                    Enter the SMTP details provided by your host (e.g. Zoho Mail or cPanel). 
-                    Typically, port <strong>465</strong> requires <strong>SSL/TLS (Secure)</strong> checked, while port <strong>587</strong> or <strong>25</strong> uses standard connections.
-                  </div>
-                )}
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">
-                      {form.companyEmailProviderType === 'gmail' ? 'Gmail Username' : 'SMTP Username'}
-                    </label>
-                    <input
-                      type="email"
-                      className="form-input"
-                      placeholder="e.g. billing@yourcompany.com"
-                      value={form.companyEmailUser}
-                      onChange={(e) => setForm(prev => ({ ...prev, companyEmailUser: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      {form.companyEmailProviderType === 'gmail' ? 'Gmail App Password' : 'SMTP Password'}
-                    </label>
-                    <input
-                      type="password"
-                      className="form-input"
-                      placeholder={form.companyEmailHasPassword ? '••••••••' : 'Enter account password'}
-                      value={form.companyEmailPass}
-                      onChange={(e) => setForm(prev => ({ ...prev, companyEmailPass: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                {form.companyEmailProviderType === 'custom' && (
-                  <div className="form-row" style={{ marginTop: '1rem' }}>
-                    <div className="form-group" style={{ flex: 2 }}>
-                      <label className="form-label">SMTP Host</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="e.g. smtp.zoho.com or mail.yourdomain.com"
-                        value={form.companyEmailHost}
-                        onChange={(e) => setForm(prev => ({ ...prev, companyEmailHost: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">SMTP Port</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        placeholder="465"
-                        value={form.companyEmailPort}
-                        onChange={(e) => setForm(prev => ({ ...prev, companyEmailPort: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <label className="form-label" style={{ marginBottom: '0.5rem' }}>Secure Connection</label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={form.companyEmailSecure}
-                          onChange={(e) => setForm(prev => ({ ...prev, companyEmailSecure: e.target.checked }))}
-                        />
-                        <span>SSL / TLS</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1.25rem' }}>
-                  <button
-                    type="button"
-                    className="test-smtp-btn"
-                    onClick={handleTestSmtp}
-                    disabled={testingSmtp}
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', maxWidth: '800px', margin: '0 auto' }}>
+                
+                {/* Accordion Item 1: SMTP Mail Integration */}
+                <div style={{
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e5e7eb)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01)',
+                  overflow: 'hidden',
+                  transition: 'all 0.25s ease'
+                }}>
+                  {/* Header Row */}
+                  <div 
+                    onClick={() => setExpandedPanel(expandedPanel === 'smtp' ? null : 'smtp')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '1.25rem 1.5rem',
+                      cursor: 'pointer',
+                      background: expandedPanel === 'smtp' ? 'var(--bg-secondary, #f9fafb)' : 'transparent',
+                      userSelect: 'none',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => { if (expandedPanel !== 'smtp') e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseOut={(e) => { if (expandedPanel !== 'smtp') e.currentTarget.style.background = 'transparent'; }}
                   >
-                    {testingSmtp ? (
-                      <RefreshCw size={14} className="animate-spin" />
-                    ) : (
-                      <CheckCircle2 size={14} />
-                    )}
-                    <span>{testingSmtp ? 'Testing Connection...' : 'Test Connection'}</span>
-                  </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: 'rgba(0, 174, 239, 0.08)',
+                        color: 'var(--accent-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Mail size={18} />
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>SMTP Outbound Mail</h3>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Send alerts and invoice notifications directly from your own account.</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                        background: form.companyEmailUser ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: form.companyEmailUser ? '#10b981' : '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: form.companyEmailUser ? '#10b981' : '#6b7280' }} />
+                        {form.companyEmailUser ? 'Active' : 'Unconfigured'}
+                      </span>
+                      {expandedPanel === 'smtp' ? <ChevronUp size={16} style={{ color: '#9ca3af' }} /> : <ChevronDown size={16} style={{ color: '#9ca3af' }} />}
+                    </div>
+                  </div>
+
+                  {/* Collapsible Body */}
+                  {expandedPanel === 'smtp' && (
+                    <div style={{ padding: '1.75rem', borderTop: '1px solid var(--border-color, #e5e7eb)' }}>
+                      <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label">Email Provider Type</label>
+                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                            <input 
+                              type="radio" 
+                              name="providerType" 
+                              value="gmail" 
+                              checked={form.companyEmailProviderType === 'gmail'}
+                              onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'gmail' }))}
+                            />
+                            <span>Gmail / Google Workspace</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                            <input 
+                              type="radio" 
+                              name="providerType" 
+                              value="custom" 
+                              checked={form.companyEmailProviderType === 'custom'}
+                              onChange={() => setForm(prev => ({ ...prev, companyEmailProviderType: 'custom' }))}
+                            />
+                            <span>Custom SMTP (Zoho, cPanel, etc.)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {form.companyEmailProviderType === 'gmail' ? (
+                        <div style={{ 
+                          background: 'rgba(0, 174, 239, 0.04)', 
+                          border: '1px solid rgba(0, 174, 239, 0.15)', 
+                          borderRadius: '12px', 
+                          padding: '1rem', 
+                          marginBottom: '1.5rem', 
+                          fontSize: '0.82rem',
+                          lineHeight: '1.5',
+                          color: 'var(--text-secondary)'
+                        }}>
+                          <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '4px' }}>🔒 Security Note & Guide:</strong>
+                          Google requires a 16-character <strong>App Password</strong> rather than your primary Google password. 
+                          To generate one, go to your <em>Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords</em>.
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          background: 'rgba(16, 185, 129, 0.04)', 
+                          border: '1px solid rgba(16, 185, 129, 0.15)', 
+                          borderRadius: '12px', 
+                          padding: '1rem', 
+                          marginBottom: '1.5rem', 
+                          fontSize: '0.82rem',
+                          lineHeight: '1.5',
+                          color: 'var(--text-secondary)'
+                        }}>
+                          <strong style={{ color: '#10b981', display: 'block', marginBottom: '4px' }}>⚙️ Custom SMTP Settings Help:</strong>
+                          Enter the SMTP details provided by your host (e.g. Zoho Mail or cPanel). 
+                          Typically, port <strong>465</strong> requires <strong>SSL/TLS (Secure)</strong> checked, while port <strong>587</strong> or <strong>25</strong> uses standard connections.
+                        </div>
+                      )}
+
+                      <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label">
+                            {form.companyEmailProviderType === 'gmail' ? 'Gmail Username' : 'SMTP Username'}
+                          </label>
+                          <input
+                            type="email"
+                            className="form-input"
+                            placeholder="e.g. billing@yourcompany.com"
+                            value={form.companyEmailUser}
+                            onChange={(e) => setForm(prev => ({ ...prev, companyEmailUser: e.target.value }))}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label">
+                            {form.companyEmailProviderType === 'gmail' ? 'Gmail App Password' : 'SMTP Password'}
+                          </label>
+                          <input
+                            type="password"
+                            className="form-input"
+                            placeholder={form.companyEmailHasPassword ? '••••••••' : 'Enter account password'}
+                            value={form.companyEmailPass}
+                            onChange={(e) => setForm(prev => ({ ...prev, companyEmailPass: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      {form.companyEmailProviderType === 'custom' && (
+                        <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginTop: '1rem', marginBottom: '1.25rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">SMTP Host</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="e.g. smtp.zoho.com"
+                              value={form.companyEmailHost}
+                              onChange={(e) => setForm(prev => ({ ...prev, companyEmailHost: e.target.value }))}
+                            />
+                          </div>
+
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">SMTP Port</label>
+                            <input
+                              type="number"
+                              className="form-input"
+                              placeholder="465"
+                              value={form.companyEmailPort}
+                              onChange={(e) => setForm(prev => ({ ...prev, companyEmailPort: e.target.value }))}
+                            />
+                          </div>
+
+                          <div className="form-group" style={{ margin: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <label className="form-label" style={{ marginBottom: '0.5rem' }}>Secure</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={form.companyEmailSecure}
+                                onChange={(e) => setForm(prev => ({ ...prev, companyEmailSecure: e.target.checked }))}
+                              />
+                              <span>SSL / TLS</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.75rem', gap: '1rem' }}>
+                        <button
+                          type="button"
+                          className="test-smtp-btn"
+                          onClick={handleTestSmtp}
+                          disabled={testingSmtp}
+                        >
+                          {testingSmtp ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle2 size={14} />
+                          )}
+                          <span>{testingSmtp ? 'Testing...' : 'Test Connection'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleFormSubmit}
+                          style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }}
+                        >
+                          <Save size={14} style={{ marginRight: '6px' }} />
+                          <span>Save SMTP Settings</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Accordion Item 2: Google Calendar Integration */}
+                <div style={{
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e5e7eb)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01)',
+                  overflow: 'hidden',
+                  transition: 'all 0.25s ease'
+                }}>
+                  {/* Header Row */}
+                  <div 
+                    onClick={() => setExpandedPanel(expandedPanel === 'google' ? null : 'google')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '1.25rem 1.5rem',
+                      cursor: 'pointer',
+                      background: expandedPanel === 'google' ? 'var(--bg-secondary, #f9fafb)' : 'transparent',
+                      userSelect: 'none',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => { if (expandedPanel !== 'google') e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseOut={(e) => { if (expandedPanel !== 'google') e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: 'rgba(26, 115, 232, 0.08)',
+                        color: '#1a73e8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <CalendarIcon size={18} />
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>Google Calendar & Meet</h3>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Auto-generate Google Meet links, sync agendas, and invite attendees.</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                        background: googleConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: googleConnected ? '#10b981' : '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: googleConnected ? '#10b981' : '#6b7280' }} />
+                        {googleConnected ? 'Connected' : 'Disconnected'}
+                      </span>
+                      {expandedPanel === 'google' ? <ChevronUp size={16} style={{ color: '#9ca3af' }} /> : <ChevronDown size={16} style={{ color: '#9ca3af' }} />}
+                    </div>
+                  </div>
+
+                  {/* Collapsible Body */}
+                  {expandedPanel === 'google' && (
+                    <div style={{ padding: '1.75rem', borderTop: '1px solid var(--border-color, #e5e7eb)' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                        Synchronize your meeting schedules directly with Google Calendar to streamline workflow automation.
+                      </p>
+
+                      <div style={{ 
+                        border: '1px solid var(--border-color, #e5e7eb)', 
+                        borderRadius: '12px', 
+                        padding: '1.25rem', 
+                        background: '#f9fafb',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.25rem'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Integration Account Info</span>
+                          <span style={{ fontSize: '0.82rem', color: googleConnected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                            {googleConnected ? googleEmail || 'No Account Linked' : 'No Account Linked'}
+                          </span>
+                        </div>
+
+                        {googleConnected && (
+                          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span>Selected Calendar:</span>
+                              <strong style={{ color: 'var(--text-primary)' }}>Primary Workspace Calendar</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>API Sync State:</span>
+                              <strong style={{ color: '#10b981' }}>Active (Real-time)</strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <button
+                          type="button"
+                          onClick={handleToggleGoogleCalendar}
+                          disabled={connectingGoogle}
+                          style={{
+                            background: googleConnected ? 'transparent' : 'var(--accent-primary, #ea580c)',
+                            color: googleConnected ? 'var(--text-primary, #111827)' : '#ffffff',
+                            border: googleConnected ? '1px solid var(--border-color, #e5e7eb)' : 'none',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            boxShadow: googleConnected ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)',
+                            transition: 'opacity 0.2s',
+                            height: 'auto'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                        >
+                          {connectingGoogle ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <CalendarIcon size={14} />
+                          )}
+                          <span>
+                            {connectingGoogle 
+                              ? 'Connecting Google...' 
+                              : googleConnected 
+                                ? 'Disconnect Account' 
+                                : 'Connect Google Calendar'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
 

@@ -1,20 +1,61 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Video, Calendar, Clock, AlertCircle, X } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function NotificationBell({ userRole }) {
   const { showToast } = useNotification();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [activeModalReminder, setActiveModalReminder] = useState(null);
+  const [activeModalNotificationId, setActiveModalNotificationId] = useState(null);
   const dropdownRef = useRef(null);
+  const isFirstLoad = useRef(true);
+  const previousNotifications = useRef([]);
+
+  // Request browser notification permissions on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (window.Notification.permission === 'default') {
+        window.Notification.requestPermission();
+      }
+    }
+  }, []);
 
   const fetchNotifications = async () => {
     try {
       const res = await fetch('/api/notifications');
       if (res.ok) {
         const data = await res.json();
+        
+        // Check for new notifications to trigger browser push notifications
+        if (!isFirstLoad.current && data.length > 0) {
+          const prevIds = new Set(previousNotifications.current.map(n => n._id));
+          const newUnread = data.filter(n => !n.isRead && !prevIds.has(n._id));
+
+          if (newUnread.length > 0) {
+            // Trigger browser notification
+            if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+              newUnread.forEach(n => {
+                new window.Notification("New Notification Alert", {
+                  body: n.message,
+                  icon: "https://uploads.worklanceai.com/uploads/2026/06/Final%20Logo-13.png"
+                });
+              });
+            }
+
+            // Auto-trigger professional modal pop-up on page for any new reminder
+            const reminderAlert = newUnread.find(n => n.reminderId);
+            if (reminderAlert) {
+              setActiveModalReminder(reminderAlert.reminderId);
+              setActiveModalNotificationId(reminderAlert._id);
+            }
+          }
+        }
+
+        isFirstLoad.current = false;
+        previousNotifications.current = data;
         setNotifications(data);
       }
     } catch (e) {
@@ -172,12 +213,20 @@ export default function NotificationBell({ userRole }) {
               notifications.map((item) => (
                 <div 
                   key={item._id}
-                  onClick={(e) => !item.isRead && handleMarkAsRead(item._id, e)}
+                  onClick={(e) => {
+                    if (item.reminderId) {
+                      setActiveModalReminder(item.reminderId);
+                      setActiveModalNotificationId(item._id);
+                    }
+                    if (!item.isRead) {
+                      handleMarkAsRead(item._id, e);
+                    }
+                  }}
                   style={{
                     padding: '10px 12px',
                     borderBottom: '1px solid var(--border-color)',
                     background: item.isRead ? 'transparent' : 'rgba(var(--accent-primary-rgb, 139, 92, 246), 0.02)',
-                    cursor: item.isRead ? 'default' : 'pointer',
+                    cursor: 'pointer',
                     display: 'flex',
                     gap: '8px',
                     alignItems: 'flex-start',
@@ -213,6 +262,182 @@ export default function NotificationBell({ userRole }) {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Professional Reminder Modal Popup */}
+      {activeModalReminder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1.5rem',
+          animation: 'fadeIn 0.25s ease'
+        }}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}>
+            {/* Header Badge */}
+            <div style={{
+              background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: '#ffffff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Bell size={20} className="animate-bounce" />
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Meeting & Task Reminder</span>
+              </div>
+              <button 
+                onClick={() => {
+                  setActiveModalReminder(null);
+                  setActiveModalNotificationId(null);
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body Details */}
+            <div style={{ padding: '1.75rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
+                  {activeModalReminder.title}
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  {activeModalReminder.message}
+                </p>
+              </div>
+
+              {/* Time Configuration Metadata */}
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.6rem'
+              }}>
+                {activeModalReminder.triggerDate && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <Calendar size={14} style={{ color: 'var(--accent-primary)' }} />
+                    <strong>Scheduled Date:</strong>
+                    <span>{new Date(activeModalReminder.triggerDate).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
+                  </div>
+                )}
+                
+                {activeModalReminder.triggerTime && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <Clock size={14} style={{ color: 'var(--accent-primary)' }} />
+                    <strong>Trigger Time:</strong>
+                    <span>{activeModalReminder.triggerTime}</span>
+                  </div>
+                )}
+
+                {activeModalReminder.recurrence && activeModalReminder.recurrence !== 'none' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <Clock size={14} style={{ color: '#22c55e' }} />
+                    <strong>Recurrence:</strong>
+                    <span style={{ textTransform: 'capitalize' }}>{activeModalReminder.recurrence}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Meeting Link Call-To-Action */}
+              {activeModalReminder.meetingUrl && (
+                <a 
+                  href={activeModalReminder.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '0.85rem',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    fontSize: '0.9rem',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    transition: 'transform 0.2s'
+                  }}
+                >
+                  <Video size={18} />
+                  <span>Join Live Meeting Now</span>
+                </a>
+              )}
+            </div>
+
+            {/* Actions Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              background: 'rgba(255, 255, 255, 0.01)'
+            }}>
+              <button 
+                onClick={() => {
+                  setActiveModalReminder(null);
+                  setActiveModalNotificationId(null);
+                }}
+                className="btn btn-secondary"
+                style={{ borderRadius: '10px', fontSize: '0.85rem' }}
+              >
+                Dismiss
+              </button>
+              {activeModalNotificationId && (
+                <button 
+                  onClick={async (e) => {
+                    await handleMarkAsRead(activeModalNotificationId, e);
+                    setActiveModalReminder(null);
+                    setActiveModalNotificationId(null);
+                  }}
+                  className="btn btn-primary"
+                  style={{ borderRadius: '10px', fontSize: '0.85rem', background: 'var(--accent-primary)' }}
+                >
+                  Mark as Read
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp, Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -53,6 +53,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { name: 'Credentials', path: '/credentials', icon: Key },
     { name: 'Pending Tasks', path: '/pending-tasks', icon: AlertTriangle, badge: pendingCount },
     { name: 'Announcements', path: '/announcements', icon: Megaphone },
+    { name: 'Reminders', path: '/reminders', icon: Bell },
   ];
 
   if (user?.role === 'superadmin') {
@@ -94,6 +95,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     if (item.path === '/performance') return user?.role === 'company_admin' || user?.role === 'superadmin';
     if (item.path === '/pending-tasks') return p.pending_tasks && p.pending_tasks !== 'none';
     if (item.path === '/announcements') return p.announcements && p.announcements !== 'none';
+    if (item.path === '/reminders') return p.reminders && p.reminders !== 'none';
     if (item.path === '/settings/branding') return p.branding && p.branding !== 'none';
     return true;
   });

@@ -13,6 +13,7 @@ const GLOBAL_PERMISSIONS = [
   { key: 'pending_tasks', label: 'Pending Tasks Feed', desc: 'Access to automated system expiry alerts' },
   { key: 'announcements', label: 'Announcements', desc: 'Access to post system-wide notices' },
   { key: 'branding', label: 'Branding Settings', desc: 'Access to configure branding logo and colors' },
+  { key: 'reminders', label: 'Reminders', desc: 'Access to configure or view company-wide reminders' },
 ];
 
 const PROJECT_PERMISSIONS = [
@@ -34,7 +35,7 @@ const SYSTEM_ROLES = [
     isReadOnly: true,
     category: 'Admin',
     permissions: {
-      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write',
+      ai_agent: 'write', clients: 'write', invoices: 'write', credentials: 'write', pending_tasks: 'write', announcements: 'write', branding: 'write', reminders: 'write',
       project_details: 'write', project_credential: 'write', project_links: 'write', project_pricing: 'write', project_invoice: 'write', project_status: 'write', project_tasks: 'write', project_calendar: 'write'
     }
   }
@@ -109,6 +110,7 @@ export default function RolesPage() {
         defaultPerms.credentials = 'read';
         defaultPerms.pending_tasks = 'read';
         defaultPerms.announcements = 'read';
+        defaultPerms.reminders = 'read';
         defaultPerms.project_details = 'read';
         defaultPerms.project_credential = 'read';
         defaultPerms.project_links = 'read';
