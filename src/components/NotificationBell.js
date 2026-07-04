@@ -328,8 +328,8 @@ export default function NotificationBell({ userRole }) {
           animation: 'fadeIn 0.25s ease'
         }}>
           <div style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
+            background: '#0f172a',
+            border: '1px solid #1e293b',
             borderRadius: '24px',
             width: '100%',
             maxWidth: '480px',
@@ -341,7 +341,7 @@ export default function NotificationBell({ userRole }) {
           }}>
             {/* Header Badge */}
             <div style={{
-              background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
@@ -378,18 +378,18 @@ export default function NotificationBell({ userRole }) {
             {/* Body Details */}
             <div style={{ padding: '1.75rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>
                   {activeModalReminder.title}
                 </h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
                   {activeModalReminder.description || 'No description provided'}
                 </p>
               </div>
 
               {/* Time Configuration Metadata */}
               <div style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
+                background: '#1e293b',
+                border: '1px solid #334155',
                 borderRadius: '12px',
                 padding: '1rem',
                 display: 'flex',
@@ -397,23 +397,23 @@ export default function NotificationBell({ userRole }) {
                 gap: '0.6rem'
               }}>
                 {activeModalReminder.date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <Calendar size={14} style={{ color: 'var(--accent-primary)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
+                    <Calendar size={14} style={{ color: '#8b5cf6' }} />
                     <strong>Scheduled Date:</strong>
                     <span>{new Date(activeModalReminder.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
                   </div>
                 )}
                 
                 {activeModalReminder.time && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <Clock size={14} style={{ color: 'var(--accent-primary)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
+                    <Clock size={14} style={{ color: '#8b5cf6' }} />
                     <strong>Trigger Time:</strong>
                     <span>{activeModalReminder.time}</span>
                   </div>
                 )}
 
                 {activeModalReminder.recurrence && activeModalReminder.recurrence !== 'none' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
                     <Clock size={14} style={{ color: '#22c55e' }} />
                     <strong>Recurrence:</strong>
                     <span style={{ textTransform: 'capitalize' }}>{activeModalReminder.recurrence}</span>
@@ -452,7 +452,7 @@ export default function NotificationBell({ userRole }) {
             {/* Actions Footer */}
             <div style={{
               padding: '1rem 1.5rem',
-              borderTop: '1px solid var(--border-color)',
+              borderTop: '1px solid #1e293b',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '0.75rem',
@@ -476,7 +476,7 @@ export default function NotificationBell({ userRole }) {
                     setActiveModalNotificationId(null);
                   }}
                   className="btn btn-primary"
-                  style={{ borderRadius: '10px', fontSize: '0.85rem', background: 'var(--accent-primary)' }}
+                  style={{ borderRadius: '10px', fontSize: '0.85rem', background: '#8b5cf6' }}
                 >
                   Mark as Read
                 </button>
