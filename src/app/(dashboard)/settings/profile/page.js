@@ -67,6 +67,12 @@ export default function ProfileSettingsPage() {
     }
   };
 
+  const handleTestPopup = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('trigger-test-reminder'));
+    }
+  };
+
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -1124,32 +1130,54 @@ export default function ProfileSettingsPage() {
                       </p>
 
                       {/* Request Permission Control */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color, #e5e7eb)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color, #e5e7eb)', gap: '1rem' }}>
                         <div>
                           <strong style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px' }}>System Screen Alerts</strong>
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Deliver push notifications directly to the desktop sidebar notifications tray.</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleRequestNotificationPermission}
-                          disabled={notificationPermission === 'granted'}
-                          style={{
-                            background: notificationPermission === 'granted' ? '#f1f5f9' : 'var(--accent-primary, #ea580c)',
-                            color: notificationPermission === 'granted' ? '#94a3b8' : '#ffffff',
-                            border: 'none',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                            cursor: notificationPermission === 'granted' ? 'default' : 'pointer',
-                            transition: 'opacity 0.2s',
-                            height: 'auto'
-                          }}
-                          onMouseOver={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '0.9'; }}
-                          onMouseOut={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '1'; }}
-                        >
-                          {notificationPermission === 'granted' ? 'Allowed' : 'Enable Alerts'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={handleTestPopup}
+                            style={{
+                              background: '#10b981',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              transition: 'opacity 0.2s',
+                              height: 'auto'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                          >
+                            Test Popup
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRequestNotificationPermission}
+                            disabled={notificationPermission === 'granted'}
+                            style={{
+                              background: notificationPermission === 'granted' ? '#f1f5f9' : 'var(--accent-primary, #ea580c)',
+                              color: notificationPermission === 'granted' ? '#94a3b8' : '#ffffff',
+                              border: 'none',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.8rem',
+                              cursor: notificationPermission === 'granted' ? 'default' : 'pointer',
+                              transition: 'opacity 0.2s',
+                              height: 'auto'
+                            }}
+                            onMouseOver={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '0.9'; }}
+                            onMouseOut={(e) => { if (notificationPermission !== 'granted') e.currentTarget.style.opacity = '1'; }}
+                          >
+                            {notificationPermission === 'granted' ? 'Allowed' : 'Enable Alerts'}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Audio Chime Toggle */}

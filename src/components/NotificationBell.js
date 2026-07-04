@@ -117,6 +117,30 @@ export default function NotificationBell({ userRole }) {
     }
   }, [userRole]);
 
+  // Listen to custom test trigger event from settings page
+  useEffect(() => {
+    const handleTestTrigger = () => {
+      console.log('[Notification Debug] Test reminder triggered via custom event');
+      const testReminder = {
+        title: 'Test Meeting Notification',
+        description: 'This is a sample description to demonstrate how the professional meeting reminder popup is shown on your screen.',
+        date: new Date().toISOString(),
+        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        meetingUrl: 'https://meet.google.com/test-meet-link'
+      };
+      setActiveModalReminder(testReminder);
+      setActiveModalNotificationId('test-notification');
+      
+      // Play sound if enabled
+      if (typeof window !== 'undefined' && localStorage.getItem('play_reminder_chime') !== 'false') {
+        playNotificationSound();
+      }
+    };
+
+    window.addEventListener('trigger-test-reminder', handleTestTrigger);
+    return () => window.removeEventListener('trigger-test-reminder', handleTestTrigger);
+  }, []);
+
   // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -161,7 +185,7 @@ export default function NotificationBell({ userRole }) {
     }
   };
 
-  if (!userRole || userRole === 'superadmin') return null;
+  if (!userRole) return null;
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
