@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { Bell, Video, Calendar, Clock, AlertCircle, X } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
@@ -280,7 +281,7 @@ export default function NotificationBell({ userRole }) {
                 No notifications yet.
               </div>
             ) : (
-              notifications.map((item) => (
+              notifications.slice(0, 5).map((item, index) => (
                 <div 
                   key={item._id}
                   onClick={(e) => {
@@ -341,6 +342,28 @@ export default function NotificationBell({ userRole }) {
               ))
             )}
           </div>
+          {notifications.length > 0 && (
+            <div style={{
+              padding: '10px',
+              textAlign: 'center',
+              borderTop: '1px solid var(--border-color)',
+              background: 'rgba(255, 255, 255, 0.01)'
+            }}>
+              <Link 
+                href="/notifications" 
+                onClick={() => setShowNotifications(false)}
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--accent-primary)',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  display: 'inline-block'
+                }}
+              >
+                View All Notifications
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

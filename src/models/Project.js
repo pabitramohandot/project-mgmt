@@ -64,6 +64,10 @@ const CredentialSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  notes: {
+    type: String,
+    default: '',
+  },
 });
 
 const LinkSchema = new mongoose.Schema({
@@ -278,6 +282,14 @@ const ProjectSchema = new mongoose.Schema(
     },
     domainExpiry: {
       type: Date,
+    },
+    hostingDiscontinued: {
+      type: Boolean,
+      default: false,
+    },
+    domainDiscontinued: {
+      type: Boolean,
+      default: false,
     },
     credentials: [CredentialSchema],
     links: [LinkSchema],

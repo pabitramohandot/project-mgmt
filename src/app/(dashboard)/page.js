@@ -82,9 +82,9 @@ export default function Dashboard() {
   const [showPrices, setShowPrices] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('show_prices');
-      return saved !== null ? saved === 'true' : true;
+      return saved !== null ? saved === 'true' : false;
     }
-    return true;
+    return false;
   });
   const [activeBar, setActiveBar] = useState(null);
   const [chartTimeframe, setChartTimeframe] = useState('Monthly');

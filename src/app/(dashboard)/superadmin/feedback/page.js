@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNotification } from '@/components/NotificationProvider';
-import { MessageSquare, Bug, Lightbulb, X, Clock, ExternalLink, ShieldAlert, Loader2, Trash2, Search } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, X, Clock, ExternalLink, ShieldAlert, Loader2, Trash2, Search, Plus } from 'lucide-react';
 
 export default function SuperAdminFeedbackPage() {
   const { showToast, showConfirm } = useNotification();
@@ -15,6 +15,15 @@ export default function SuperAdminFeedbackPage() {
   const [updating, setUpdating] = useState(false);
   const [statusVal, setStatusVal] = useState('');
   const [notesVal, setNotesVal] = useState('');
+
+  // Create Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createType, setCreateType] = useState('bug');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createPage, setCreatePage] = useState('');
+  const [createReferenceUrl, setCreateReferenceUrl] = useState('');
+  const [createScreenshot, setCreateScreenshot] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   // Fetch all feedback reports
   const fetchFeedbacks = async () => {
@@ -105,6 +114,52 @@ export default function SuperAdminFeedbackPage() {
     });
   };
 
+  const handleOpenCreateModal = () => {
+    setCreateType('bug');
+    setCreateDescription('');
+    setCreatePage('');
+    setCreateReferenceUrl('');
+    setCreateScreenshot('');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateFeedback = async (e) => {
+    e.preventDefault();
+    if (!createDescription.trim()) {
+      showToast('Description is required', 'error');
+      return;
+    }
+
+    setSubmittingFeedback(true);
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: createType,
+          description: createDescription,
+          page: createType === 'bug' ? createPage : '',
+          referenceUrl: createType === 'feature' ? createReferenceUrl : '',
+          screenshot: createScreenshot
+        })
+      });
+
+      if (res.ok) {
+        showToast('Report submitted successfully.', 'success');
+        setIsCreateModalOpen(false);
+        fetchFeedbacks();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to submit report.', 'error');
+      }
+    } catch (err) {
+      console.error('Submit feedback error:', err);
+      showToast('Error submitting report.', 'error');
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
   const filteredFeedbacks = feedbacks.filter((item) => {
     if (filter !== 'all' && item.type !== filter) return false;
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
@@ -139,11 +194,19 @@ export default function SuperAdminFeedbackPage() {
   return (
     <>
       <div className="animate-fade-in" style={{ paddingBottom: '3rem' }}>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Client Feedback & Reports</h1>
           <p className="page-subtitle">Inspect bugs reported and feature requested by tenant companies.</p>
         </div>
+        <button 
+          onClick={handleOpenCreateModal}
+          className="btn btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', padding: '0.6rem 1.2rem', background: 'var(--accent-primary)', border: 'none', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+        >
+          <Plus size={16} />
+          <span>Add Bug & Feature</span>
+        </button>
       </div>
 
       {/* Type Tabs */}
@@ -493,6 +556,110 @@ export default function SuperAdminFeedbackPage() {
                 >
                   {updating && <Loader2 size={16} className="animate-spin" />}
                   <span>Save Status</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Create Feedback Modal */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="modal-content animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
+                Report Bug / Suggest Feature
+              </h2>
+              <button 
+                onClick={() => setIsCreateModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFeedback}>
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Report Type *</label>
+                <select 
+                  value={createType}
+                  onChange={(e) => setCreateType(e.target.value)}
+                  className="form-select"
+                  style={{ width: '100%', borderRadius: '8px', padding: '0.5rem 0.75rem' }}
+                >
+                  <option value="bug">Bug Report</option>
+                  <option value="feature">Feature Request</option>
+                </select>
+              </div>
+
+              {createType === 'bug' ? (
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Affected Page URL / Area</label>
+                  <input 
+                    type="text" 
+                    value={createPage}
+                    onChange={(e) => setCreatePage(e.target.value)}
+                    className="form-input"
+                    placeholder="e.g. /tasks, Projects page, login screen"
+                    style={{ width: '100%', borderRadius: '8px' }}
+                  />
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Reference Link / URL</label>
+                  <input 
+                    type="text" 
+                    value={createReferenceUrl}
+                    onChange={(e) => setCreateReferenceUrl(e.target.value)}
+                    className="form-input"
+                    placeholder="e.g. https://example.com/feature-reference"
+                    style={{ width: '100%', borderRadius: '8px' }}
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Description *</label>
+                <textarea 
+                  value={createDescription}
+                  onChange={(e) => setCreateDescription(e.target.value)}
+                  className="form-input"
+                  placeholder="Detail your bug report or feature request..."
+                  rows="4"
+                  required
+                  style={{ width: '100%', borderRadius: '8px', resize: 'vertical' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Screenshot URL (Optional)</label>
+                <input 
+                  type="text" 
+                  value={createScreenshot}
+                  onChange={(e) => setCreateScreenshot(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. Image URL or attachment path"
+                  style={{ width: '100%', borderRadius: '8px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsCreateModalOpen(false)} 
+                  className="btn btn-secondary"
+                  style={{ borderRadius: '8px', padding: '0.6rem 1.2rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={submittingFeedback}
+                  style={{ borderRadius: '8px', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-primary)' }}
+                >
+                  {submittingFeedback && <Loader2 size={16} className="animate-spin" />}
+                  <span>Submit Report</span>
                 </button>
               </div>
             </form>

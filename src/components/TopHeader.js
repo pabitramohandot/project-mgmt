@@ -25,13 +25,13 @@ export default function TopHeader({ user }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(2px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', top: '2px' }}>
           <QuickNotes />
         </div>
         <button style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'} title="Help">
           <HelpCircle size={20} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(2px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', top: '2px' }}>
           <NotificationBell userRole={user.role} />
         </div>
 

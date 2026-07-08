@@ -25,6 +25,7 @@ import {
   X,
   Share2,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { useNotification } from "@/components/NotificationProvider";
@@ -130,6 +131,7 @@ const tabs = [
   { id: "status", label: "Status" },
   { id: "tasks", label: "Task List" },
   { id: "calendar", label: "Content Calendar" },
+  { id: "history", label: "Work History" },
 ];
 
 const tabPermissionMap = {
@@ -141,6 +143,7 @@ const tabPermissionMap = {
   status: "project_status",
   tasks: "project_tasks",
   calendar: "project_calendar",
+  history: "project_status",
 };
 
 export default function ProjectDetailPage() {
@@ -213,6 +216,8 @@ export default function ProjectDetailPage() {
   });
   const [newStatusUpdate, setNewStatusUpdate] = useState("");
   const [addingUpdate, setAddingUpdate] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState([]);
 
   // Edit project state
   const [isEditing, setIsEditing] = useState(false);
@@ -657,10 +662,22 @@ export default function ProjectDetailPage() {
         updatedCredentials.push(newCred);
       }
 
+      const logMessage = editingCredIndex !== null 
+        ? `Credential Updated: ${newCred.type} (${newCred.label})` 
+        : `Credential Created: ${newCred.type} (${newCred.label})`;
+
+      const updatedStatusUpdates = [
+        ...(project.statusUpdates || []),
+        { message: logMessage, date: new Date() }
+      ];
+
       const res = await fetch(`/api/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credentials: updatedCredentials }),
+        body: JSON.stringify({ 
+          credentials: updatedCredentials,
+          statusUpdates: updatedStatusUpdates
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to update credentials");
@@ -695,14 +712,25 @@ export default function ProjectDetailPage() {
       onConfirm: async () => {
         try {
           setUpdating(true);
+          const targetCred = project.credentials[index];
+          const logMessage = `Credential Deleted: ${targetCred.type} (${targetCred.label})`;
+          
           const updatedCredentials = (project.credentials || []).filter(
             (_, i) => i !== index,
           );
 
+          const updatedStatusUpdates = [
+            ...(project.statusUpdates || []),
+            { message: logMessage, date: new Date() }
+          ];
+
           const res = await fetch(`/api/projects/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ credentials: updatedCredentials }),
+            body: JSON.stringify({ 
+              credentials: updatedCredentials,
+              statusUpdates: updatedStatusUpdates
+            }),
           });
 
           if (!res.ok) throw new Error("Failed to delete credential");
@@ -769,10 +797,22 @@ export default function ProjectDetailPage() {
         updatedLinks.push(newLnk);
       }
 
+      const logMessage = editingLinkIndex !== null 
+        ? `Link Updated: ${newLnk.name}` 
+        : `Link Created: ${newLnk.name}`;
+
+      const updatedStatusUpdates = [
+        ...(project.statusUpdates || []),
+        { message: logMessage, date: new Date() }
+      ];
+
       const res = await fetch(`/api/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ links: updatedLinks }),
+        body: JSON.stringify({ 
+          links: updatedLinks,
+          statusUpdates: updatedStatusUpdates
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to update links");
@@ -807,14 +847,25 @@ export default function ProjectDetailPage() {
       onConfirm: async () => {
         try {
           setUpdating(true);
+          const targetLink = project.links[index];
+          const logMessage = `Link Deleted: ${targetLink.name}`;
+          
           const updatedLinks = (project.links || []).filter(
             (_, i) => i !== index,
           );
 
+          const updatedStatusUpdates = [
+            ...(project.statusUpdates || []),
+            { message: logMessage, date: new Date() }
+          ];
+
           const res = await fetch(`/api/projects/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ links: updatedLinks }),
+            body: JSON.stringify({ 
+              links: updatedLinks,
+              statusUpdates: updatedStatusUpdates
+            }),
           });
 
           if (!res.ok) throw new Error("Failed to delete link");
@@ -1233,6 +1284,34 @@ export default function ProjectDetailPage() {
           const updatedProject = await res.json();
           setProject(updatedProject);
           showToast("Status update removed", "success");
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      },
+    });
+  };
+
+  const handleBulkDeleteHistory = async () => {
+    if (selectedHistoryIds.length === 0) return;
+    showConfirm({
+      title: "Delete Selected Logs",
+      message: `Are you sure you want to delete the ${selectedHistoryIds.length} selected history entries?`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          const updatedList = project.statusUpdates.filter(
+            (u) => !selectedHistoryIds.includes(u._id),
+          );
+          const res = await fetch(`/api/projects/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ statusUpdates: updatedList }),
+          });
+          if (!res.ok) throw new Error("Failed to delete selected logs");
+          const updatedProject = await res.json();
+          setProject(updatedProject);
+          setSelectedHistoryIds([]);
+          showToast("Selected history logs removed", "success");
         } catch (err) {
           showToast(err.message, "error");
         }
@@ -2552,11 +2631,48 @@ export default function ProjectDetailPage() {
         designEndDate: editForm.designEndDate,
       });
 
+      const changedFields = [];
+      if (project.name !== editForm.name) changedFields.push("Name");
+      if (project.description !== editForm.description) changedFields.push("Description");
+      if (project.clientName !== editForm.clientName) changedFields.push("Client Name");
+      if (project.clientEmail !== editForm.clientEmail) changedFields.push("Client Email");
+      
+      const oldType = Array.isArray(project.projectType) ? [...project.projectType].sort().join(",") : project.projectType || "";
+      const newType = Array.isArray(editForm.projectType) ? [...editForm.projectType].sort().join(",") : editForm.projectType || "";
+      if (oldType !== newType) changedFields.push("Project Type");
+
+      const oldSubs = Array.isArray(project.subcategories) ? [...project.subcategories].sort().join(",") : project.subcategories || "";
+      const newSubs = Array.isArray(editForm.subcategories) ? [...editForm.subcategories].sort().join(",") : editForm.subcategories || "";
+      if (oldSubs !== newSubs) changedFields.push("Subcategories");
+
+      if (project.devStatus !== editForm.devStatus) changedFields.push("Development Status");
+      if (project.marketingStatus !== editForm.marketingStatus) changedFields.push("Marketing Status");
+      if (project.adsStatus !== editForm.adsStatus) changedFields.push("Ads Status");
+      if (project.designStatus !== editForm.designStatus) changedFields.push("Design Status");
+      
+      const oldHostExp = project.hostingExpiry ? new Date(project.hostingExpiry).toISOString().split('T')[0] : "";
+      const newHostExp = editForm.hostingExpiry ? new Date(editForm.hostingExpiry).toISOString().split('T')[0] : "";
+      if (oldHostExp !== newHostExp) changedFields.push("Hosting Expiry");
+
+      const oldDomExp = project.domainExpiry ? new Date(project.domainExpiry).toISOString().split('T')[0] : "";
+      const newDomExp = editForm.domainExpiry ? new Date(editForm.domainExpiry).toISOString().split('T')[0] : "";
+      if (oldDomExp !== newDomExp) changedFields.push("Domain Expiry");
+
+      let updatedStatusUpdates = project.statusUpdates || [];
+      if (changedFields.length > 0) {
+        const logMessage = `Project Details Updated: ${changedFields.join(", ")}`;
+        updatedStatusUpdates = [
+          ...updatedStatusUpdates,
+          { message: logMessage, date: new Date() }
+        ];
+      }
+
       const res = await fetch(`/api/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editForm,
+          statusUpdates: updatedStatusUpdates,
           quotePrice:
             editForm.quotePrice !== "" && editForm.quotePrice !== null
               ? parseFloat(editForm.quotePrice)
@@ -6182,6 +6298,49 @@ export default function ProjectDetailPage() {
                               Not configured
                             </span>
                           )}
+                          <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input 
+                              type="checkbox" 
+                              id="hosting-discontinued-checkbox" 
+                              checked={project.hostingDiscontinued || false} 
+                              onChange={async (e) => {
+                                 const checked = e.target.checked;
+                                 const logMessage = checked 
+                                   ? "Hosting service marked as Discontinued / Expired" 
+                                   : "Hosting service marked as Active";
+                                 
+                                 const updatedStatusUpdates = [
+                                   ...(project.statusUpdates || []),
+                                   { message: logMessage, date: new Date() }
+                                 ];
+
+                                 try {
+                                   const res = await fetch(`/api/projects/${id}`, {
+                                     method: 'PUT',
+                                     headers: { 'Content-Type': 'application/json' },
+                                     body: JSON.stringify({ 
+                                       hostingDiscontinued: checked,
+                                       statusUpdates: updatedStatusUpdates
+                                     })
+                                   });
+                                  if (res.ok) {
+                                    const updated = await res.json();
+                                    setProject(updated);
+                                    showToast("Hosting status updated.", "success");
+                                  } else {
+                                    showToast("Failed to update hosting status.", "error");
+                                  }
+                                } catch (err) {
+                                  showToast("Error updating hosting status.", "error");
+                                }
+                              }}
+                              disabled={permissions?.project_details !== 'write'}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <label htmlFor="hosting-discontinued-checkbox" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                              Expired / Discontinued
+                            </label>
+                          </div>
                         </div>
 
                         <div>
@@ -6270,6 +6429,49 @@ export default function ProjectDetailPage() {
                               Not configured
                             </span>
                           )}
+                          <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input 
+                              type="checkbox" 
+                              id="domain-discontinued-checkbox" 
+                              checked={project.domainDiscontinued || false} 
+                              onChange={async (e) => {
+                                const checked = e.target.checked;
+                                const logMessage = checked 
+                                  ? "Domain service marked as Discontinued / Expired" 
+                                  : "Domain service marked as Active";
+                                
+                                const updatedStatusUpdates = [
+                                  ...(project.statusUpdates || []),
+                                  { message: logMessage, date: new Date() }
+                                ];
+
+                                try {
+                                  const res = await fetch(`/api/projects/${id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                      domainDiscontinued: checked,
+                                      statusUpdates: updatedStatusUpdates
+                                    })
+                                  });
+                                  if (res.ok) {
+                                    const updated = await res.json();
+                                    setProject(updated);
+                                    showToast("Domain status updated.", "success");
+                                  } else {
+                                    showToast("Failed to update domain status.", "error");
+                                  }
+                                } catch (err) {
+                                  showToast("Error updating domain status.", "error");
+                                }
+                              }}
+                              disabled={permissions?.project_details !== 'write'}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <label htmlFor="domain-discontinued-checkbox" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                              Expired / Discontinued
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -8687,6 +8889,229 @@ export default function ProjectDetailPage() {
                       })()}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Tab 8: Work History Panel */}
+              {activeTab === "history" && (
+                <div
+                  className="card animate-fade-in"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1.5rem",
+                  }}
+                >
+                  {(() => {
+                    const list = project.statusUpdates || [];
+                    const filtered = list.filter(u => 
+                      u.message?.toLowerCase().includes(historySearchQuery.toLowerCase())
+                    );
+                    const isAllSelected = filtered.length > 0 && filtered.every(u => selectedHistoryIds.includes(u._id));
+                    
+                    const handleToggleSelectAll = () => {
+                      if (isAllSelected) {
+                        setSelectedHistoryIds(prev => prev.filter(id => !filtered.some(f => f._id === id)));
+                      } else {
+                        const idsToSelect = filtered.map(u => u._id);
+                        setSelectedHistoryIds(prev => [...new Set([...prev, ...idsToSelect])]);
+                      }
+                    };
+
+                    const handleToggleSelectItem = (id) => {
+                      setSelectedHistoryIds(prev => 
+                        prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+                      );
+                    };
+
+                    return (
+                      <>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            borderBottom: "1px solid var(--border-color)",
+                            paddingBottom: "0.75rem",
+                            flexWrap: "wrap",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <div>
+                            <h3
+                              style={{
+                                fontSize: "1.2rem",
+                                fontWeight: 700,
+                                margin: 0,
+                              }}
+                            >
+                              Work History
+                            </h3>
+                            <p
+                              style={{
+                                color: "var(--text-secondary)",
+                                fontSize: "0.825rem",
+                                margin: 0,
+                                marginTop: "2px",
+                              }}
+                            >
+                              A historical audit trail of updates and actions for this project.
+                            </p>
+                          </div>
+
+                          {/* Search input inside panel */}
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <input 
+                              type="text" 
+                              placeholder="Search work history..." 
+                              className="form-input" 
+                              value={historySearchQuery}
+                              onChange={(e) => setHistorySearchQuery(e.target.value)}
+                              style={{ padding: '0.45rem 1rem 0.45rem 2.2rem', fontSize: '0.85rem', width: '220px', borderRadius: '8px' }}
+                            />
+                            <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-secondary)' }} />
+                          </div>
+                        </div>
+
+                        {/* Bulk Operations Bar */}
+                        {list.length > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }} onClick={handleToggleSelectAll}>
+                              <input 
+                                type="checkbox" 
+                                checked={isAllSelected}
+                                onChange={() => {}} 
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select All</span>
+                            </div>
+
+                            {selectedHistoryIds.length > 0 && permissions?.project_status === "write" && (
+                              <button
+                                onClick={handleBulkDeleteHistory}
+                                className="btn btn-danger"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete Selected ({selectedHistoryIds.length})</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* List of updates */}
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.75rem",
+                            maxHeight: "550px",
+                            overflowY: "auto",
+                            paddingRight: "4px",
+                          }}
+                        >
+                          {filtered.length === 0 ? (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: "3rem 1rem",
+                                color: "var(--text-muted)",
+                                fontSize: "0.85rem",
+                              }}
+                            >
+                              {historySearchQuery ? "No matching work history logs found." : "No work history logged yet."}
+                            </div>
+                          ) : (
+                            [...filtered].reverse().map((update) => {
+                              const isSelected = selectedHistoryIds.includes(update._id);
+                              return (
+                                <div
+                                  key={update._id}
+                                  style={{
+                                    background: isSelected ? "rgba(139, 92, 246, 0.04)" : "rgba(255, 255, 255, 0.01)",
+                                    border: isSelected ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
+                                    borderRadius: "10px",
+                                    padding: "0.85rem 1rem",
+                                    display: "flex",
+                                    gap: "1rem",
+                                    alignItems: "flex-start",
+                                    transition: "all 0.15s ease"
+                                  }}
+                                >
+                                  {/* Selection Checkbox */}
+                                  <div style={{ display: 'flex', alignItems: 'center', height: '20px' }}>
+                                    <input 
+                                      type="checkbox" 
+                                      checked={isSelected}
+                                      onChange={() => handleToggleSelectItem(update._id)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          fontSize: "0.725rem",
+                                          color: "var(--accent-secondary)",
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        📅 {new Date(update.date).toLocaleString("en-IN", {
+                                          dateStyle: "medium",
+                                          timeStyle: "short",
+                                        })}
+                                      </span>
+                                      {permissions?.project_status === "write" && (
+                                        <button
+                                          style={{
+                                            background: "none",
+                                            border: "none",
+                                            color: "var(--text-muted)",
+                                            cursor: "pointer",
+                                            padding: '4px',
+                                            borderRadius: '4px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.15s ease'
+                                          }}
+                                          onClick={() =>
+                                            handleDeleteStatusUpdate(update._id)
+                                          }
+                                          className="delete-task-btn"
+                                          title="Delete Log Entry"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p
+                                      style={{
+                                        margin: 0,
+                                        fontSize: "0.875rem",
+                                        color: "var(--text-primary)",
+                                        lineHeight: 1.4,
+                                        wordBreak: "break-word",
+                                      }}
+                                    >
+                                      {update.message}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </>

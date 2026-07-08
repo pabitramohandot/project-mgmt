@@ -19,8 +19,17 @@ export default function RemindersPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [mounted, setMounted] = useState(false);
   
-  // View mode switcher: 'agenda' or 'week'
+  // View mode switcher: 'agenda' or 'week' or 'custom'
   const [viewMode, setViewMode] = useState('agenda');
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // 1st day of the current month
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    const d = new Date(); // Today's date
+    return d.toISOString().split('T')[0];
+  });
 
   // Modal toggle state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -482,6 +491,21 @@ Description: ${reminder.description || 'N/A'}`;
     return rDate > todayEnd && rDate <= next7DaysEnd;
   });
 
+  // Custom date reminders (for Custom View mode)
+  const customDateReminders = filteredReminders.filter(r => {
+    if (!r.date) return false;
+    const rDate = new Date(r.date);
+    rDate.setHours(0,0,0,0);
+    
+    const start = new Date(customStartDate);
+    start.setHours(0,0,0,0);
+    
+    const end = new Date(customEndDate);
+    end.setHours(23,59,59,999);
+    
+    return rDate >= start && rDate <= end;
+  });
+
   // Compile Week Days starting DIRECTLY from today (next 7 days rolling)
   const getWeekDates = () => {
     const days = [];
@@ -671,6 +695,23 @@ Description: ${reminder.description || 'N/A'}`;
             >
               Week
             </button>
+            <button
+              onClick={() => setViewMode('custom')}
+              style={{
+                background: viewMode === 'custom' ? '#ffffff' : 'transparent',
+                color: viewMode === 'custom' ? '#111827' : '#6b7280',
+                border: 'none',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                fontSize: '0.825rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: viewMode === 'custom' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              Custom
+            </button>
           </div>
 
           {hasWriteAccess && (
@@ -794,7 +835,7 @@ Description: ${reminder.description || 'N/A'}`;
           </div>
 
         </div>
-      ) : (
+      ) : viewMode === 'week' ? (
         /* ---------------- WEEK VIEW ---------------- */
         <div style={{
           display: 'grid',
@@ -922,6 +963,76 @@ Description: ${reminder.description || 'N/A'}`;
               </div>
             );
           })}
+        </div>
+      ) : (
+        /* ---------------- CUSTOM VIEW ---------------- */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1.5rem', 
+            background: 'var(--bg-card, #ffffff)', 
+            padding: '1rem 1.25rem', 
+            borderRadius: '12px', 
+            border: '1px solid var(--border-color, #e5e7eb)',
+            alignSelf: 'flex-start',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary, #111827)' }}>From:</label>
+              <input 
+                type="date" 
+                value={customStartDate} 
+                onChange={(e) => setCustomStartDate(e.target.value)} 
+                className="form-input" 
+                style={{ width: 'auto', borderRadius: '8px', padding: '0.45rem 1rem' }} 
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary, #111827)' }}>To:</label>
+              <input 
+                type="date" 
+                value={customEndDate} 
+                onChange={(e) => setCustomEndDate(e.target.value)} 
+                className="form-input" 
+                style={{ width: 'auto', borderRadius: '8px', padding: '0.45rem 1rem' }} 
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted, #6b7280)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Agenda from {new Date(customStartDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(customEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+            
+            {customDateReminders.length === 0 ? (
+              <div style={{
+                padding: '2.5rem',
+                background: 'var(--bg-card, #ffffff)',
+                border: '1px solid var(--border-color, #e5e7eb)',
+                borderRadius: '12px',
+                color: 'var(--text-muted, #6b7280)',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                textAlign: 'center'
+              }}>
+                No meetings scheduled for this date range.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {customDateReminders.map(reminder => (
+                  <AgendaCard 
+                    key={reminder._id} 
+                    reminder={reminder} 
+                    hasWriteAccess={hasWriteAccess} 
+                    onEdit={handleEditReminder}
+                    onShare={handleShareReminder}
+                    onDelete={handleDeleteReminder} 
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -2213,6 +2324,10 @@ function AgendaCard({ reminder, hasWriteAccess, onEdit, onShare, onDelete }) {
           }}>
             {reminder.meetingType === 'offline' ? <MapPin size={12} /> : <Video size={12} />}
             <span>{reminder.meetingType === 'offline' ? 'Offline' : 'Online'}</span>
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #6b7280)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <CalendarIcon size={12} style={{ color: 'var(--accent-primary, #ea580c)' }} />
+            <span>{new Date(reminder.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #6b7280)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Clock size={12} style={{ color: 'var(--accent-primary, #ea580c)' }} />

@@ -183,12 +183,19 @@ export default function QuickNotes() {
 
   const executeDelete = async (id) => {
     try {
+      console.log("DELETING NOTE:", id);
       const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+      console.log("DELETE RESPONSE STATUS:", res.status);
+      const data = await res.json();
+      console.log("DELETE RESPONSE DATA:", data);
       if (res.ok) {
         setNotes(notes.filter(n => n._id !== id));
+      } else {
+        alert(`Failed to delete note: ${data.error || 'Unknown error'}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("DELETE ERR:", err);
+      alert(`Delete Error: ${err.message}`);
     }
   };
 
@@ -752,8 +759,8 @@ export default function QuickNotes() {
                           >
                             <Share2 size={14} /> <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>Share</span>
                           </button>
-
                           <button 
+                            onMouseDown={(e) => e.stopPropagation()}
                             onClick={(e) => handleDelete(note._id, e)}
                             style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px', transition: 'all 0.2s' }}
                             className="card-action-btn"
@@ -798,20 +805,24 @@ export default function QuickNotes() {
         </div>
       )}
       {deleteConfirmId && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          animation: 'fadeIn 0.2s ease'
-        }} onClick={() => setDeleteConfirmId(null)}>
+        <div 
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            animation: 'fadeIn 0.2s ease'
+          }} 
+          onClick={() => setDeleteConfirmId(null)}
+        >
           <div style={{
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border-color)',

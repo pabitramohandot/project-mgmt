@@ -431,6 +431,7 @@ export async function GET(request) {
     const expiringHostingProjects = processedProjects.filter(
       (proj) =>
         proj.hostingExpiry &&
+        !proj.hostingDiscontinued &&
         new Date(proj.hostingExpiry) <= thirtySevenDaysFromNow,
     );
     for (const proj of expiringHostingProjects) {
@@ -453,6 +454,7 @@ export async function GET(request) {
     const expiringDomainProjects = processedProjects.filter(
       (proj) =>
         proj.domainExpiry &&
+        !proj.domainDiscontinued &&
         new Date(proj.domainExpiry) <= thirtySevenDaysFromNow,
     );
     for (const proj of expiringDomainProjects) {
