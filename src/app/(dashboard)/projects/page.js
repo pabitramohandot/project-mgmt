@@ -164,6 +164,18 @@ export default function ProjectsPage() {
   const [companyUsers, setCompanyUsers] = useState([]);
   const [newProjectEmployees, setNewProjectEmployees] = useState([]);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [copiedProjectId, setCopiedProjectId] = useState(null);
+
+  const handleCopyUrl = (e, url, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    setCopiedProjectId(id);
+    showToast('URL copied to clipboard!', 'success');
+    setTimeout(() => {
+      setCopiedProjectId(null);
+    }, 2000);
+  };
 
   const getClientAvatar = (name) => {
     if (!name) return { initials: '?', bg: 'hsl(260, 50%, 50%)' };
@@ -772,25 +784,42 @@ export default function ProjectsPage() {
                       {project.name}
                     </Link>
                     {project.siteUrl && (
-                      <a 
-                        href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        style={{ 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
-                          gap: '3px', 
-                          fontSize: '0.72rem', 
-                          color: '#10b981', 
-                          textDecoration: 'none',
-                          marginTop: '-2px',
-                          marginBottom: '4px',
-                          alignSelf: 'flex-start'
-                        }}
-                        title="Visit website"
-                      >
-                        <ExternalLink size={10} /> Visit Site
-                      </a>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start', marginTop: '-2px', marginBottom: '4px' }}>
+                        <a 
+                          href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '3px', 
+                            fontSize: '0.72rem', 
+                            color: '#10b981', 
+                            textDecoration: 'none',
+                          }}
+                          title="Visit website"
+                        >
+                          <ExternalLink size={10} /> Visit Site
+                        </a>
+                        <button
+                          onClick={(e) => handleCopyUrl(e, project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`, `${project._id}-card`)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: copiedProjectId === `${project._id}-card` ? 'var(--status-completed, #10b981)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '4px',
+                            transition: 'color 0.2s, background 0.2s',
+                          }}
+                          title="Copy site URL"
+                        >
+                          {copiedProjectId === `${project._id}-card` ? <Check size={10} /> : <Copy size={10} />}
+                        </button>
+                      </div>
                     )}
                     <p className="project-card-description">
                       {project.description || 'No description provided.'}
@@ -955,26 +984,46 @@ export default function ProjectsPage() {
                       </td>
                       <td>
                         {project.siteUrl ? (
-                          <a 
-                            href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            style={{ 
-                              color: 'var(--accent-primary)', 
-                              fontSize: '0.8rem',
-                              textDecoration: 'none',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            className="hover-underline"
-                            title={project.siteUrl}
-                          >
-                            <ExternalLink size={12} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-                            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {project.siteUrl}
-                            </span>
-                          </a>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <a 
+                              href={project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{ 
+                                color: 'var(--accent-primary)', 
+                                fontSize: '0.8rem',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              className="hover-underline"
+                              title={project.siteUrl}
+                            >
+                              <ExternalLink size={12} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                              <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {project.siteUrl}
+                              </span>
+                            </a>
+                            <button
+                              onClick={(e) => handleCopyUrl(e, project.siteUrl.startsWith('http') ? project.siteUrl : `https://${project.siteUrl}`, project._id)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: copiedProjectId === project._id ? 'var(--status-completed, #10b981)' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                                padding: '2px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '4px',
+                                transition: 'color 0.2s, background 0.2s',
+                              }}
+                              title="Copy site URL"
+                            >
+                              {copiedProjectId === project._id ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          </div>
                         ) : (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>-</span>
                         )}

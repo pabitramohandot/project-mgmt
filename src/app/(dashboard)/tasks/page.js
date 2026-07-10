@@ -21,7 +21,7 @@ import {
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function AllTasksPage() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -254,31 +254,36 @@ export default function AllTasksPage() {
   };
 
   // Delete Task
-  const handleDeleteTask = async (projectId, taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+  const handleDeleteTask = (projectId, taskId) => {
+    showConfirm({
+      title: 'Delete Task',
+      message: 'Are you sure you want to delete this task? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const project = projects.find(p => p._id === projectId);
+          if (!project) throw new Error('Project not found');
 
-    try {
-      const project = projects.find(p => p._id === projectId);
-      if (!project) throw new Error('Project not found');
+          const updatedTasks = project.tasks.filter(t => t._id !== taskId);
 
-      const updatedTasks = project.tasks.filter(t => t._id !== taskId);
+          const res = await fetch(`/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tasks: updatedTasks }),
+          });
 
-      const res = await fetch(`/api/projects/${projectId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tasks: updatedTasks }),
-      });
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to delete task');
+          }
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to delete task');
+          showToast('Task deleted successfully', 'success');
+          fetchProjects();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
       }
-
-      showToast('Task deleted successfully', 'success');
-      fetchProjects();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    });
   };
 
   // Apply search and filters
@@ -298,208 +303,210 @@ export default function AllTasksPage() {
   });
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ClipboardList size={28} style={{ color: 'var(--accent-primary)' }} />
-            <span>All Tasks</span>
-          </h1>
-          <p className="page-subtitle">Track, filter, and manage tasks across all active company projects.</p>
+    <>
+      <div className="animate-fade-in">
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <div>
+            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ClipboardList size={28} style={{ color: 'var(--accent-primary)' }} />
+              <span>All Tasks</span>
+            </h1>
+            <p className="page-subtitle">Track, filter, and manage tasks across all active company projects.</p>
+          </div>
+          {!isEmployee && (
+            <button 
+              onClick={handleOpenAddModal} 
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}
+            >
+              <Plus size={18} />
+              <span>Add Task</span>
+            </button>
+          )}
         </div>
-        {!isEmployee && (
-          <button 
-            onClick={handleOpenAddModal} 
-            className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}
-          >
-            <Plus size={18} />
-            <span>Add Task</span>
-          </button>
+
+        {/* Filters Segment */}
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Search Box */}
+            <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search tasks or projects..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '36px', width: '100%', borderRadius: '8px' }}
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div style={{ minWidth: '150px' }}>
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)} 
+                className="form-select"
+                style={{ borderRadius: '8px', width: '100%' }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="todo">To Do</option>
+                <option value="in-progress">In Progress</option>
+              </select>
+            </div>
+
+            {/* Priority Filter */}
+            <div style={{ minWidth: '150px' }}>
+              <select 
+                value={priorityFilter} 
+                onChange={(e) => setPriorityFilter(e.target.value)} 
+                className="form-select"
+                style={{ borderRadius: '8px', width: '100%' }}
+              >
+                <option value="all">All Priorities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            {/* Project Filter */}
+            <div style={{ minWidth: '200px' }}>
+              <select 
+                value={projectFilter} 
+                onChange={(e) => setProjectFilter(e.target.value)} 
+                className="form-select"
+                style={{ borderRadius: '8px', width: '100%' }}
+              >
+                <option value="all">All Projects</option>
+                {projects.map(p => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="empty-state">
+            <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%' }}></div>
+            <h3 style={{ marginTop: '1rem' }}>Loading all tasks...</h3>
+          </div>
+        ) : error ? (
+          <div className="empty-state" style={{ color: '#ef4444' }}>
+            <AlertTriangle size={48} />
+            <h3>Error loading tasks</h3>
+            <p>{error}</p>
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="empty-state">
+            <CheckCircle2 size={48} style={{ color: '#10b981', opacity: 0.7 }} />
+            <h3>No tasks found</h3>
+            <p>Try modifying your search query or filter options.</p>
+          </div>
+        ) : (
+          <div className="table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40px' }}></th>
+                  <th>Task Title</th>
+                  <th>Project</th>
+                  <th>Assigned To</th>
+                  <th>Due Date</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTasks.map((task) => {
+                  const isOverdue = !task.completed && task.dueDate && new Date(task.dueDate) < new Date();
+                  
+                  return (
+                    <tr key={task._id} className="premium-table-row">
+                      <td>
+                        <button 
+                          onClick={() => handleToggleComplete(task.projectId, task._id, task.completed, task.status)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: task.completed ? 'var(--status-completed, #10b981)' : 'var(--text-muted)' }}
+                          title={task.completed ? "Mark incomplete" : "Mark completed"}
+                        >
+                          {task.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                        </button>
+                      </td>
+                      <td style={{ fontWeight: 600, color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                        {task.name}
+                      </td>
+                      <td>
+                        <Link href={`/projects/${task.projectId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
+                          <Briefcase size={12} />
+                          <span>{task.projectName}</span>
+                        </Link>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          <User size={12} />
+                          <span>{task.assignedTo || 'Unassigned'}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {task.dueDate ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: isOverdue ? 'var(--status-overdue, #ef4444)' : 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: isOverdue ? 700 : 500 }}>
+                            <CalendarDays size={12} />
+                            <span>{new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge-post-type ${task.priority?.toLowerCase() === 'high' ? 'reel' : task.priority?.toLowerCase() === 'low' ? 'motion' : 'carousel'}`} style={{ fontSize: '0.72rem', padding: '0.15rem 0.55rem', borderRadius: '4px', textTransform: 'capitalize' }}>
+                          {task.priority || 'Medium'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${task.completed ? 'completed' : task.status === 'In Progress' ? 'progress' : 'planning'}`} style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem' }}>
+                          {task.completed ? 'Completed' : task.status || 'Todo'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}>
+                          <Link href={`/projects/${task.projectId}`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                            <span>Project</span>
+                            <ExternalLink size={12} />
+                          </Link>
+                          {!isEmployee && (
+                            <>
+                              <button 
+                                onClick={() => handleOpenEditModal(task)} 
+                                className="btn btn-secondary" 
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', borderRadius: '6px', color: 'var(--accent-primary)', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
+                                title="Edit Task"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteTask(task.projectId, task._id)} 
+                                className="btn btn-secondary" 
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', borderRadius: '6px', color: 'var(--status-overdue, #ef4444)', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
+                                title="Delete Task"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-
-      {/* Filters Segment */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          
-          {/* Search Box */}
-          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              placeholder="Search tasks or projects..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: '36px', width: '100%', borderRadius: '8px' }}
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div style={{ minWidth: '150px' }}>
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)} 
-              className="form-select"
-              style={{ borderRadius: '8px', width: '100%' }}
-            >
-              <option value="all">All Statuses</option>
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-            </select>
-          </div>
-
-          {/* Priority Filter */}
-          <div style={{ minWidth: '150px' }}>
-            <select 
-              value={priorityFilter} 
-              onChange={(e) => setPriorityFilter(e.target.value)} 
-              className="form-select"
-              style={{ borderRadius: '8px', width: '100%' }}
-            >
-              <option value="all">All Priorities</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          {/* Project Filter */}
-          <div style={{ minWidth: '200px' }}>
-            <select 
-              value={projectFilter} 
-              onChange={(e) => setProjectFilter(e.target.value)} 
-              className="form-select"
-              style={{ borderRadius: '8px', width: '100%' }}
-            >
-              <option value="all">All Projects</option>
-              {projects.map(p => (
-                <option key={p._id} value={p._id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="empty-state">
-          <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%' }}></div>
-          <h3 style={{ marginTop: '1rem' }}>Loading all tasks...</h3>
-        </div>
-      ) : error ? (
-        <div className="empty-state" style={{ color: '#ef4444' }}>
-          <AlertTriangle size={48} />
-          <h3>Error loading tasks</h3>
-          <p>{error}</p>
-        </div>
-      ) : filteredTasks.length === 0 ? (
-        <div className="empty-state">
-          <CheckCircle2 size={48} style={{ color: '#10b981', opacity: 0.7 }} />
-          <h3>No tasks found</h3>
-          <p>Try modifying your search query or filter options.</p>
-        </div>
-      ) : (
-        <div className="table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th style={{ width: '40px' }}></th>
-                <th>Task Title</th>
-                <th>Project</th>
-                <th>Assigned To</th>
-                <th>Due Date</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTasks.map((task) => {
-                const isOverdue = !task.completed && task.dueDate && new Date(task.dueDate) < new Date();
-                
-                return (
-                  <tr key={task._id} className="premium-table-row">
-                    <td>
-                      <button 
-                        onClick={() => handleToggleComplete(task.projectId, task._id, task.completed, task.status)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: task.completed ? 'var(--status-completed, #10b981)' : 'var(--text-muted)' }}
-                        title={task.completed ? "Mark incomplete" : "Mark completed"}
-                      >
-                        {task.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                      </button>
-                    </td>
-                    <td style={{ fontWeight: 600, color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                      {task.name}
-                    </td>
-                    <td>
-                      <Link href={`/projects/${task.projectId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
-                        <Briefcase size={12} />
-                        <span>{task.projectName}</span>
-                      </Link>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        <User size={12} />
-                        <span>{task.assignedTo || 'Unassigned'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      {task.dueDate ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: isOverdue ? 'var(--status-overdue, #ef4444)' : 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: isOverdue ? 700 : 500 }}>
-                          <CalendarDays size={12} />
-                          <span>{new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge-post-type ${task.priority?.toLowerCase() === 'high' ? 'reel' : task.priority?.toLowerCase() === 'low' ? 'motion' : 'carousel'}`} style={{ fontSize: '0.72rem', padding: '0.15rem 0.55rem', borderRadius: '4px', textTransform: 'capitalize' }}>
-                        {task.priority || 'Medium'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${task.completed ? 'completed' : task.status === 'In Progress' ? 'progress' : 'planning'}`} style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem' }}>
-                        {task.completed ? 'Completed' : task.status || 'Todo'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}>
-                        <Link href={`/projects/${task.projectId}`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                          <span>Project</span>
-                          <ExternalLink size={12} />
-                        </Link>
-                        {!isEmployee && (
-                          <>
-                            <button 
-                              onClick={() => handleOpenEditModal(task)} 
-                              className="btn btn-secondary" 
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', borderRadius: '6px', color: 'var(--accent-primary)', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
-                              title="Edit Task"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteTask(task.projectId, task._id)} 
-                              className="btn btn-secondary" 
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', borderRadius: '6px', color: 'var(--status-overdue, #ef4444)', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
-                              title="Delete Task"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {/* Add / Edit Task Modal */}
       {isModalOpen && (
@@ -615,11 +622,11 @@ export default function AllTasksPage() {
                 <div className="form-group">
                   <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Project</label>
                   <input 
-                    type="text" 
-                    value={projects.find(p => p._id === taskProjectId)?.name || ''} 
-                    disabled 
-                    className="form-input" 
-                    style={{ width: '100%', borderRadius: '8px', opacity: 0.7, cursor: 'not-allowed' }}
+                     type="text" 
+                     value={projects.find(p => p._id === taskProjectId)?.name || ''} 
+                     disabled 
+                     className="form-input" 
+                     style={{ width: '100%', borderRadius: '8px', opacity: 0.7, cursor: 'not-allowed' }}
                   />
                 </div>
               )}
@@ -713,6 +720,6 @@ export default function AllTasksPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
