@@ -12,7 +12,10 @@ import {
   ArrowRight,
   Filter,
   Globe,
-  Calendar
+  Calendar,
+  Eye,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function PendingTasksPage() {
@@ -21,6 +24,10 @@ export default function PendingTasksPage() {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [userCategory, setUserCategory] = useState('');
+  
+  // Custom interactive states
+  const [selectedFullDescription, setSelectedFullDescription] = useState(null);
+  const [copiedTaskId, setCopiedTaskId] = useState(null);
 
   useEffect(() => {
     async function fetchTasks() {
@@ -41,6 +48,39 @@ export default function PendingTasksPage() {
     }
     fetchTasks();
   }, []);
+
+  const getShortenedDescription = (text) => {
+    if (!text) return '';
+    const words = text.split(/\s+/);
+    if (words.length <= 8) return text;
+    return words.slice(0, 8).join(' ') + '...';
+  };
+
+  const getMessageForTask = (task) => {
+    switch (task.type) {
+      case 'invoice_overdue':
+      case 'invoice_draft':
+        return "Hi, hope you're doing well. Just a gentle reminder regarding the pending payment. Whenever you have a moment, could you please process it? We'd really appreciate it. If you've already made the payment, please ignore this message. Thank you!";
+      case 'hosting_expiry':
+        return `Hi, hope you're doing well. This is a gentle reminder that your hosting for "${task.title || 'your website'}" is expiring soon. Please renew it at your earliest convenience to prevent any downtime. Thank you!`;
+      case 'domain_expiry':
+        return `Hi, hope you're doing well. This is a gentle reminder that your domain registration for "${task.title || 'your website'}" is expiring soon. Please renew it to ensure your website remains active. Thank you!`;
+      case 'project_pending':
+        return `Hi, hope you're doing well. Just a quick reminder about the overdue task: "${task.title}". Could you please look into it and complete it when you get a chance? Thank you!`;
+      case 'calendar_pending':
+        return `Hi, hope you're doing well. This is a reminder regarding the scheduled social media post: "${task.title}". Please review and publish it. Thank you!`;
+      default:
+        return `Hi, hope you're doing well. Just a gentle reminder regarding the task: "${task.title || task.description}". Could you please check and update its status? Thank you!`;
+    }
+  };
+
+  const handleCopyMessage = (text, taskId) => {
+    navigator.clipboard.writeText(text);
+    setCopiedTaskId(taskId);
+    setTimeout(() => {
+      setCopiedTaskId(null);
+    }, 2000);
+  };
 
   const filteredTasks = tasks.filter(task => {
     if (filter === 'all') return true;
@@ -121,7 +161,6 @@ export default function PendingTasksPage() {
         </div>
       </div>
 
-      {/* Filter and Stats Segment */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button 
@@ -152,14 +191,14 @@ export default function PendingTasksPage() {
                 className={`btn ${filter === 'hosting_expiry' ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
               >
-                Hosting Expiry ({tasks.filter(t => t.type === 'hosting_expiry').length})
+                Hosting Expiries ({tasks.filter(t => t.type === 'hosting_expiry').length})
               </button>
               <button 
                 onClick={() => setFilter('domain_expiry')} 
                 className={`btn ${filter === 'domain_expiry' ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
               >
-                Domain Expiry ({tasks.filter(t => t.type === 'domain_expiry').length})
+                Domain Expiries ({tasks.filter(t => t.type === 'domain_expiry').length})
               </button>
             </>
           )}
@@ -168,27 +207,22 @@ export default function PendingTasksPage() {
             className={`btn ${filter === 'project_pending' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            {userCategory === 'Employee' ? 'Overdue Tasks' : 'Overdue Projects'} ({tasks.filter(t => t.type === 'project_pending').length})
+            Project Overdues ({tasks.filter(t => t.type === 'project_pending').length})
           </button>
           <button 
             onClick={() => setFilter('calendar_pending')} 
             className={`btn ${filter === 'calendar_pending' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            Pending Posts ({tasks.filter(t => t.type === 'calendar_pending').length})
+            Calendar Posts ({tasks.filter(t => t.type === 'calendar_pending').length})
           </button>
-        </div>
-
-        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Filter size={16} />
-          <span>Showing {filteredTasks.length} tasks</span>
         </div>
       </div>
 
       {loading ? (
         <div className="empty-state">
-          <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)' }} />
-          <h3>Loading your tasks...</h3>
+          <Clock className="animate-spin" size={48} style={{ color: 'var(--accent-primary)', opacity: 0.5 }} />
+          <h3>Loading pending tasks...</h3>
         </div>
       ) : error ? (
         <div className="empty-state" style={{ color: '#ef4444' }}>
@@ -210,6 +244,7 @@ export default function PendingTasksPage() {
                 <th>Type</th>
                 <th>Task Title</th>
                 <th>Description</th>
+                <th>Message</th>
                 <th>Date</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
@@ -243,7 +278,32 @@ export default function PendingTasksPage() {
                       {task.title}
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      {task.description}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{getShortenedDescription(task.description)}</span>
+                        {task.description && (
+                          <button
+                            onClick={() => setSelectedFullDescription(task.description)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                            title="View full description"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {getShortenedDescription(getMessageForTask(task))}
+                        </span>
+                        <button
+                          onClick={() => handleCopyMessage(getMessageForTask(task), `${task.type}-${task.id}`)}
+                          style={{ background: 'transparent', border: 'none', color: copiedTaskId === `${task.type}-${task.id}` ? '#10b981' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                          title="Copy message"
+                        >
+                          {copiedTaskId === `${task.type}-${task.id}` ? <CheckCircle size={14} style={{ color: '#10b981' }} /> : <Copy size={14} />}
+                        </button>
+                      </div>
                     </td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(task.date).toLocaleDateString('en-IN')}
@@ -259,6 +319,48 @@ export default function PendingTasksPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Description Popup Modal */}
+      {selectedFullDescription && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          animation: 'fadeIn 0.2s ease'
+        }} onClick={() => setSelectedFullDescription(null)}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>Full Description</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, wordBreak: 'break-word', whiteSpace: 'pre-line' }}>
+              {selectedFullDescription}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <button 
+                onClick={() => setSelectedFullDescription(null)} 
+                className="btn btn-secondary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

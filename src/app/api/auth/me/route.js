@@ -64,6 +64,7 @@ export async function GET(request) {
       role: user.role,
       category,
       email: user.email || "",
+      needsPasswordChange: user.needsPasswordChange || false,
       whatsapp: user.whatsapp || "",
       permissions,
       projectCount,
@@ -90,14 +91,16 @@ export async function GET(request) {
             bankQrCode: company.bankQrCode || "",
           }
         : null,
-      companyUsers: companyUsers.map((u) => ({
-        id: u._id.toString(),
-        username: u.username,
-        role: u.role,
-        email: u.email || "",
-        whatsapp: u.whatsapp || "",
-        createdAt: u.createdAt,
-      })),
+      companyUsers: companyUsers
+        .filter((u) => u.role !== 'superadmin')
+        .map((u) => ({
+          id: u._id.toString(),
+          username: u.username,
+          role: u.role,
+          email: u.email || "",
+          whatsapp: u.whatsapp || "",
+          createdAt: u.createdAt,
+        })),
     });
   } catch (error) {
     console.error("Me API Error:", error);
@@ -148,6 +151,7 @@ export async function PUT(request) {
 
     if (password) {
       user.password = await hashPassword(password);
+      user.needsPasswordChange = false;
     }
 
     await user.save();

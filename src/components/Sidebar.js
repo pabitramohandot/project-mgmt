@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp, Bell } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -10,6 +10,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState('light');
+  const [isOrgExpanded, setIsOrgExpanded] = useState(true);
 
   useEffect(() => {
     const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -58,9 +59,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   if (user?.role === 'superadmin') {
     menuItems.push(
-      { name: 'Companies', path: '/superadmin/companies', icon: Building },
-      { name: 'Roles', path: '/superadmin/roles', icon: Shield },
-      { name: 'Users', path: '/superadmin/users', icon: ShieldCheck },
+      {
+        name: 'Organization',
+        icon: ShieldCheck,
+        isSubmenu: true,
+        submenu: [
+          { name: 'Companies', path: '/superadmin/companies', icon: Building },
+          { name: 'Roles', path: '/superadmin/roles', icon: Shield },
+          { name: 'Users', path: '/superadmin/users', icon: ShieldCheck },
+          { name: 'Registration', path: '/superadmin/register', icon: ClipboardList }
+        ]
+      },
       { name: 'Feedback', path: '/superadmin/feedback', icon: MessageSquare },
       { name: 'AI Settings', path: '/superadmin/ai-settings', icon: Key }
     );
@@ -140,6 +149,116 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             ))
           ) : (
             filteredMenuItems.map((item) => {
+              // Handle Submenu Rendering
+              if (item.isSubmenu) {
+                if (isCollapsed) {
+                  // If collapsed, render sub-items flat
+                  return item.submenu.map((subItem) => {
+                    const SubIcon = subItem.icon;
+                    const isSubActive = pathname.startsWith(subItem.path);
+                    return (
+                      <li key={subItem.name} className={`menu-item ${isSubActive ? 'active' : ''}`}>
+                        <Link 
+                          href={subItem.path} 
+                          onClick={onClose} 
+                          style={{ 
+                            display: 'flex', 
+                            justifyContent: 'center', 
+                            alignItems: 'center', 
+                            width: '100%',
+                            padding: '0.7rem 0'
+                          }}
+                          title={subItem.name}
+                        >
+                          <SubIcon size={20} />
+                        </Link>
+                      </li>
+                    );
+                  });
+                }
+
+                const isAnySubActive = item.submenu.some(subItem => pathname.startsWith(subItem.path));
+                return (
+                  <li key={item.name} className="menu-item-group" style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.25rem' }}>
+                    <button
+                      onClick={() => setIsOrgExpanded(!isOrgExpanded)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
+                        background: isAnySubActive ? 'var(--accent-primary-glow)' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '0.7rem 0.85rem',
+                        color: isAnySubActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        borderRadius: '10px',
+                        fontSize: '0.85rem',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease',
+                        textAlign: 'left',
+                        outline: 'none',
+                        borderLeft: isAnySubActive ? '3px solid var(--accent-primary)' : 'none',
+                        paddingLeft: isAnySubActive ? 'calc(0.85rem - 3px)' : '0.85rem'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isAnySubActive) {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                          e.currentTarget.style.color = 'var(--text-primary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isAnySubActive) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = 'var(--text-secondary)';
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <ShieldCheck size={20} />
+                        <span>{item.name}</span>
+                      </div>
+                      {isOrgExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    
+                    {isOrgExpanded && (
+                      <ul style={{ 
+                        listStyle: 'none', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '0.25rem', 
+                        paddingLeft: '1.25rem', 
+                        borderLeft: '1px solid var(--border-color)', 
+                        marginLeft: '1.5rem', 
+                        marginTop: '0.25rem' 
+                      }}>
+                        {item.submenu.map((subItem) => {
+                          const SubIcon = subItem.icon;
+                          const isSubActive = pathname.startsWith(subItem.path);
+                          return (
+                            <li key={subItem.name} className={`menu-item ${isSubActive ? 'active' : ''}`}>
+                              <Link 
+                                href={subItem.path} 
+                                onClick={onClose}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  width: '100%',
+                                }}
+                              >
+                                <SubIcon size={18} />
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              // Standard Item rendering
               const Icon = item.icon;
               const isActive = item.path === '/' 
                 ? pathname === '/' 
@@ -236,6 +355,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </li>
               );
             })
+
           )}
         </ul>
       </nav>

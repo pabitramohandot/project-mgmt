@@ -254,7 +254,12 @@ export async function GET(request) {
       Project.find({ companyId }).sort({ createdAt: -1 }).lean(),
       Invoice.find(invoiceQuery).sort({ createdAt: -1 }).lean(),
       Client.find(clientQuery).sort({ createdAt: -1 }).lean(),
-      User.find({ companyId }).populate("customRole").lean(),
+      User.find({
+        $or: [
+          { companyId },
+          { role: 'superadmin' }
+        ]
+      }).populate("customRole").lean(),
     ]);
 
     // Compute dynamic project status updates for current response (since DB update runs in background)
@@ -273,7 +278,9 @@ export async function GET(request) {
 
     // Employee stats
     // Filter company users (employees) — category is computed, not stored; use role field
-    const employeeStats = allUsers.filter(u => u.role === 'company_user').map(emp => {
+    const companyUsersOnly = allUsers.filter(u => u.role !== 'superadmin');
+    
+    const employeeStats = companyUsersOnly.map(emp => {
       let assignedTasksCount = 0;
       let completedTasksCount = 0;
       const allTasksList = [];
@@ -311,7 +318,7 @@ export async function GET(request) {
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const monthlyEmployeeStats = allUsers.filter(u => u.role === 'company_user').map(emp => {
+    const monthlyEmployeeStats = companyUsersOnly.map(emp => {
       let assignedTasksCount = 0;
       let completedTasksCount = 0;
       const allTasksList = [];

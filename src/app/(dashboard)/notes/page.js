@@ -7,6 +7,17 @@ import {
 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 
+const stripHtml = (html) => {
+  if (!html) return '';
+  let text = html
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<li>/gi, '\n• ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n');
+  return text.replace(/<[^>]+>/g, '').trim();
+};
+
 export default function NotesPage() {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -300,10 +311,12 @@ export default function NotesPage() {
                         fontSize: '0.9rem', color: '#333', lineHeight: 1.6, 
                         flex: 1, overflow: 'hidden', 
                         display: '-webkit-box', WebkitLineClamp: 7, WebkitBoxOrient: 'vertical',
-                        wordBreak: 'break-word'
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-line'
                       }}
-                      dangerouslySetInnerHTML={{ __html: note.content }}
-                    />
+                    >
+                      {stripHtml(note.content)}
+                    </div>
                     <div className="note-card-actions" style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '12px', marginTop: 'auto', borderTop: '1px solid rgba(0,0,0,0.05)', opacity: 0.5, transition: 'opacity 0.2s' }}>
                       <button 
                         onClick={(e) => handleDelete(note._id, e)}
@@ -330,7 +343,7 @@ export default function NotesPage() {
           backdropFilter: 'blur(4px)'
         }}>
           <div style={{
-            background: noteColor, width: '100%', maxWidth: '600px',
+            background: noteColor, width: '100%', maxWidth: '800px',
             borderRadius: '16px', boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
             maxHeight: '90vh'

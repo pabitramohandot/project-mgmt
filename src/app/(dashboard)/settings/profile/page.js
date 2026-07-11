@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode, Calendar as CalendarIcon, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode, Calendar as CalendarIcon, Link as LinkIcon, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function ProfileSettingsPage() {

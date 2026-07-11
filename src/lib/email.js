@@ -613,3 +613,100 @@ export async function sendMeetingInvitationEmail({ attendees, clientEmail, title
   return { success: true, count: emails.length };
 }
 
+export async function sendOnboardingEmail(email, name, username, tempPassword, companyName) {
+  const systemEmailUser = process.env.EMAIL_USER || 'ionetweb@gmail.com';
+  const systemEmailPass = process.env.EMAIL_PASS;
+  
+  if (!systemEmailPass) {
+    console.warn('WARNING: System EMAIL_PASS is not configured. Email send skipped.');
+    return { skipped: true, reason: 'System EMAIL_PASS missing' };
+  }
+
+  const activeTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: systemEmailUser,
+      pass: systemEmailPass,
+    },
+  });
+
+  const fromAddress = `"Worklance Onboarding" <${systemEmailUser}>`;
+  const subject = `Welcome to Worklance! Your account has been approved`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Welcome to Worklance</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; color: #1f2937;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px 40px; text-align: center;">
+              <img src="https://uploads.worklanceai.com/uploads/2026/06/Final%20Logo-13.png" alt="Worklance Logo" style="height: 48px; object-fit: contain;">
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin-top: 0; color: #111827; font-size: 22px; font-weight: 800;">Hello ${name},</h2>
+              <p style="font-size: 15px; line-height: 1.6; color: #4b5563; margin-bottom: 24px;">
+                We are thrilled to inform you that your request to join the <strong>Worklance</strong> platform for <strong>${companyName}</strong> has been <strong>approved</strong> by our administrator!
+              </p>
+              
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+                <h3 style="margin-top: 0; color: #111827; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Your Credentials</h3>
+                <table width="100%" style="font-size: 14px; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 6px 0; color: #6b7280; font-weight: 600; width: 120px;">Username:</td>
+                    <td style="padding: 6px 0; color: #111827; font-weight: 700;">${username}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Temp Password:</td>
+                    <td style="padding: 6px 0; color: #111827; font-weight: 700; font-family: monospace; font-size: 15px; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block;">${tempPassword}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="text-align: center; margin-bottom: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login" style="display: inline-block; background: #00aeef; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 174, 239, 0.25);">
+                  Login to Workspace
+                </a>
+              </div>
+
+              <p style="font-size: 13px; line-height: 1.5; color: #9ca3af; margin-bottom: 0;">
+                * Please change your password immediately after logging in for security reasons.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">This is an automated system email from Worklance.</p>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: fromAddress,
+    to: email,
+    subject,
+    html: htmlContent
+  };
+
+  try {
+    await activeTransporter.sendMail(mailOptions);
+    console.log(`Onboarding email successfully sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to send onboarding email to ${email}:`, error);
+    return { success: false, error };
+  }
+}
+
+

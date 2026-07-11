@@ -10,6 +10,7 @@ export async function middleware(request) {
     pathname.startsWith('/api/auth') ||
     pathname === '/favicon.ico' ||
     pathname === '/login' ||
+    pathname === '/register' ||
     pathname.includes('.') // matches asset files like .svg, .png, etc.
   ) {
     return NextResponse.next();
