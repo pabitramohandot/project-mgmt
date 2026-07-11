@@ -633,58 +633,75 @@ export async function sendOnboardingEmail(email, name, username, tempPassword, c
   const fromAddress = `"Worklance Onboarding" <${systemEmailUser}>`;
   const subject = `Welcome to Worklance! Your account has been approved`;
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const logoUrl = `${baseUrl}/logo.png`;
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Welcome to Worklance</title>
       </head>
-      <body style="font-family: Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; color: #1f2937;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;">
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 20px; color: #334155; -webkit-font-smoothing: antialiased;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+          <!-- Top Decorative Bar -->
+          <tr>
+            <td style="height: 6px; background: linear-gradient(90deg, #00aeef 0%, #f26522 100%);"></td>
+          </tr>
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #00aeef 0%, #009fe3 100%); padding: 30px 40px; text-align: center;">
-              <img src="https://uploads.worklanceai.com/uploads/2026/06/Final%20Logo-13.png" alt="Worklance Logo" style="height: 48px; object-fit: contain;">
+            <td style="padding: 40px 40px 20px 40px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+              <img src="${logoUrl}" alt="Worklance" style="height: 40px; width: auto; object-fit: contain; display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 800; color: #00aeef;">
             </td>
           </tr>
           <!-- Body -->
           <tr>
             <td style="padding: 40px;">
-              <h2 style="margin-top: 0; color: #111827; font-size: 22px; font-weight: 800;">Hello ${name},</h2>
-              <p style="font-size: 15px; line-height: 1.6; color: #4b5563; margin-bottom: 24px;">
-                We are thrilled to inform you that your request to join the <strong>Worklance</strong> platform for <strong>${companyName}</strong> has been <strong>approved</strong> by our administrator!
+              <h1 style="margin-top: 0; color: #0f172a; font-size: 24px; font-weight: 800; tracking: -0.025em; line-height: 1.25; margin-bottom: 16px;">Hello ${name},</h1>
+              
+              <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 30px;">
+                We are pleased to inform you that your registration request for <strong>${companyName}</strong> on the <strong>Worklance</strong> platform has been officially <strong>approved</strong> by our administration team.
               </p>
               
-              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
-                <h3 style="margin-top: 0; color: #111827; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Your Credentials</h3>
-                <table width="100%" style="font-size: 14px; border-collapse: collapse;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 30px;">
+                <h3 style="margin-top: 0; color: #0f172a; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Your Credentials</h3>
+                
+                <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
                   <tr>
-                    <td style="padding: 6px 0; color: #6b7280; font-weight: 600; width: 120px;">Username:</td>
-                    <td style="padding: 6px 0; color: #111827; font-weight: 700;">${username}</td>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 500; width: 130px;">Username</td>
+                    <td style="padding: 8px 0; color: #0f172a; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">${username}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Temp Password:</td>
-                    <td style="padding: 6px 0; color: #111827; font-weight: 700; font-family: monospace; font-size: 15px; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block;">${tempPassword}</td>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Temporary Password</td>
+                    <td style="padding: 8px 0;">
+                      <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 14px; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.05em;">${tempPassword}</span>
+                    </td>
                   </tr>
                 </table>
               </div>
 
-              <div style="text-align: center; margin-bottom: 30px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login" style="display: inline-block; background: #00aeef; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 174, 239, 0.25);">
-                  Login to Workspace
+              <div style="text-align: center; margin-bottom: 32px;">
+                <a href="${baseUrl}/login" style="display: inline-block; background: #00aeef; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 44px; border-radius: 10px; box-shadow: 0 4px 14px rgba(0, 174, 239, 0.25); transition: background-color 0.2s;">
+                  Access Your Workspace
                 </a>
               </div>
 
-              <p style="font-size: 13px; line-height: 1.5; color: #9ca3af; margin-bottom: 0;">
-                * Please change your password immediately after logging in for security reasons.
-              </p>
+              <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 13px; line-height: 1.5; color: #64748b;">
+                <p style="margin: 0 0 8px 0;">
+                  <strong>Important Security Notice:</strong>
+                </p>
+                <p style="margin: 0;">
+                  For security compliance, you will be prompted to choose a new permanent password immediately upon your first login.
+                </p>
+              </div>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td style="background: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">This is an automated system email from Worklance.</p>
+            <td style="background: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">This is a system-generated onboarding notification.<br>Please do not reply directly to this email.</p>
             </td>
           </tr>
         </table>

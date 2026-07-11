@@ -97,7 +97,17 @@ export async function PUT(request) {
         needsPasswordChange: true
       });
       // 6. Send onboarding email
-      await sendOnboardingEmail(reqDoc.email, reqDoc.name, username, tempPassword, reqDoc.companyName);
+      const emailRes = await sendOnboardingEmail(reqDoc.email, reqDoc.name, username, tempPassword, reqDoc.companyName);
+      if (emailRes && emailRes.success === false) {
+        console.error('Onboarding email sending failed:', emailRes.error);
+        reqDoc.status = status;
+        await reqDoc.save();
+        return NextResponse.json({ 
+          success: true, 
+          data: reqDoc, 
+          emailError: `Onboarding email failed to send: ${emailRes.error?.message || 'SMTP Error'}` 
+        });
+      }
     }
 
     reqDoc.status = status;

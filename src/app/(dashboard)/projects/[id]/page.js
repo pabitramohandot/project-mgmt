@@ -409,6 +409,17 @@ export default function ProjectDetailPage() {
 
       setProject(projectData.project);
       setInvoices(projectData.invoices);
+      if (projectData.companyUsers) {
+        const mappedUsers = projectData.companyUsers
+          .filter((u) => u.role !== "superadmin")
+          .map((u) => ({
+            id: u._id.toString() || u.id || u._id,
+            username: u.username,
+            role: u.role,
+            email: u.email || "",
+          }));
+        setCompanyUsers(mappedUsers);
+      }
       // Set assigned employees from populated project data
       setAssignedEmployees(projectData.project.assignedEmployees || []);
       setSelectedEmployeeIds(
@@ -3003,6 +3014,27 @@ export default function ProjectDetailPage() {
   const taskProgress =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const assignableUsers = (() => {
+    const list = [];
+    const seenUsernames = new Set();
+
+    (companyUsers || []).forEach((u) => {
+      if (u.username && !seenUsernames.has(u.username)) {
+        list.push({ id: u.id || u._id, username: u.username });
+        seenUsernames.add(u.username);
+      }
+    });
+
+    (assignedEmployees || []).forEach((u) => {
+      if (u.username && !seenUsernames.has(u.username)) {
+        list.push({ id: u._id || u.id, username: u.username });
+        seenUsernames.add(u.username);
+      }
+    });
+
+    return list;
+  })();
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -3040,6 +3072,428 @@ export default function ProjectDetailPage() {
       ? Math.min(100, Math.round((paidTotal / (project.finalPrice || 0)) * 100))
       : 0;
   const projectOutstanding = Math.max(0, (project.finalPrice || 0) - paidTotal);
+
+  const handleExportTaskReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      showToast('Popup blocker prevented opening the report. Please allow popups.', 'error');
+      return;
+    }
+
+    const brandColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') || '#00aeef';
+    
+    let tasksToReport = [...employeeFilteredTasks];
+    if (exportFromDate) {
+      tasksToReport = tasksToReport.filter(t => t.dueDate && new Date(t.dueDate) >= new Date(exportFromDate));
+    }
+    if (exportToDate) {
+      const toDateObj = new Date(exportToDate);
+      toDateObj.setHours(23, 59, 59, 999);
+      tasksToReport = tasksToReport.filter(t => t.dueDate && new Date(t.dueDate) <= toDateObj);
+    }
+
+    const totalTasksCount = tasksToReport.length;
+    const completedTasksCount = tasksToReport.filter(t => t.completed).length;
+    const progress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+    const todoCount = tasksToReport.filter(t => t.status === 'Todo').length;
+    const inProgressCount = tasksToReport.filter(t => t.status === 'In Progress').length;
+
+    // Serialise tasks so they can be downloaded as CSV from the print window
+    const tasksJson = JSON.stringify(tasksToReport.map(t => ({
+      name: t.name,
+      assignedTo: t.assignedTo || '—',
+      priority: t.priority || 'Medium',
+      dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-IN') : '—',
+      status: t.status || 'Todo',
+      notes: t.notes || '',
+      assignedBy: t.assignedBy || '—'
+    })));
+
+    const tableRows = [...tasksToReport]
+      .sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      })
+      .map(t => {
+        const priorityColor = t.priority === 'High' ? '#ef4444' : t.priority === 'Low' ? '#10b981' : '#f59e0b';
+        const priorityBg = t.priority === 'High' ? 'rgba(239, 68, 68, 0.1)' : t.priority === 'Low' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)';
+        const statusBadgeClass = t.status === 'Completed' ? 'status-completed' : t.status === 'In Progress' ? 'status-inprogress' : 'status-todo';
+        return `
+          <tr>
+            <td>
+              <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a;">${t.name}</div>
+              ${t.notes ? `<div style="font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: normal; line-height: 1.3;">${t.notes}</div>` : ''}
+            </td>
+            <td>${t.assignedTo || '—'}</td>
+            <td>
+              <span class="badge" style="background: ${priorityBg}; color: ${priorityColor}; border: 1px solid ${priorityColor}33;">
+                <span class="dot" style="background: ${priorityColor};"></span>
+                ${t.priority || 'Medium'}
+              </span>
+            </td>
+            <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-IN') : '—'}</td>
+            <td><span class="badge ${statusBadgeClass}">${t.status || 'Todo'}</span></td>
+            <td>${t.assignedBy || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Task Completion Report - ${project.name}</title>
+        <style>
+          body {
+            font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1e293b;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+          }
+          .no-print-bar {
+            background: #0f172a;
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+          }
+          .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+          }
+          .btn:hover {
+            background: #1d4ed8;
+          }
+          .btn-secondary {
+            background: #334155;
+          }
+          .btn-secondary:hover {
+            background: #1e293b;
+          }
+          .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            border: 1px solid #e2e8f0;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 24px;
+            margin-bottom: 30px;
+          }
+          h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+          }
+          .project-meta {
+            font-size: 0.95rem;
+            color: #64748b;
+            line-height: 1.6;
+          }
+          .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+          }
+          .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            font-weight: 600;
+          }
+          .meta-value {
+            font-size: 0.95rem;
+            color: #334155;
+            font-weight: 500;
+          }
+          .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+          }
+          .stat-card {
+            background: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .stat-num {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .stat-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 4px;
+          }
+          .progress-section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+            margin-bottom: 35px;
+          }
+          .progress-bar-container {
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 8px;
+          }
+          .progress-bar-fill {
+            height: 100%;
+            background: ${brandColor};
+            border-radius: 9999px;
+            width: ${progress}%;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+          }
+          td {
+            padding: 14px 16px;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            vertical-align: top;
+          }
+          .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+          }
+          .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+          }
+          .status-completed {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+          }
+          .status-inprogress {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+          }
+          .status-todo {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+          }
+          .footer {
+            margin-top: 40px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+          }
+          @media print {
+            .no-print-bar {
+              display: none;
+            }
+            body {
+              background: white;
+              margin: 0;
+            }
+            .container {
+              box-shadow: none;
+              border: none;
+              padding: 0;
+              margin: 0;
+              max-width: 100%;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print-bar">
+          <div style="font-weight: 600; font-size: 0.95rem;">Project Task Completion Report</div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="downloadCSV()">Download CSV</button>
+            <button class="btn" onclick="window.print()">Print / Save PDF</button>
+          </div>
+        </div>
+        <div class="container">
+          <div class="header">
+            <div>
+              <h1>${project.name}</h1>
+              <div class="project-meta">
+                <span>Client: <strong>${project.clientName}</strong></span>
+                ${project.siteUrl ? ` &nbsp;•&nbsp; <span>Website: <a href="${project.siteUrl}" target="_blank" style="color: #2563eb; text-decoration: none;">${project.siteUrl}</a></span>` : ''}
+                ${(exportFromDate || exportToDate) ? ` &nbsp;•&nbsp; <span>Date Range: <strong>${exportFromDate ? new Date(exportFromDate).toLocaleDateString('en-IN') : 'Start'} to ${exportToDate ? new Date(exportToDate).toLocaleDateString('en-IN') : 'End'}</strong></span>` : ''}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge ${project.status === 'Completed' ? 'status-completed' : project.status === 'In Progress' ? 'status-inprogress' : 'status-todo'}" style="font-size: 0.85rem; padding: 6px 14px;">
+                ${project.status}
+              </span>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="meta-label">Project Type</div>
+              <div class="meta-value">${(project.projectType || []).join(', ') || '—'}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Start Date</div>
+              <div class="meta-value">${project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN') : '—'}</div>
+            </div>
+          </div>
+
+          <div class="progress-section">
+            <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem;">
+              <span>Overall Task Checklist Progress</span>
+              <span style="color: ${brandColor};">${progress}%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-num">${totalTasksCount}</div>
+              <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #10b981;">
+              <div class="stat-num" style="color: #10b981;">${completedTasksCount}</div>
+              <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #2563eb;">
+              <div class="stat-num" style="color: #2563eb;">${inProgressCount}</div>
+              <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #64748b;">
+              <div class="stat-num" style="color: #475569;">${todoCount}</div>
+              <div class="stat-label">Todo</div>
+            </div>
+          </div>
+
+          <h2 style="font-size: 1.2rem; font-weight: 600; color: #0f172a; margin-top: 30px; margin-bottom: 12px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">
+            Task Checklist Breakdown
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Task Details</th>
+                <th>Assigned To</th>
+                <th>Priority</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Assigned By</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows || '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 30px;">No tasks match the active filters.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <p>Task Completion Report generated dynamically by IONETWEB Workspace Management.</p>
+            <p style="margin-top: 4px; font-size: 0.7rem;">Generated on ${new Date().toLocaleString('en-IN')}</p>
+          </div>
+        </div>
+
+        <script>
+          const tasksData = ${tasksJson};
+          const projectName = "${project.name.replace(/"/g, '\\"')}";
+
+          function downloadCSV() {
+            const headers = ["Task Name", "Assigned To", "Priority", "Due Date", "Status", "Notes", "Assigned By"];
+            const rows = tasksData.map(t => [
+              t.name,
+              t.assignedTo,
+              t.priority,
+              t.dueDate,
+              t.status,
+              t.notes,
+              t.assignedBy
+            ]);
+
+            const csvContent = [
+              headers.join(","),
+              ...rows.map(r => r.map(val => '"' + String(val).replace(/"/g, '""') + '"').join(","))
+            ].join("\\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", projectName.replace(/\s+/g, '_') + "_Task_Completion_Report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   return (
     <>
@@ -8007,23 +8461,77 @@ export default function ProjectDetailPage() {
                         Track milestones and steps to project completion.
                       </p>
                     </div>
-                    {permissions?.project_tasks === "write" && (
+                    <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontWeight: 500 }}>From:</span>
+                        <input
+                          type="date"
+                          value={exportFromDate}
+                          onChange={(e) => setExportFromDate(e.target.value)}
+                          style={{
+                            height: "38px",
+                            padding: "0 0.5rem",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border-color)",
+                            background: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            fontSize: "0.82rem",
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontWeight: 500 }}>To:</span>
+                        <input
+                          type="date"
+                          value={exportToDate}
+                          onChange={(e) => setExportToDate(e.target.value)}
+                          style={{
+                            height: "38px",
+                            padding: "0 0.5rem",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border-color)",
+                            background: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            fontSize: "0.82rem",
+                          }}
+                        />
+                      </div>
                       <button
                         type="button"
-                        className="btn btn-primary"
-                        onClick={() => setIsAddTaskModalOpen(true)}
+                        className="btn btn-secondary"
+                        onClick={handleExportTaskReport}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: "0.4rem",
                           height: "38px",
                           fontSize: "0.82rem",
+                          background: "var(--bg-tertiary)",
+                          border: "1px solid var(--border-color)",
+                          color: "var(--text-primary)",
                         }}
                       >
-                        <Plus size={16} />
-                        <span>Create Task</span>
+                        <ExternalLink size={16} />
+                        <span>Export Report</span>
                       </button>
-                    )}
+                      {permissions?.project_tasks === "write" && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setIsAddTaskModalOpen(true)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                            height: "38px",
+                            fontSize: "0.82rem",
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Create Task</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Progress Indicator */}
@@ -8342,7 +8850,7 @@ export default function ProjectDetailPage() {
                                           }
                                         >
                                           <option value="">Unassigned</option>
-                                          {companyUsers.map((u) => (
+                                          {assignableUsers.map((u) => (
                                             <option
                                               key={u.id}
                                               value={u.username}
@@ -11580,7 +12088,7 @@ export default function ProjectDetailPage() {
                   }
                 >
                   <option value="">Add assignees...</option>
-                  {companyUsers.map((u) => (
+                  {assignableUsers.map((u) => (
                     <option key={u.id} value={u.username}>
                       {u.username}
                     </option>

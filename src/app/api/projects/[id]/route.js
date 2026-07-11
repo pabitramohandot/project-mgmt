@@ -51,7 +51,17 @@ export async function GET(request, context) {
     const finalProject = processProjectStatus(project);
     const invoices = await invoicesPromise;
 
-    return NextResponse.json({ project: finalProject, invoices });
+    // Fetch all users belonging to the project's company to support task assignment
+    const projectCompanyUsers = await User.find({ companyId: project.companyId })
+      .select('username role email whatsapp createdAt')
+      .sort({ username: 1 })
+      .lean();
+
+    return NextResponse.json({ 
+      project: finalProject, 
+      invoices, 
+      companyUsers: projectCompanyUsers 
+    });
   } catch (error) {
     console.error('Project GET API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch project details' }, { status: 500 });
