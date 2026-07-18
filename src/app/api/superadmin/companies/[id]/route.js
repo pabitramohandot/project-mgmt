@@ -30,7 +30,34 @@ export async function GET(request, context) {
       .sort({ username: 1 })
       .lean();
 
-    return NextResponse.json({ company, users });
+    // Fetch stats
+    const projectCount = await Project.countDocuments({ companyId: id });
+    const clientCount = await Client.countDocuments({ companyId: id });
+
+    const ChatSession = (await import("@/models/ChatSession")).default;
+    const chatSessions = await ChatSession.find({ companyId: id }).lean();
+    let aiMessagesCount = 0;
+    chatSessions.forEach(s => {
+      aiMessagesCount += (s.messages || []).length;
+    });
+
+    // Fetch login history
+    const LoginHistory = (await import("@/models/LoginHistory")).default;
+    const loginHistory = await LoginHistory.find({ companyId: id })
+      .sort({ loginTime: -1 })
+      .limit(50)
+      .lean();
+
+    return NextResponse.json({ 
+      company, 
+      users,
+      stats: {
+        projectCount,
+        clientCount,
+        aiMessagesCount
+      },
+      loginHistory
+    });
   } catch (error) {
     console.error("Superadmin Company detail GET API Error:", error);
     return NextResponse.json(

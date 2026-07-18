@@ -4,6 +4,8 @@ import Company from "@/models/Company";
 import User from "@/models/User";
 import { getRequestSession } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { role } = getRequestSession(request);
@@ -17,18 +19,40 @@ export async function GET(request) {
     // Fetch all users who are company admins
     const admins = await User.find({ role: "company_admin" }).select("username companyId").lean();
 
-    // Map company admins to each company
+    // Fetch all users to determine online/live status
+    const allUsers = await User.find().select("companyId isOnline lastActive").lean();
+
+    // Map company admins and live status to each company
     const companiesWithAdmins = companies.map((comp) => {
       const companyAdmins = admins
         .filter((admin) => admin.companyId && admin.companyId.toString() === comp._id.toString())
         .map((admin) => admin.username);
+
+      const companyUsers = allUsers.filter(
+        (u) => u.companyId && u.companyId.toString() === comp._id.toString()
+      );
+      const isLive = companyUsers.some(
+        (u) => u.isOnline && u.lastActive && (Date.now() - new Date(u.lastActive).getTime() < 1 * 60 * 1000)
+      );
+
+      console.log(`[COMPANY STATUS] ${comp.name} (${comp._id}): matched users count: ${companyUsers.length}, isLive: ${isLive}, online states:`, companyUsers.map(u => ({ isOnline: u.isOnline, lastActive: u.lastActive })));
+
       return {
         ...comp,
         admins: companyAdmins,
+        isLive,
       };
     });
 
-    return NextResponse.json(companiesWithAdmins);
+    return new NextResponse(JSON.stringify(companiesWithAdmins), {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Content-Type': 'application/json'
+      }
+    });
   } catch (error) {
     console.error("Superadmin Companies GET API Error:", error);
     return NextResponse.json(

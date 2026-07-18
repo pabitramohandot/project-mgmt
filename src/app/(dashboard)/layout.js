@@ -98,6 +98,15 @@ export default function DashboardLayout({ children }) {
     loadUser();
   }, []);
 
+  // Heartbeat ping to keep session online
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      fetch('/api/auth/me').catch(e => console.error('heartbeat error', e));
+    }, 30000); // ping every 30 seconds
+    return () => clearInterval(interval);
+  }, [user]);
+
   const handleForceReset = async (e) => {
     e.preventDefault();
     if (!newPassword || !confirmPassword) {

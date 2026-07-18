@@ -277,9 +277,9 @@ export default function PendingTasksPage() {
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       {task.title}
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{getShortenedDescription(task.description)}</span>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '300px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span className="line-clamp-2" title={task.description}>{task.description || ''}</span>
                         {task.description && (
                           <button
                             onClick={() => setSelectedFullDescription(task.description)}
@@ -291,10 +291,10 @@ export default function PendingTasksPage() {
                         )}
                       </div>
                     </td>
-                    <td style={{ fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          {getShortenedDescription(getMessageForTask(task))}
+                    <td style={{ fontSize: '0.85rem', maxWidth: '300px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span className="line-clamp-2" style={{ color: 'var(--text-secondary)' }} title={getMessageForTask(task)}>
+                          {getMessageForTask(task)}
                         </span>
                         <button
                           onClick={() => handleCopyMessage(getMessageForTask(task), `${task.type}-${task.id}`)}

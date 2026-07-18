@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, ToggleLeft, ToggleRight, Building, Clock, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Building, Clock, Pencil, Trash2, Search, Eye } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function CompaniesPage() {
@@ -188,7 +188,6 @@ export default function CompaniesPage() {
                   <th>Slug / Route</th>
                   <th>Contact Email</th>
                   <th>Company Admin</th>
-                  <th>Primary Colors</th>
                   <th>Status</th>
                   <th>Created Date</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -199,13 +198,30 @@ export default function CompaniesPage() {
                   <tr key={comp._id}>
                     <td style={{ fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        {comp.logo ? (
-                          <img src={comp.logo} alt={comp.name} style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: 'rgba(255,255,255,0.05)', padding: '2px' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                        ) : (
-                          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--accent-primary-glow)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                            {comp.name.substring(0, 2).toUpperCase()}
-                          </div>
-                        )}
+                        <div style={{ position: 'relative', display: 'inline-flex' }}>
+                          {comp.logo ? (
+                            <img src={comp.logo} alt={comp.name} style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: 'rgba(255,255,255,0.05)', padding: '2px' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                          ) : (
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--accent-primary-glow)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                              {comp.name.substring(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span 
+                            style={{
+                              position: 'absolute',
+                              bottom: '-2px',
+                              right: '-2px',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: comp.isLive ? '#10b981' : '#64748b',
+                              border: '1.5px solid var(--bg-secondary)',
+                              display: 'block',
+                              boxShadow: comp.isLive ? '0 0 0 1px rgba(16, 185, 129, 0.2)' : 'none'
+                            }} 
+                            title={comp.isLive ? "Online" : "Offline"}
+                          />
+                        </div>
                         <span>{comp.name}</span>
                       </div>
                     </td>
@@ -227,12 +243,6 @@ export default function CompaniesPage() {
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '4px', background: comp.brandColors?.primary || '#00aeef', border: '1px solid rgba(255,255,255,0.1)' }}></span>
-                        <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '4px', background: comp.brandColors?.secondary || '#f26522', border: '1px solid rgba(255,255,255,0.1)' }}></span>
-                      </div>
-                    </td>
-                    <td>
                       <span className={`badge ${comp.isActive ? 'badge-completed' : 'badge-planning'}`} style={{ fontSize: '0.7rem' }}>
                         {comp.isActive ? 'Active' : 'Suspended'}
                       </span>
@@ -252,6 +262,10 @@ export default function CompaniesPage() {
                         >
                           {comp.isActive ? <ToggleRight size={24} style={{ color: '#10b981' }} /> : <ToggleLeft size={24} style={{ color: 'var(--text-muted)' }} />}
                         </button>
+                        <Link href={`/superadmin/companies/${comp._id}?view=true`} className="btn btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px' }}>
+                          <Eye size={12} />
+                          <span>View</span>
+                        </Link>
                         <Link href={`/superadmin/companies/${comp._id}`} className="btn btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px' }}>
                           <Pencil size={12} />
                           <span>Edit</span>

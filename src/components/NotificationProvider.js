@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 
 const NotificationContext = createContext(null);
@@ -23,6 +23,19 @@ export default function NotificationProvider({ children }) {
     onConfirm: null,
     onCancel: null,
   });
+
+  // Register service worker for PWA support
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('PWA Service Worker registered successfully with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.error('PWA Service Worker registration failed:', err);
+        });
+    }
+  }, []);
 
   // Toast functions
   const showToast = useCallback((message, type = 'success', duration = 4000) => {

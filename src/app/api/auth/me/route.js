@@ -9,6 +9,8 @@ import GlobalSettings from "@/models/GlobalSettings";
 import { verifyToken, hashPassword } from "@/lib/auth";
 import { getPermissionsForUser, getCategoryForUser } from "@/lib/permissions";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const token = request.cookies.get("admin_token")?.value;
@@ -19,6 +21,27 @@ export async function GET(request) {
     }
 
     await dbConnect();
+    await User.findByIdAndUpdate(payload.userId, {
+      $set: {
+        isOnline: true,
+        lastActive: new Date()
+      }
+    });
+
+    if (payload.loginHistoryId) {
+      try {
+        const LoginHistory = (await import('@/models/LoginHistory')).default;
+        const loginRecord = await LoginHistory.findById(payload.loginHistoryId);
+        if (loginRecord && !loginRecord.logoutTime) {
+          const now = new Date();
+          loginRecord.duration = Math.round((now.getTime() - loginRecord.loginTime.getTime()) / 1000);
+          await loginRecord.save();
+        }
+      } catch (err) {
+        console.error('Failed to update login history duration:', err);
+      }
+    }
+
     const user = await User.findById(payload.userId).populate('customRole').lean();
     if (!user) {
       return NextResponse.json({ loggedIn: false });

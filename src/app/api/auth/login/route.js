@@ -41,12 +41,42 @@ export async function POST(request) {
         );
       }
     }
+    
+    // Update online status in database
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        isOnline: true,
+        lastActive: new Date()
+      }
+    });
+
+    const LoginHistory = (await import('@/models/LoginHistory')).default;
+    const userAgent = request.headers.get('user-agent') || '';
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+
+    let loginHistoryId = null;
+    if (user.companyId) {
+      try {
+        const loginRecord = await LoginHistory.create({
+          userId: user._id,
+          companyId: user.companyId,
+          username: user.username,
+          loginTime: new Date(),
+          userAgent,
+          ipAddress
+        });
+        loginHistoryId = loginRecord._id.toString();
+      } catch (err) {
+        console.error('Failed to create login history record:', err);
+      }
+    }
 
     const token = await signToken({
       username: user.username,
       userId: user._id.toString(),
       companyId: user.companyId ? user.companyId.toString() : null,
       role: user.role,
+      loginHistoryId
     });
 
     const response = NextResponse.json({ success: true, message: 'Logged in successfully' });
