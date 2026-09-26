@@ -36,7 +36,8 @@ const NoteSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Note) {
-  delete mongoose.models.Note;
-}
-export default mongoose.model('Note', NoteSchema);
+NoteSchema.index({ userId: 1, createdAt: -1 });
+NoteSchema.index({ companyId: 1, createdAt: -1 });
+
+export default mongoose.models.Note || mongoose.model('Note', NoteSchema);
+

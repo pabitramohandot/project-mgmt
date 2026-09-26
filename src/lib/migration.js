@@ -6,10 +6,12 @@ import Company from '@/models/Company';
 import User from '@/models/User';
 
 export async function runClientMigration() {
+  if (global.clientMigrationDone) return;
   try {
     // Check if we have clients already
     const clientCount = await Client.countDocuments();
     if (clientCount > 0) {
+      global.clientMigrationDone = true;
       return; // Already migrated or clients exist
     }
 
@@ -19,6 +21,7 @@ export async function runClientMigration() {
     const projects = await Project.find();
     if (projects.length === 0) {
       console.log("No projects found to migrate.");
+      global.clientMigrationDone = true;
       return;
     }
 
@@ -69,6 +72,7 @@ export async function runClientMigration() {
       }
     }
 
+    global.clientMigrationDone = true;
     console.log("Client Migration completed successfully!");
   } catch (error) {
     console.error("Error running client migration:", error);
@@ -76,11 +80,10 @@ export async function runClientMigration() {
 }
 
 export async function runMultiTenancyMigration() {
+  if (global.multiTenancyMigrationDone) return;
   try {
-    console.log("Starting Multi-Tenancy Migration...");
-
-    // 1. Seed Company
-    let company = await Company.findOne({ slug: 'ionetweb' });
+    // Check if seeding/migration is already present
+    let company = await Company.findOne({ slug: 'ionetweb' }).lean();
     if (!company) {
       company = await Company.create({
         name: 'IONETWEB',
@@ -97,8 +100,8 @@ export async function runMultiTenancyMigration() {
       console.log('Seeded IONETWEB company document');
     }
 
-    // 2. Seed Super Admin User
-    let adminUser = await User.findOne({ role: 'superadmin' });
+    // Seed Super Admin User if missing
+    let adminUser = await User.findOne({ role: 'superadmin' }).lean();
     if (!adminUser) {
       const { hashPassword } = await import('./auth');
       const expectedUsername = process.env.ADMIN_USERNAME || 'admin';
@@ -114,20 +117,17 @@ export async function runMultiTenancyMigration() {
       console.log('Seeded Super Admin user in DB:', adminUser.username);
     }
 
-    // 3. Backfill companyId to existing documents
-    const projectRes = await Project.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
-    console.log(`Backfilled companyId for ${projectRes.modifiedCount || 0} projects`);
+    // Only backfill if documents missing companyId exist
+    const unmappedProject = await Project.exists({ companyId: { $exists: false } });
+    if (unmappedProject) {
+      await Project.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
+      await Client.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
+      await Invoice.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
+      await Credential.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
+    }
 
-    const clientRes = await Client.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
-    console.log(`Backfilled companyId for ${clientRes.modifiedCount || 0} clients`);
-
-    const invoiceRes = await Invoice.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
-    console.log(`Backfilled companyId for ${invoiceRes.modifiedCount || 0} invoices`);
-
-    const credentialRes = await Credential.updateMany({ companyId: { $exists: false } }, { $set: { companyId: company._id } });
-    console.log(`Backfilled companyId for ${credentialRes.modifiedCount || 0} credentials`);
-
-    console.log("Multi-Tenancy Migration completed successfully!");
+    global.multiTenancyMigrationDone = true;
+    console.log("Multi-Tenancy Migration check completed.");
   } catch (error) {
     console.error("Error running multi-tenancy migration:", error);
   }

@@ -13,7 +13,15 @@ export async function GET(request) {
     }
 
     await dbConnect();
-    const users = await User.find()
+    const { searchParams } = new URL(request.url);
+    const filterCompanyId = searchParams.get('companyId');
+
+    let query = {};
+    if (filterCompanyId) {
+      query.companyId = filterCompanyId;
+    }
+
+    const users = await User.find(query)
       .populate('companyId', 'name slug')
       .populate('customRole', 'name')
       .sort({ createdAt: -1 })
@@ -36,7 +44,25 @@ export async function POST(request) {
     await dbConnect();
     const data = await request.json();
 
-    let { username, password, role: targetRole, companyId, customRole } = data;
+    let {
+      username,
+      password,
+      role: targetRole,
+      companyId,
+      customRole,
+      email,
+      whatsapp,
+      employeeNo,
+      designation,
+      department,
+      location,
+      bankName,
+      bankAccountNo,
+      panNumber,
+      pfUan,
+      joiningDate,
+      salary
+    } = data;
 
     if (role === 'company_admin') {
       companyId = adminCompanyId;
@@ -58,6 +84,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Company assignment is required for non-superadmin users' }, { status: 400 });
     }
 
+    let categoryName = 'Employee';
+
     // Enforce role and creation limitations for company_admin
     if (role === 'company_admin') {
       if (!customRole) {
@@ -67,6 +95,7 @@ export async function POST(request) {
       if (!roleDoc || roleDoc.isSystem) {
         return NextResponse.json({ error: 'Company administrators can only assign custom roles' }, { status: 400 });
       }
+      categoryName = roleDoc.name;
 
       // Enforce Employee Limit
       const companyDoc = await Company.findById(companyId).lean();
@@ -81,12 +110,61 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    let parsedSalary = {
+      basicSalary: 0,
+      allowances: 0,
+      deductions: 0,
+      netSalary: 0,
+      currency: 'INR',
+      customEarnings: [],
+      customDeductions: []
+    };
+
+    if (salary) {
+      const basicSalary = Number(salary.basicSalary) || 0;
+      const customEarnings = Array.isArray(salary.customEarnings)
+        ? salary.customEarnings.map(i => ({ label: i.label || '', amount: Number(i.amount) || 0 }))
+        : [];
+      const customDeductions = Array.isArray(salary.customDeductions)
+        ? salary.customDeductions.map(i => ({ label: i.label || '', amount: Number(i.amount) || 0 }))
+        : [];
+
+      const sumEarnings = customEarnings.reduce((s, i) => s + (i.amount || 0), 0);
+      const allowances = salary.allowances !== undefined ? Number(salary.allowances) : sumEarnings;
+      const sumDeductions = customDeductions.reduce((s, i) => s + (i.amount || 0), 0);
+      const deductions = salary.deductions !== undefined ? Number(salary.deductions) : sumDeductions;
+      const netSalary = Math.max(0, (basicSalary + allowances) - deductions);
+
+      parsedSalary = {
+        basicSalary,
+        allowances,
+        deductions,
+        netSalary,
+        currency: salary.currency || 'INR',
+        customEarnings,
+        customDeductions
+      };
+    }
+
     const newUser = await User.create({
       username: username.trim().toLowerCase(),
       password: hashedPassword,
       role: targetRole,
+      category: categoryName,
       companyId: targetRole === 'superadmin' ? null : companyId,
       customRole: targetRole === 'company_user' ? (customRole || null) : null,
+      email: email ? email.trim().toLowerCase() : '',
+      whatsapp: whatsapp ? whatsapp.trim() : '',
+      employeeNo: employeeNo ? employeeNo.trim() : '',
+      designation: designation ? designation.trim() : '',
+      department: department ? department.trim() : '',
+      location: location ? location.trim() : '',
+      bankName: bankName ? bankName.trim() : '',
+      bankAccountNo: bankAccountNo ? bankAccountNo.trim() : '',
+      panNumber: panNumber ? panNumber.trim() : '',
+      pfUan: pfUan ? pfUan.trim() : '',
+      joiningDate: joiningDate || '',
+      salary: parsedSalary
     });
 
     return NextResponse.json({

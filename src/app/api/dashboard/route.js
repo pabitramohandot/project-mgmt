@@ -7,6 +7,7 @@ import { processProjectStatus } from "@/lib/projectUtils";
 
 import User from "@/models/User";
 import Client from "@/models/Client";
+import Attendance from "@/models/Attendance";
 import { getCategoryForUser } from "@/lib/permissions";
 
 export async function GET(request) {
@@ -56,7 +57,7 @@ export async function GET(request) {
 
         employeeTasks.push(...assignedTasks);
 
-        // Check overdue tasks
+        // Check overdue and pending tasks strictly for this employee
         for (const t of assignedTasks) {
           if (!t.completed && t.dueDate && new Date(t.dueDate) < empNow) {
             overdueTasks.push(t);
@@ -65,8 +66,27 @@ export async function GET(request) {
               type: "project_pending",
               title: `Overdue Task: ${t.name}`,
               description: `Task in project "${proj.name}" is overdue (due ${new Date(t.dueDate).toLocaleDateString("en-IN")}). Please complete it.`,
-              link: `/projects/${proj._id}`,
+              link: `/tasks?search=${encodeURIComponent(t.name)}`,
               date: t.dueDate,
+              taskName: t.name,
+              projectId: proj._id,
+              projectName: proj.name,
+              assignedTo: t.assignedTo,
+              isOverdue: true,
+            });
+          } else if (!t.completed && t.status !== "Completed") {
+            pendingTasks.push({
+              id: t._id,
+              type: "project_pending",
+              title: `Pending Task: ${t.name}`,
+              description: `Task in project "${proj.name}" is pending${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString("en-IN")})` : ""}. Please complete it.`,
+              link: `/tasks?search=${encodeURIComponent(t.name)}`,
+              date: t.dueDate || new Date(),
+              taskName: t.name,
+              projectId: proj._id,
+              projectName: proj.name,
+              assignedTo: t.assignedTo,
+              isOverdue: false,
             });
           }
         }
@@ -94,8 +114,10 @@ export async function GET(request) {
               type: "calendar_pending",
               title: `Post Content Pending: ${proj.name}`,
               description: `Scheduled post for "${post.topic || "Untitled"}" (${post.postType || "Static"}) on ${postDate.toLocaleDateString("en-IN")} has status "${post.status}".`,
-              link: `/projects/${proj._id}`,
+              link: `/tasks`,
               date: post.scheduledDate,
+              projectName: proj.name,
+              assignedTo: post.assignedTo,
             });
           }
         }
@@ -130,15 +152,31 @@ export async function GET(request) {
 
       pendingTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+      const Holiday = (await import("@/models/Holiday")).default;
+      const holidays = await Holiday.find({ companyId })
+        .sort({ date: 1 })
+        .lean();
+
       return NextResponse.json({
         category: "Employee",
         username: user.username,
         projects: employeeProjects,
+        allTimeProjects: allProjects.map((proj) => {
+          // Filter tasks specifically assigned to the employee
+          const assignedTasks = (proj.tasks || []).filter(
+            (t) => t.assignedTo === user.username,
+          );
+          return {
+            ...proj,
+            tasks: assignedTasks,
+          };
+        }),
         tasks: employeeTasks,
         overdueTasks,
         calendarPosts,
         credentials,
         pendingTasks,
+        holidays,
       });
     }
 
@@ -163,7 +201,15 @@ export async function GET(request) {
     } else if (timeframe === "monthly") {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       startLimit = startOfMonth;
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const endOfMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
       endLimit = endOfMonth;
     } else if (timeframe === "yearly") {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -190,140 +236,154 @@ export async function GET(request) {
 
       projectQuery.$or = [
         { startDate: dateRangeFilter },
-        { createdAt: dateRangeFilter }
+        { createdAt: dateRangeFilter },
       ];
       invoiceQuery.$or = [
         { issueDate: dateRangeFilter },
-        { createdAt: dateRangeFilter }
+        { createdAt: dateRangeFilter },
       ];
       clientQuery.createdAt = dateRangeFilter;
     }
 
-    // Background update category statuses to Pending if overdue
-    Project.updateMany(
-      {
-        companyId,
-        projectType: "Development",
-        devEndDate: { $lt: now },
-        devStatus: { $nin: ["Completed", "Pending"] },
-      },
-      { $set: { devStatus: "Pending", status: "Pending" } },
-    ).catch((err) =>
-      console.error("Error auto-updating devStatus in dashboard:", err),
-    );
+    const isFiltered = !!(startLimit || endLimit);
 
-    Project.updateMany(
-      {
-        companyId,
-        projectType: "360 Deg Digital Marketing",
-        marketingEndDate: { $lt: now },
-        marketingStatus: { $nin: ["Completed", "Pending"] },
-      },
-      { $set: { marketingStatus: "Pending", status: "Pending" } },
-    ).catch((err) =>
-      console.error("Error auto-updating marketingStatus in dashboard:", err),
-    );
-
-    Project.updateMany(
-      {
-        companyId,
-        projectType: "Meta / Google Ads",
-        adsDate: { $lt: now },
-        adsStatus: { $nin: ["Completed", "Pending"] },
-      },
-      { $set: { adsStatus: "Pending", status: "Pending" } },
-    ).catch((err) =>
-      console.error("Error auto-updating adsStatus in dashboard:", err),
-    );
-
-    Project.updateMany(
-      {
-        companyId,
-        projectType: "Design",
-        designEndDate: { $lt: now },
-        designStatus: { $nin: ["Completed", "Pending"] },
-      },
-      { $set: { designStatus: "Pending", status: "Pending" } },
-    ).catch((err) =>
-      console.error("Error auto-updating designStatus in dashboard:", err),
-    );
-
-    // Fetch all projects, invoices, clients, and users in parallel using lean() for maximum performance
-    const [allProjects, allTimeProjectsRaw, allInvoices, allClients, allUsers] = await Promise.all([
+    // Fetch all projects, invoices, clients, users, and recent attendance in parallel using lean() for maximum performance
+    const [
+      allProjects,
+      allTimeProjectsRaw,
+      allInvoices,
+      allClients,
+      allUsers,
+      allAttendance,
+    ] = await Promise.all([
       Project.find(projectQuery).sort({ createdAt: -1 }).lean(),
-      Project.find({ companyId }).sort({ createdAt: -1 }).lean(),
+      isFiltered
+        ? Project.find({ companyId }).sort({ createdAt: -1 }).lean()
+        : Promise.resolve(null),
       Invoice.find(invoiceQuery).sort({ createdAt: -1 }).lean(),
       Client.find(clientQuery).sort({ createdAt: -1 }).lean(),
       User.find({
-        $or: [
-          { companyId },
-          { role: 'superadmin' }
-        ]
-      }).populate("customRole").lean(),
+        $or: [{ companyId }, { role: "superadmin" }],
+      })
+        .populate("customRole")
+        .lean(),
+      Attendance.find({ companyId }).sort({ clockIn: -1 }).limit(100).lean(),
     ]);
+
+    const actualAllTimeProjectsRaw = isFiltered
+      ? allTimeProjectsRaw
+      : allProjects;
 
     // Compute dynamic project status updates for current response (since DB update runs in background)
     const processedProjects = allProjects.map((proj) =>
-      processProjectStatus(proj)
+      processProjectStatus(proj),
     );
 
-    const allTimeProjects = allTimeProjectsRaw.map((proj) =>
-      processProjectStatus(proj)
+    const allTimeProjects = actualAllTimeProjectsRaw.map((proj) =>
+      processProjectStatus(proj),
     );
+
+    // Extract all company tasks across all projects with full details
+    const allCompanyTasks = [];
+    for (const proj of allTimeProjects) {
+      for (const t of proj.tasks || []) {
+        allCompanyTasks.push({
+          ...t,
+          projectId: proj._id,
+          projectName: proj.name,
+          clientName: proj.clientName,
+        });
+      }
+    }
 
     // Client stats
     const totalClients = allClients.length;
-    const activeClientsCount = allClients.filter(c => c.status !== 'Inactive').length;
-    const inactiveClientsCount = allClients.filter(c => c.status === 'Inactive').length;
+    const activeClientsCount = allClients.filter(
+      (c) => c.status !== "Inactive",
+    ).length;
+    const inactiveClientsCount = allClients.filter(
+      (c) => c.status === "Inactive",
+    ).length;
 
     // Employee stats
     // Filter company users (employees) — category is computed, not stored; use role field
-    const companyUsersOnly = allUsers.filter(u => u.role !== 'superadmin');
-    
-    const employeeStats = companyUsersOnly.map(emp => {
+    const companyUsersOnly = allUsers.filter((u) => u.role !== "superadmin");
+
+    const employeeStats = companyUsersOnly.map((emp) => {
       let assignedTasksCount = 0;
       let completedTasksCount = 0;
+      let totalWorkMinutes = 0;
       const allTasksList = [];
       for (const proj of allTimeProjects) {
-        for (const t of (proj.tasks || [])) {
+        for (const t of proj.tasks || []) {
           if (t.assignedTo === emp.username) {
             assignedTasksCount++;
             if (t.completed) {
               completedTasksCount++;
             }
+            totalWorkMinutes += t.totalTimeSpent || 0;
             allTasksList.push({
+              _id: t._id,
+              name: t.name,
               taskName: t.name,
               projectName: proj.name,
               projectId: proj._id,
               dueDate: t.dueDate || null,
-              priority: t.priority || 'Medium',
+              priority: t.priority || "Medium",
               completed: t.completed,
-              status: t.status
+              status: t.status || (t.completed ? "Completed" : "Todo"),
+              notes: t.notes || "",
+              assignedTo: t.assignedTo || emp.username,
+              assignedBy: t.assignedBy || "",
+              timeLogs: t.timeLogs || [],
+              totalTimeSpent: t.totalTimeSpent || 0,
             });
           }
         }
       }
+
+      // Filter attendance records specifically belonging to this employee
+      const empAttendance = allAttendance.filter(
+        (att) => String(att.userId) === String(emp._id),
+      );
+
       return {
         _id: emp._id,
         username: emp.username,
         email: emp.email,
-        role: emp.customRole?.name || emp.role || 'Employee',
+        role: emp.customRole?.name || emp.role || "Employee",
         assignedTasks: assignedTasksCount,
         completedTasks: completedTasksCount,
         pendingTasksCount: assignedTasksCount - completedTasksCount,
+        totalWorkHours: Math.round(totalWorkMinutes / 60),
         allTasks: allTasksList,
+        attendanceLogs: empAttendance.slice(0, 10).map((att) => ({
+          date: att.date,
+          clockIn: att.clockIn,
+          clockOut: att.clockOut,
+          status: att.status,
+          totalWorkMinutes: att.totalWorkMinutes || 0,
+        })),
       };
     });
 
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfCurrentMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    const monthlyEmployeeStats = companyUsersOnly.map(emp => {
+    const monthlyEmployeeStats = companyUsersOnly.map((emp) => {
       let assignedTasksCount = 0;
       let completedTasksCount = 0;
       const allTasksList = [];
       for (const proj of allTimeProjects) {
-        for (const t of (proj.tasks || [])) {
+        for (const t of proj.tasks || []) {
           if (t.assignedTo === emp.username) {
             let isCurrentMonth = false;
             if (t.dueDate) {
@@ -348,9 +408,9 @@ export async function GET(request) {
                 projectName: proj.name,
                 projectId: proj._id,
                 dueDate: t.dueDate || null,
-                priority: t.priority || 'Medium',
+                priority: t.priority || "Medium",
                 completed: t.completed,
-                status: t.status
+                status: t.status,
               });
             }
           }
@@ -360,7 +420,7 @@ export async function GET(request) {
         _id: emp._id,
         username: emp.username,
         email: emp.email,
-        role: emp.customRole?.name || emp.role || 'Employee',
+        role: emp.customRole?.name || emp.role || "Employee",
         assignedTasks: assignedTasksCount,
         completedTasks: completedTasksCount,
         pendingTasksCount: assignedTasksCount - completedTasksCount,
@@ -418,14 +478,15 @@ export async function GET(request) {
 
     // 1.5. Overdue Invoices (Not paid by due date)
     const overdueInvoices = allInvoices.filter(
-      (inv) => inv.status !== "Paid" && inv.dueDate && new Date(inv.dueDate) < now
+      (inv) =>
+        inv.status !== "Paid" && inv.dueDate && new Date(inv.dueDate) < now,
     );
     for (const inv of overdueInvoices) {
       pendingTasks.push({
         id: inv._id,
         type: "invoice_overdue",
         title: `Overdue Payment: ${inv.invoiceNumber}`,
-        description: `Invoice for ${inv.clientName} has not been paid. Due date was ${new Date(inv.dueDate).toLocaleDateString("en-IN")}. Total amount: ₹${inv.total ? inv.total.toLocaleString('en-IN') : 0}.`,
+        description: `Invoice for ${inv.clientName} has not been paid. Due date was ${new Date(inv.dueDate).toLocaleDateString("en-IN")}. Total amount: ₹${inv.total ? inv.total.toLocaleString("en-IN") : 0}.`,
         link: `/invoices/${inv._id}`,
         date: inv.dueDate,
       });
@@ -591,8 +652,13 @@ export async function GET(request) {
             type: "project_pending",
             title: `Overdue Task: ${t.name} (${t.assignedTo || "Unassigned"})`,
             description: `Task in project "${proj.name}" assigned to ${t.assignedTo || "unassigned"} is overdue (due ${new Date(t.dueDate).toLocaleDateString("en-IN")}).`,
-            link: `/projects/${proj._id}`,
+            link: `/tasks?search=${encodeURIComponent(t.name)}`,
             date: t.dueDate,
+            taskName: t.name,
+            projectId: proj._id,
+            projectName: proj.name,
+            assignedTo: t.assignedTo,
+            isOverdue: true,
           });
         }
       }
@@ -602,10 +668,11 @@ export async function GET(request) {
     pendingTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Calculate actual billing performance data
-    const chartInvoices = await Invoice.find({
-      companyId,
-      status: "Paid",
-    }).lean();
+    const chartInvoices = isFiltered
+      ? await Invoice.find({ companyId, status: "Paid" })
+          .select("issueDate createdAt total")
+          .lean()
+      : allInvoices.filter((inv) => inv.status === "Paid");
 
     // 1. Monthly (Jan to Dec of the current year)
     const monthlyData = [];
@@ -617,7 +684,10 @@ export async function GET(request) {
       let value = 0;
       for (const inv of chartInvoices) {
         const invDate = new Date(inv.issueDate || inv.createdAt);
-        if (invDate.getFullYear() === currentYear && invDate.getMonth() === month) {
+        if (
+          invDate.getFullYear() === currentYear &&
+          invDate.getMonth() === month
+        ) {
           value += inv.total || 0;
         }
       }
@@ -687,6 +757,7 @@ export async function GET(request) {
       },
       allProjects: processedProjects,
       allTimeProjects,
+      tasks: allCompanyTasks,
       recentProjects,
       recentInvoices,
       recentClients: allClients.slice(0, 5),

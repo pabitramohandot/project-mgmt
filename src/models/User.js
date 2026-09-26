@@ -67,14 +67,43 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    employeeNo: { type: String, default: '' },
+    designation: { type: String, default: '' },
+    department: { type: String, default: '' },
+    location: { type: String, default: '' },
+    bankName: { type: String, default: '' },
+    bankAccountNo: { type: String, default: '' },
+    panNumber: { type: String, default: '' },
+    pfUan: { type: String, default: '' },
+    joiningDate: { type: String, default: '' },
+    salary: {
+      basicSalary: { type: Number, default: 0 },
+      allowances: { type: Number, default: 0 },
+      deductions: { type: Number, default: 0 },
+      netSalary: { type: Number, default: 0 },
+      currency: { type: String, default: 'INR' },
+      customEarnings: [
+        {
+          label: { type: String, default: '' },
+          amount: { type: Number, default: 0 },
+        },
+      ],
+      customDeductions: [
+        {
+          label: { type: String, default: '' },
+          amount: { type: Number, default: 0 },
+        },
+      ],
+    },
   },
   {
     timestamps: true,
   }
 );
 
-if (mongoose.models.User) {
-  delete mongoose.models.User;
-}
+UserSchema.index({ companyId: 1, role: 1 });
+UserSchema.index({ email: 1 });
+UserSchema.index({ companyId: 1, username: 1 });
 
-export default mongoose.model('User', UserSchema);
+export default mongoose.models.User || mongoose.model('User', UserSchema);
+

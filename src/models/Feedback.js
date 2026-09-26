@@ -49,8 +49,7 @@ const FeedbackSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Feedback) {
-  delete mongoose.models.Feedback;
-}
+FeedbackSchema.index({ companyId: 1, createdAt: -1 });
 
-export default mongoose.model('Feedback', FeedbackSchema);
+export default mongoose.models.Feedback || mongoose.model('Feedback', FeedbackSchema);
+

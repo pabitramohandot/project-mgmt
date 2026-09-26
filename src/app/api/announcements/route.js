@@ -1,13 +1,27 @@
 import dbConnect from '@/lib/db';
 import Client from '@/models/Client';
+import User from '@/models/User';
 import { sendAnnouncementEmail } from '@/lib/email';
 import { NextResponse } from 'next/server';
 import { getRequestSession } from '@/lib/auth';
+import { getCategoryForUser } from '@/lib/permissions';
 
 export async function POST(request) {
   try {
     await dbConnect();
-    const { companyId } = getRequestSession(request);
+    const session = getRequestSession(request);
+    if (!session || !session.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { companyId, userId, role } = session;
+    const currentUser = await User.findById(userId).populate('customRole').lean();
+    const category = await getCategoryForUser(currentUser);
+
+    if (category === 'Employee' && role !== 'company_admin' && role !== 'superadmin') {
+      return NextResponse.json({ error: 'Access Denied. Announcements broadcasting is restricted to Management & Admin.' }, { status: 403 });
+    }
+
     const data = await request.json();
 
     const { recipientType, recipients, subject, message, channels } = data;

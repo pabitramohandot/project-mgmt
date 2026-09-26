@@ -32,8 +32,8 @@ const NotificationSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Notification) {
-  delete mongoose.models.Notification;
-}
+NotificationSchema.index({ companyId: 1, createdAt: -1 });
+NotificationSchema.index({ companyId: 1, isRead: 1 });
 
-export default mongoose.model('Notification', NotificationSchema);
+export default mongoose.models.Notification || mongoose.model('Notification', NotificationSchema);
+

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from './lib/auth';
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // 1. Bypass static assets, public assets, and auth routes
@@ -67,6 +67,6 @@ export async function middleware(request) {
 }
 
 export const config = {
-  // Run middleware on all paths except static assets
+  // Run proxy on all paths except static assets
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

@@ -6,6 +6,7 @@ import { getRequestSession } from './auth';
 // Sensible fallback permissions for users without custom roles (Employee)
 export const DEFAULT_USER_PERMISSIONS = {
   ai_agent: 'read',
+  crm: 'write',
   clients: 'none',
   invoices: 'none',
   credentials: 'read',
@@ -28,6 +29,7 @@ export const DEFAULT_USER_PERMISSIONS = {
 // Management default read-only permissions
 export const MANAGEMENT_PERMISSIONS = {
   ai_agent: 'read',
+  crm: 'write',
   clients: 'read',
   invoices: 'read',
   credentials: 'read',
@@ -49,6 +51,7 @@ export const MANAGEMENT_PERMISSIONS = {
 
 export const ADMIN_PERMISSIONS = {
   ai_agent: 'write',
+  crm: 'write',
   clients: 'write',
   invoices: 'write',
   credentials: 'write',
@@ -123,8 +126,8 @@ export async function ensureSystemRoles() {
 export async function getPermissionsForUser(user) {
   if (!user) return null;
 
-  // Superadmin gets full write access to everything
-  if (user.role === 'superadmin') {
+  // Superadmin & Company Admin get full admin permissions
+  if (user.role === 'superadmin' || user.role === 'company_admin') {
     return ADMIN_PERMISSIONS;
   }
 
@@ -137,6 +140,7 @@ export async function getPermissionsForUser(user) {
       const p = roleDoc.permissions || {};
       return {
         ai_agent: p.ai_agent || 'none',
+        crm: p.crm || 'write',
         clients: p.clients || 'none',
         invoices: p.invoices || 'none',
         credentials: p.credentials || 'none',
@@ -157,39 +161,8 @@ export async function getPermissionsForUser(user) {
     }
   }
 
-  // Otherwise check database for seeded system roles: "Company Admin" or "Company User (Default)"
-  const systemRoleName = user.role === 'company_admin' ? 'Company Admin' : 'Company User (Default)';
-  let dbRole = await Role.findOne({ name: systemRoleName }).lean();
-  if (!dbRole) {
-    await ensureSystemRoles();
-    dbRole = await Role.findOne({ name: systemRoleName }).lean();
-  }
-
-  if (dbRole) {
-    const p = dbRole.permissions || {};
-    return {
-      ai_agent: p.ai_agent || 'none',
-      clients: p.clients || 'none',
-      invoices: p.invoices || 'none',
-      credentials: p.credentials || 'none',
-      pending_tasks: p.pending_tasks || 'none',
-      announcements: p.announcements || 'none',
-      branding: p.branding || 'none',
-      reminders: p.reminders || 'none',
-      google_meet: p.google_meet || 'none',
-      project_details: p.project_details || 'none',
-      project_credential: p.project_credential || 'none',
-      project_links: p.project_links || 'none',
-      project_pricing: p.project_pricing || 'none',
-      project_invoice: p.project_invoice || 'none',
-      project_status: p.project_status || 'none',
-      project_tasks: p.project_tasks || 'none',
-      project_calendar: p.project_calendar || 'none',
-    };
-  }
-
-  // Fallback default permissions
-  return user.role === 'company_admin' ? ADMIN_PERMISSIONS : DEFAULT_USER_PERMISSIONS;
+  // Default company user permissions (avoids DB query for seeded system role)
+  return DEFAULT_USER_PERMISSIONS;
 }
 
 /**
@@ -197,7 +170,7 @@ export async function getPermissionsForUser(user) {
  */
 export async function getCategoryForUser(user) {
   if (!user) return 'Employee';
-  if (user.role === 'superadmin') return 'Admin';
+  if (user.role === 'superadmin' || user.role === 'company_admin') return 'Admin';
 
   if (user.role === 'company_user' && user.customRole) {
     const roleDoc = typeof user.customRole === 'object'
@@ -208,17 +181,7 @@ export async function getCategoryForUser(user) {
     }
   }
 
-  // Fallback defaults based on user.role
-  if (user.role === 'company_admin') return 'Admin';
-  
-  // Look up seeded role for default category in DB if needed, or return Employee
-  const systemRoleName = user.role === 'company_admin' ? 'Company Admin' : 'Company User (Default)';
-  const dbRole = await Role.findOne({ name: systemRoleName }).lean();
-  if (dbRole && dbRole.category) {
-    return dbRole.category;
-  }
-
-  return user.role === 'company_admin' ? 'Admin' : 'Employee';
+  return 'Employee';
 }
 
 /**

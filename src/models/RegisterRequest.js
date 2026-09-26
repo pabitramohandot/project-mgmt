@@ -44,8 +44,5 @@ const RegisterRequestSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.RegisterRequest) {
-  delete mongoose.models.RegisterRequest;
-}
+export default mongoose.models.RegisterRequest || mongoose.model('RegisterRequest', RegisterRequestSchema);
 
-export default mongoose.model('RegisterRequest', RegisterRequestSchema);

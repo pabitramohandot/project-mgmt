@@ -54,7 +54,7 @@ export async function POST(request) {
       permissions: permissions || {},
     });
 
-    return NextResponse.json({ success: true, role: newRole }, { status: 201 });
+    return NextResponse.json({ success: true, role: newRole.toJSON() }, { status: 201 });
   } catch (error) {
     console.error('Superadmin Roles POST API Error:', error);
     return NextResponse.json({ error: 'Failed to create role' }, { status: 500 });

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp, Bell, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileSpreadsheet, LogOut, Users, AlertTriangle, Megaphone, X, Key, Sun, Moon, ChevronLeft, ChevronRight, Building, Palette, ShieldCheck, User, MessageSquare, Bot, Brain, Shield, ClipboardList, TrendingUp, Bell, ChevronDown, ChevronUp, Calendar, CreditCard, FileText, Rocket, Target, Handshake, PhoneCall, Contact, PieChart, Layers } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, user, company }) {
@@ -10,7 +10,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState('light');
-  const [isOrgExpanded, setIsOrgExpanded] = useState(true);
+  const [expandedSubmenus, setExpandedSubmenus] = useState({});
+
+  const toggleSubmenu = (menuName) => {
+    setExpandedSubmenus(prev => ({
+      ...prev,
+      [menuName]: !prev[menuName]
+    }));
+  };
 
   useEffect(() => {
     const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -46,9 +53,36 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'AI Agent', path: '/ai-agents', icon: Brain, tag: 'Featured' },
+    {
+      name: 'CRM',
+      icon: Target,
+      isSubmenu: true,
+      submenu: [
+        { name: 'CRM Dashboard', path: '/crm/dashboard', icon: PieChart },
+        { name: 'Leads Board', path: '/crm/leads', icon: Layers },
+        { name: 'Deals Pipeline', path: '/crm/deals', icon: Handshake },
+        { name: 'Activities', path: '/crm/activities', icon: PhoneCall },
+        { name: 'Contacts', path: '/crm/contacts', icon: Contact },
+      ]
+    },
+    {
+      name: 'HR Management',
+      icon: Users,
+      isSubmenu: true,
+      submenu: [
+        { name: 'HR Dashboard', path: '/hr-dashboard', icon: LayoutDashboard },
+        { name: 'Onboarding', path: '/onboarding', icon: Rocket },
+        { name: 'Employees', path: '/employees', icon: Users },
+        { name: 'Attendance', path: '/attendance', icon: ClipboardList },
+        { name: 'Leave Management', path: '/leaves', icon: Calendar },
+        { name: 'Payroll', path: '/payroll', icon: CreditCard },
+        { name: 'Holidays', path: '/holidays', icon: Sun },
+        { name: 'Performance', path: '/performance', icon: TrendingUp },
+        { name: 'Documents', path: '/documents', icon: FileText },
+      ]
+    },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'All Tasks', path: '/tasks', icon: ClipboardList },
-    { name: 'Performance', path: '/performance', icon: TrendingUp },
     { name: 'Clients', path: '/clients', icon: Users },
     { name: 'Invoices', path: '/invoices', icon: FileSpreadsheet },
     { name: 'Credentials', path: '/credentials', icon: Key },
@@ -81,14 +115,37 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { name: 'Account Settings', path: '/settings/profile', icon: User }
   );
 
-  const filteredMenuItems = menuItems.filter(item => {
-    if (user?.role === 'superadmin') return true;
+  // Auto-expand any submenu if an active child route is loaded
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.isSubmenu && item.submenu?.some(s => pathname.startsWith(s.path))) {
+        setExpandedSubmenus(prev => ({ ...prev, [item.name]: true }));
+      }
+    });
+  }, [pathname]);
 
-    // Hide Clients, Invoices, Branding, Account Settings for Employee category
+  const filteredMenuItems = menuItems.map(item => {
+    if (!item.isSubmenu) return item;
+    const filteredSub = item.submenu.filter(subItem => {
+      if (user?.role === 'superadmin') return true;
+      if (user?.category === 'Employee') {
+        if (subItem.path === '/employees') return false;
+        if (subItem.path === '/hr-dashboard') return false;
+        if (subItem.path === '/onboarding') return false;
+      }
+      return true;
+    });
+    return { ...item, submenu: filteredSub };
+  }).filter(item => {
+    if (user?.role === 'superadmin') return true;
+    if (item.isSubmenu && item.submenu.length === 0) return false;
+
+    // Hide Clients, Invoices, Branding, Account Settings, Announcements for Employee category
     if (user?.category === 'Employee') {
       if (
         item.path === '/clients' || 
         item.path === '/invoices' || 
+        item.path === '/announcements' || 
         item.path === '/settings/profile'
       ) {
         return false;
@@ -96,12 +153,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     }
 
     const p = user?.permissions || {};
+    if (item.name === 'CRM' || item.path?.startsWith('/crm')) return p.crm && p.crm !== 'none';
     if (item.path === '/ai-agents') return p.ai_agent && p.ai_agent !== 'none';
     if (item.path === '/clients') return p.clients && p.clients !== 'none';
     if (item.path === '/invoices') return p.invoices && p.invoices !== 'none';
     if (item.path === '/credentials') return p.credentials && p.credentials !== 'none';
     if (item.path === '/tasks') return p.project_tasks && p.project_tasks !== 'none';
-    if (item.path === '/performance') return user?.role === 'company_admin' || user?.role === 'superadmin';
+    if (item.path === '/performance') return true; // Accessible to all employees/managers
     if (item.path === '/pending-tasks') return p.pending_tasks && p.pending_tasks !== 'none';
     if (item.path === '/announcements') return p.announcements && p.announcements !== 'none';
     if (item.path === '/reminders') return p.reminders && p.reminders !== 'none';
@@ -177,77 +235,97 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   });
                 }
 
+                const MainIcon = item.icon;
+                const isExpanded = !!expandedSubmenus[item.name];
                 const isAnySubActive = item.submenu.some(subItem => pathname.startsWith(subItem.path));
                 return (
-                  <li key={item.name} className="menu-item-group" style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.25rem' }}>
+                  <li key={item.name} className="menu-item-group" style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.2rem' }}>
                     <button
-                      onClick={() => setIsOrgExpanded(!isOrgExpanded)}
+                      onClick={() => toggleSubmenu(item.name)}
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         width: '100%',
-                        background: isAnySubActive ? 'var(--accent-primary-glow)' : 'transparent',
+                        background: isAnySubActive ? 'rgba(0, 174, 239, 0.08)' : isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
                         border: 'none',
                         cursor: 'pointer',
-                        padding: '0.7rem 0.85rem',
-                        color: isAnySubActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        padding: '0.65rem 0.85rem',
+                        color: isAnySubActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                         borderRadius: '10px',
                         fontSize: '0.85rem',
-                        fontWeight: 500,
+                        fontWeight: isAnySubActive ? 600 : 500,
                         transition: 'all 0.2s ease',
                         textAlign: 'left',
-                        outline: 'none',
-                        borderLeft: isAnySubActive ? '3px solid var(--accent-primary)' : 'none',
-                        paddingLeft: isAnySubActive ? 'calc(0.85rem - 3px)' : '0.85rem'
+                        outline: 'none'
                       }}
                       onMouseEnter={(e) => {
                         if (!isAnySubActive) {
-                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
                           e.currentTarget.style.color = 'var(--text-primary)';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isAnySubActive) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.backgroundColor = isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent';
                           e.currentTarget.style.color = 'var(--text-secondary)';
                         }
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <ShieldCheck size={20} />
-                        <span>{item.name}</span>
+                        <MainIcon size={19} style={{ color: isAnySubActive ? 'var(--accent-primary)' : 'inherit' }} />
+                        <span style={{ whiteSpace: 'nowrap', fontWeight: isAnySubActive ? 600 : 500 }}>{item.name}</span>
                       </div>
-                      {isOrgExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <div style={{
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isAnySubActive ? 'var(--accent-primary)' : 'var(--text-muted)'
+                      }}>
+                        <ChevronDown size={15} />
+                      </div>
                     </button>
                     
-                    {isOrgExpanded && (
+                    {isExpanded && (
                       <ul style={{ 
                         listStyle: 'none', 
                         display: 'flex', 
                         flexDirection: 'column', 
-                        gap: '0.25rem', 
-                        paddingLeft: '1.25rem', 
-                        borderLeft: '1px solid var(--border-color)', 
-                        marginLeft: '1.5rem', 
-                        marginTop: '0.25rem' 
+                        gap: '0.15rem', 
+                        paddingLeft: '0.5rem', 
+                        borderLeft: '2px solid rgba(0, 174, 239, 0.18)', 
+                        marginLeft: '1.1rem', 
+                        marginTop: '0.2rem',
+                        marginBottom: '0.3rem'
                       }}>
                         {item.submenu.map((subItem) => {
                           const SubIcon = subItem.icon;
                           const isSubActive = pathname.startsWith(subItem.path);
                           return (
-                            <li key={subItem.name} className={`menu-item ${isSubActive ? 'active' : ''}`}>
+                            <li key={subItem.name} className={`menu-item ${isSubActive ? 'active' : ''}`} style={{ listStyle: 'none' }}>
                               <Link 
                                 href={subItem.path} 
                                 onClick={onClose}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
+                                  gap: '0.5rem',
                                   width: '100%',
+                                  padding: '0.45rem 0.6rem',
+                                  borderRadius: '8px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: isSubActive ? 600 : 400,
+                                  color: isSubActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                  background: isSubActive ? 'rgba(0, 174, 239, 0.12)' : 'transparent',
+                                  whiteSpace: 'nowrap',
+                                  transition: 'all 0.18s ease',
+                                  textDecoration: 'none'
                                 }}
                               >
-                                <SubIcon size={18} />
-                                <span>{subItem.name}</span>
+                                <SubIcon size={15} style={{ color: isSubActive ? 'var(--accent-primary)' : 'var(--text-secondary)', flexShrink: 0 }} />
+                                <span style={{ whiteSpace: 'nowrap' }}>{subItem.name}</span>
                               </Link>
                             </li>
                           );

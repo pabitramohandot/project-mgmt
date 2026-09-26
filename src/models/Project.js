@@ -40,6 +40,32 @@ const TaskSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  timeLogs: [
+    new mongoose.Schema({
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      username: String,
+      duration: {
+        type: Number, // in minutes
+        required: true,
+      },
+      date: {
+        type: Date,
+        default: Date.now,
+      },
+      description: {
+        type: String,
+        default: '',
+      },
+    })
+  ],
+  totalTimeSpent: {
+    type: Number, // in minutes
+    default: 0,
+  },
 });
 
 const CredentialSchema = new mongoose.Schema({
@@ -325,7 +351,10 @@ const ProjectSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Project) {
-  delete mongoose.models.Project;
-}
-export default mongoose.model('Project', ProjectSchema);
+ProjectSchema.index({ companyId: 1, createdAt: -1 });
+ProjectSchema.index({ companyId: 1, status: 1 });
+ProjectSchema.index({ assignedEmployees: 1 });
+ProjectSchema.index({ client: 1 });
+
+export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);
+

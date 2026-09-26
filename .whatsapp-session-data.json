@@ -1,0 +1,130 @@
+{
+  "status": "disconnected",
+  "userProfile": null,
+  "chats": [
+    {
+      "id": "chat_1",
+      "name": "Sarah Jenkins (Project Client)",
+      "phone": "+1 (555) 234-5678",
+      "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+      "unreadCount": 0,
+      "online": true,
+      "lastMessage": "Thanks for sending over the project timeline! Looks great.",
+      "lastMessageTime": "10:42 AM",
+      "isGroup": false
+    },
+    {
+      "id": "chat_2",
+      "name": "Development Team Lead",
+      "phone": "+1 (555) 876-5432",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      "unreadCount": 0,
+      "online": true,
+      "lastMessage": "The API deployment has completed successfully on production.",
+      "lastMessageTime": "9:15 AM",
+      "isGroup": false
+    },
+    {
+      "id": "chat_3",
+      "name": "Marketing Campaign Group",
+      "phone": "Group (5 members)",
+      "avatar": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150",
+      "unreadCount": 5,
+      "online": false,
+      "lastMessage": "Alex: New design banners are ready for review.",
+      "lastMessageTime": "Yesterday",
+      "isGroup": true
+    },
+    {
+      "id": "chat_4",
+      "name": "Michael Chen (Finance)",
+      "phone": "+1 (555) 345-6789",
+      "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      "unreadCount": 0,
+      "online": false,
+      "lastMessage": "Invoice #INV-2026-08 has been approved for payment.",
+      "lastMessageTime": "Yesterday",
+      "isGroup": false
+    }
+  ],
+  "messages": {
+    "chat_1": [
+      {
+        "id": "m1",
+        "sender": "contact",
+        "text": "Hi team, do you have an update on our Q3 roadmap?",
+        "time": "10:30 AM",
+        "status": "read"
+      },
+      {
+        "id": "m2",
+        "sender": "me",
+        "text": "Hi Sarah! Yes, we have compiled the milestone estimates and sent the detailed draft.",
+        "time": "10:35 AM",
+        "status": "read"
+      },
+      {
+        "id": "m3",
+        "sender": "contact",
+        "text": "Thanks for sending over the project timeline! Looks great.",
+        "time": "10:42 AM",
+        "status": "delivered"
+      }
+    ],
+    "chat_2": [
+      {
+        "id": "m10",
+        "sender": "contact",
+        "text": "Good morning! Staging environment build is green.",
+        "time": "8:45 AM",
+        "status": "read"
+      },
+      {
+        "id": "m11",
+        "sender": "me",
+        "text": "Awesome! Let us push to main and trigger production deploy.",
+        "time": "9:00 AM",
+        "status": "read"
+      },
+      {
+        "id": "m12",
+        "sender": "contact",
+        "text": "The API deployment has completed successfully on production.",
+        "time": "9:15 AM",
+        "status": "read"
+      }
+    ],
+    "chat_3": [
+      {
+        "id": "m20",
+        "sender": "contact",
+        "text": "Welcome to the Q3 Marketing Campaign group!",
+        "time": "Yesterday",
+        "status": "read"
+      },
+      {
+        "id": "m21",
+        "sender": "contact",
+        "text": "Alex: New design banners are ready for review.",
+        "time": "Yesterday",
+        "status": "read"
+      }
+    ],
+    "chat_4": [
+      {
+        "id": "m30",
+        "sender": "me",
+        "text": "Hi Michael, please review invoice #INV-2026-08.",
+        "time": "Yesterday",
+        "status": "read"
+      },
+      {
+        "id": "m31",
+        "sender": "contact",
+        "text": "Invoice #INV-2026-08 has been approved for payment.",
+        "time": "Yesterday",
+        "status": "read"
+      }
+    ]
+  }
+}

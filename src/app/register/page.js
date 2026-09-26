@@ -38,8 +38,17 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, mobile, companyName, employees, source }),
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      let data = {};
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        console.error('Non-JSON server response:', text);
+        throw new Error(`Server response error (${res.status}). Please try again.`);
+      }
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || 'Failed to submit registration request');
       }
 

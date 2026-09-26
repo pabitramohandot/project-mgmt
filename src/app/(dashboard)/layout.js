@@ -27,11 +27,12 @@ export default function DashboardLayout({ children }) {
     if (!user) return true; // Let user data load first
     if (user.role === 'superadmin') return true;
 
-    // Block Employee category from direct URLs
+    // Block Employee category from direct URLs (allow /payroll for personal payslip viewing)
     if (user.category === 'Employee') {
       if (
         pathname.startsWith('/clients') ||
         pathname.startsWith('/invoices') ||
+        pathname.startsWith('/employees') ||
         pathname.startsWith('/settings/branding') ||
         pathname.startsWith('/settings/profile')
       ) {
@@ -41,7 +42,8 @@ export default function DashboardLayout({ children }) {
 
     const p = user.permissions || {};
     if (pathname.startsWith('/superadmin') && user.role !== 'superadmin') return false;
-    if (pathname.startsWith('/performance') && user.role !== 'company_admin' && user.role !== 'superadmin') return false;
+    // Allow standard users/employees to access their performance dashboard
+    if (pathname.startsWith('/performance') && user.role !== 'company_admin' && user.role !== 'superadmin' && user.role !== 'company_user') return false;
     if (pathname.startsWith('/ai-agents') && p.ai_agent === 'none') return false;
     if (pathname.startsWith('/clients') && p.clients === 'none') return false;
     if (pathname.startsWith('/invoices') && p.invoices === 'none') return false;

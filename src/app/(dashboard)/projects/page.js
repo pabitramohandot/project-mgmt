@@ -20,6 +20,7 @@ import {
 
 import SearchableSelect from '@/components/SearchableSelect';
 import { useNotification } from '@/components/NotificationProvider';
+import { formatCurrency as formatCurrencyUtil } from '@/lib/currency';
 
 const getOverallStatus = (proj) => {
   const activeTypes = proj.projectType || [];
@@ -91,6 +92,7 @@ export default function ProjectsPage() {
   };
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [companyCurrency, setCompanyCurrency] = useState('INR');
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -213,11 +215,12 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (isModalOpen) {
       fetchClients();
-      // Fetch company users for assignment
+      // Fetch company users for assignment and company currency
       fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
         if (data) {
           if (data.companyUsers) setCompanyUsers(data.companyUsers);
           if (data.uploadCode) setUploadCode(data.uploadCode);
+          if (data.company?.currency) setCompanyCurrency(data.company.currency);
         }
       }).catch(() => {});
     } else {
@@ -496,10 +499,7 @@ export default function ProjectsPage() {
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(value);
+    return formatCurrencyUtil(value, companyCurrency);
   };
 
   const handleWhatsAppShare = (project) => {

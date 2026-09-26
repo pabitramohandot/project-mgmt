@@ -103,8 +103,10 @@ const InvoiceSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Invoice) {
-  delete mongoose.models.Invoice;
-}
+InvoiceSchema.index({ companyId: 1, createdAt: -1 });
+InvoiceSchema.index({ companyId: 1, status: 1 });
+InvoiceSchema.index({ project: 1 });
+InvoiceSchema.index({ client: 1 });
 
-export default mongoose.model('Invoice', InvoiceSchema);
+export default mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema);
+

@@ -61,6 +61,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const [companyCurrency, setCompanyCurrency] = useState('INR');
 
   const fetchLimits = async () => {
     try {
@@ -70,6 +71,7 @@ export default function ClientsPage() {
         setRole(data.role);
         if (data.company?.clientLimit !== undefined) setClientLimit(data.company.clientLimit);
         if (data.clientCount !== undefined) setClientCount(data.clientCount);
+        if (data.company?.currency) setCompanyCurrency(data.company.currency);
       }
     } catch (err) {
       console.error('Failed to load user role/limits', err);
@@ -302,10 +304,9 @@ export default function ClientsPage() {
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(value);
+    const symbol = companyCurrency === 'INR' ? '₹' : companyCurrency === 'USD' ? '$' : companyCurrency === 'EUR' ? '€' : companyCurrency === 'GBP' ? '£' : `${companyCurrency} `;
+    const num = Number(value) || 0;
+    return `${symbol}${num.toLocaleString()}`;
   };
 
   return (

@@ -36,48 +36,6 @@ export async function GET(request) {
       ];
     }
 
-    const now = new Date();
-    // Background update category statuses to Pending if overdue
-    Project.updateMany(
-      {
-        companyId,
-        projectType: 'Development',
-        devEndDate: { $lt: now },
-        devStatus: { $nin: ['Completed', 'Pending'] }
-      },
-      { $set: { devStatus: 'Pending', status: 'Pending' } }
-    ).catch(err => console.error('Error auto-updating devStatus in GET:', err));
-
-    Project.updateMany(
-      {
-        companyId,
-        projectType: '360 Deg Digital Marketing',
-        marketingEndDate: { $lt: now },
-        marketingStatus: { $nin: ['Completed', 'Pending'] }
-      },
-      { $set: { marketingStatus: 'Pending', status: 'Pending' } }
-    ).catch(err => console.error('Error auto-updating marketingStatus in GET:', err));
-
-    Project.updateMany(
-      {
-        companyId,
-        projectType: 'Meta / Google Ads',
-        adsDate: { $lt: now },
-        adsStatus: { $nin: ['Completed', 'Pending'] }
-      },
-      { $set: { adsStatus: 'Pending', status: 'Pending' } }
-    ).catch(err => console.error('Error auto-updating adsStatus in GET:', err));
-
-    Project.updateMany(
-      {
-        companyId,
-        projectType: 'Design',
-        designEndDate: { $lt: now },
-        designStatus: { $nin: ['Completed', 'Pending'] }
-      },
-      { $set: { designStatus: 'Pending', status: 'Pending' } }
-    ).catch(err => console.error('Error auto-updating designStatus in GET:', err));
-
     const projects = await Project.find(query).populate('client').sort({ createdAt: -1 }).lean();
     
     // Map status dynamically checking for any overdue project categories

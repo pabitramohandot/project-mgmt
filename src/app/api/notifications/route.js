@@ -130,14 +130,15 @@ export async function GET(request) {
       };
     }
 
-    const notifications = await Notification.find(notificationQuery)
-      .populate('reminderId')
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+    const [notifications, user] = await Promise.all([
+      Notification.find(notificationQuery)
+        .populate('reminderId')
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      User.findById(session.userId).populate('customRole').lean()
+    ]);
 
-    // 3. Filter notifications based on target audience for the requesting user
-    const user = await User.findById(session.userId).populate('customRole').lean();
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

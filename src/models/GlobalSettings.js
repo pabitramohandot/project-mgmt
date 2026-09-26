@@ -35,8 +35,5 @@ const GlobalSettingsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-if (mongoose.models.GlobalSettings) {
-  delete mongoose.models.GlobalSettings;
-}
+export default mongoose.models.GlobalSettings || mongoose.model('GlobalSettings', GlobalSettingsSchema);
 
-export default mongoose.model('GlobalSettings', GlobalSettingsSchema);

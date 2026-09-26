@@ -43,8 +43,7 @@ const CredentialSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Credential) {
-  delete mongoose.models.Credential;
-}
+CredentialSchema.index({ companyId: 1, createdAt: -1 });
 
-export default mongoose.model('Credential', CredentialSchema);
+export default mongoose.models.Credential || mongoose.model('Credential', CredentialSchema);
+

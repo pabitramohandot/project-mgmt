@@ -40,8 +40,7 @@ const ChatSessionSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.ChatSession) {
-  delete mongoose.models.ChatSession;
-}
+ChatSessionSchema.index({ companyId: 1, userId: 1, updatedAt: -1 });
 
-export default mongoose.model('ChatSession', ChatSessionSchema);
+export default mongoose.models.ChatSession || mongoose.model('ChatSession', ChatSessionSchema);
+

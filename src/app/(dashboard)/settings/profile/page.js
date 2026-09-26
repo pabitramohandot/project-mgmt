@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode, Calendar as CalendarIcon, Link as LinkIcon, ChevronDown, ChevronUp, Bell } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Shield, CheckCircle2, Users, RefreshCw, Plus, X, Copy, ExternalLink, BarChart2, Palette, Layout, Sparkles, CreditCard, QrCode, Calendar as CalendarIcon, Link as LinkIcon, ChevronDown, ChevronUp, Bell, Clock, Trash2, Coffee } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function ProfileSettingsPage() {
@@ -37,6 +37,42 @@ export default function ProfileSettingsPage() {
   const [testingSmtp, setTestingSmtp] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
   const [playChime, setPlayChime] = useState(true);
+
+  // Time Table settings for Admin
+  const [timetable, setTimetable] = useState({
+    clockInTime: '09:00',
+    clockOutTime: '18:00',
+    halfDayThresholdHours: 4,
+    halfDayClockOutTime: '14:00',
+    breaks: [
+      { name: 'Lunch Break', startTime: '13:00', endTime: '14:00' }
+    ]
+  });
+
+  const handleAddBreak = () => {
+    setTimetable(prev => ({
+      ...prev,
+      breaks: [
+        ...prev.breaks,
+        { name: `Break ${prev.breaks.length + 1}`, startTime: '15:00', endTime: '15:15' }
+      ]
+    }));
+  };
+
+  const handleUpdateBreak = (index, field, value) => {
+    setTimetable(prev => {
+      const updatedBreaks = [...prev.breaks];
+      updatedBreaks[index] = { ...updatedBreaks[index], [field]: value };
+      return { ...prev, breaks: updatedBreaks };
+    });
+  };
+
+  const handleRemoveBreak = (index) => {
+    setTimetable(prev => ({
+      ...prev,
+      breaks: prev.breaks.filter((_, i) => i !== index)
+    }));
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -93,6 +129,7 @@ export default function ProfileSettingsPage() {
     brandingSecondaryColor: '#f26522',
     bankDetails: '',
     bankQrCode: '',
+    currency: 'INR',
   });
 
   const loadUserProfile = async (showLoadingSpinner = true) => {
@@ -128,7 +165,20 @@ export default function ProfileSettingsPage() {
           brandingSecondaryColor: data.company?.brandColors?.secondary || '#f26522',
           bankDetails: data.company?.bankDetails || '',
           bankQrCode: data.company?.bankQrCode || '',
+          currency: data.company?.currency || 'INR',
         });
+
+        if (data.company?.timetable) {
+          setTimetable({
+            clockInTime: data.company.timetable.clockInTime || '09:00',
+            clockOutTime: data.company.timetable.clockOutTime || '18:00',
+            halfDayThresholdHours: data.company.timetable.halfDayThresholdHours !== undefined ? data.company.timetable.halfDayThresholdHours : 4,
+            halfDayClockOutTime: data.company.timetable.halfDayClockOutTime || '14:00',
+            breaks: Array.isArray(data.company.timetable.breaks) && data.company.timetable.breaks.length > 0
+              ? data.company.timetable.breaks
+              : [{ name: 'Lunch Break', startTime: '13:00', endTime: '14:00' }]
+          });
+        }
 
         if (data.role === 'company_admin') {
           try {
@@ -189,6 +239,8 @@ export default function ProfileSettingsPage() {
         payload.brandingSecondaryColor = form.brandingSecondaryColor;
         payload.bankDetails = form.bankDetails;
         payload.bankQrCode = form.bankQrCode;
+        payload.currency = form.currency;
+        payload.timetable = timetable;
       }
 
       if (role === 'superadmin') {
@@ -429,12 +481,13 @@ export default function ProfileSettingsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('team')}
-              className={`tab-btn ${activeTab === 'team' ? 'active' : ''}`}
+              onClick={() => setActiveTab('timetable')}
+              className={`tab-btn ${activeTab === 'timetable' ? 'active' : ''}`}
             >
-              <Users size={16} />
-              <span>Team Members</span>
+              <Clock size={16} />
+              <span>Time Table</span>
             </button>
+
             {role === 'superadmin' && (
               <>
                 <button
@@ -659,6 +712,32 @@ export default function ProfileSettingsPage() {
                           />
                         </div>
                       </div>
+                    </div>
+
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '1.25rem 0 1rem 0' }}></div>
+                    
+                    <div className="form-group" style={{ width: '100%' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <CreditCard size={15} style={{ color: 'var(--accent-primary)' }} />
+                        Workspace Default Currency
+                      </label>
+                      <select
+                        className="form-select"
+                        style={{ width: '100%' }}
+                        value={form.currency || 'INR'}
+                        onChange={(e) => setForm(prev => ({ ...prev, currency: e.target.value }))}
+                      >
+                        <option value="INR">INR (₹) - Indian Rupee</option>
+                        <option value="USD">USD ($) - US Dollar</option>
+                        <option value="EUR">EUR (€) - Euro</option>
+                        <option value="GBP">GBP (£) - British Pound</option>
+                        <option value="AED">AED (AED) - UAE Dirham</option>
+                        <option value="CAD">CAD (C$) - Canadian Dollar</option>
+                        <option value="AUD">AUD (A$) - Australian Dollar</option>
+                      </select>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.35rem' }}>
+                        Sets the primary currency used across Invoices, Payroll, Employee Salaries, and HR Dashboards site-wide.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1220,123 +1299,7 @@ export default function ProfileSettingsPage() {
             )}
 
             {/* TAB 3: Team Members */}
-            {activeTab === 'team' && (role === 'company_admin' || role === 'superadmin') && (
-              <div className="animate-fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <h2 style={{ fontSize: '1.2rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', margin: 0 }}>
-                    <Users size={18} style={{ color: 'var(--accent-primary)' }} />
-                    Team Members ({companyUsers.length})
-                  </h2>
-                  {role === 'company_admin' && (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', height: 'auto', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                      onClick={() => {
-                        if (employeeLimit > 0 && employeeCount >= employeeLimit) {
-                          showToast(`Employee creation limit reached (${employeeLimit}).`, 'error');
-                        } else {
-                          setIsCreateModalOpen(true);
-                        }
-                      }}
-                    >
-                      <Plus size={14} />
-                      <span>Create Employee</span>
-                    </button>
-                  )}
-                </div>
-                
-                {role === 'company_admin' && employeeLimit > 0 && (
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    padding: '0.25rem 0.65rem',
-                    background: employeeCount >= employeeLimit ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 174, 239, 0.06)',
-                    border: `1px solid ${employeeCount >= employeeLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 174, 239, 0.15)'}`,
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: employeeCount >= employeeLimit ? '#ef4444' : 'var(--accent-primary)',
-                    marginBottom: '1rem'
-                  }}>
-                    <Users size={12} />
-                    <span>Limit: {employeeCount} / {employeeLimit} Employees</span>
-                    {employeeCount >= employeeLimit && <span style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem', borderRadius: '4px', background: '#ef4444', color: '#fff', marginLeft: '4px' }}>MAX REACHED</span>}
-                  </div>
-                )}
 
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.75rem', lineHeight: '1.6' }}>
-                  View the administrative staff and developer accounts linked to <strong style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{companyName}</strong>.
-                </p>
-
-                {role === 'company_admin' && (
-                  <div style={{ 
-                    background: 'rgba(242, 101, 34, 0.04)', 
-                    border: '1px solid rgba(242, 101, 34, 0.15)', 
-                    borderRadius: '12px', 
-                    padding: '1rem', 
-                    marginBottom: '1.5rem', 
-                    fontSize: '0.82rem',
-                    lineHeight: '1.5',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    <strong style={{ color: 'var(--accent-secondary)', display: 'block', marginBottom: '4px' }}>💡 Workspace Management:</strong>
-                    As a Company Admin, you can view your staff directory here. Credentials and access control can be managed by contacting the system Super Admin.
-                  </div>
-                )}
-
-                <div className="team-list">
-                  {companyUsers.map((u) => {
-                    const initials = u.username ? u.username.slice(0, 2).toUpperCase() : 'U';
-                    const userBadge = getRoleBadge(u.role);
-                    const gradient = getRoleGradient(u.role);
-                    return (
-                      <div key={u.id} className="team-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: gradient,
-                            color: '#fff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                          }}>
-                            {initials}
-                          </div>
-                          <div>
-                            <h4 style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{u.username}</h4>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-                              {u.email && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Mail size={12} style={{ opacity: 0.7 }} />
-                                  <span>{u.email}</span>
-                                </span>
-                              )}
-                              {u.whatsapp && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Phone size={12} style={{ opacity: 0.7 }} />
-                                  <span>{u.whatsapp}</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="badge" style={{ background: userBadge.bg, color: userBadge.color, fontSize: '0.7rem' }}>
-                          {userBadge.text}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* TAB 4: Platform Access Code */}
             {activeTab === 'platform_code' && role === 'superadmin' && (
@@ -1471,6 +1434,224 @@ export default function ProfileSettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB 7: Work Time Table & Shift Management */}
+            {activeTab === 'timetable' && (role === 'company_admin' || role === 'superadmin') && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.2rem', marginBottom: '0.4rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                    <Clock size={18} style={{ color: 'var(--accent-primary)' }} />
+                    Work Time Table & Shift Settings
+                  </h2>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                    Manage standard clock-in times, log-out times, multiple break schedules, and half-day thresholds for your organization.
+                  </p>
+                </div>
+
+                {/* Card 1: Daily Working Shift Hours */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '14px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem'
+                }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Clock size={16} style={{ color: '#10b981' }} />
+                    Daily Work Shift Timings
+                  </h3>
+
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Standard Clock In Time</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={timetable.clockInTime}
+                        onChange={(e) => setTimetable(prev => ({ ...prev, clockInTime: e.target.value }))}
+                        required
+                      />
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        Expected daily arrival time for employees.
+                      </p>
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Standard Log Out / Clock Out Time</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={timetable.clockOutTime}
+                        onChange={(e) => setTimetable(prev => ({ ...prev, clockOutTime: e.target.value }))}
+                        required
+                      />
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        Official shift completion time.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: Multiple Break Schedules */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '14px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Coffee size={16} style={{ color: '#f59e0b' }} />
+                        Break Schedule (Multiple Breaks)
+                      </h3>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                        Add multiple scheduled breaks throughout the workday (e.g. Lunch break, Tea break).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleAddBreak}
+                      style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '8px' }}
+                    >
+                      <Plus size={14} />
+                      <span>Add Break Time</span>
+                    </button>
+                  </div>
+
+                  {timetable.breaks.length === 0 ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '10px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      No break times added yet. Click &quot;Add Break Time&quot; above to configure scheduled breaks.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      {timetable.breaks.map((b, idx) => (
+                        <div key={idx} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '2fr 1fr 1fr auto',
+                          gap: '0.85rem',
+                          alignItems: 'center',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '10px',
+                          padding: '0.85rem 1rem'
+                        }}>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Break Name</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="e.g. Lunch Break"
+                              value={b.name}
+                              onChange={(e) => handleUpdateBreak(idx, 'name', e.target.value)}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Start Time</label>
+                            <input
+                              type="time"
+                              className="form-input"
+                              value={b.startTime}
+                              onChange={(e) => handleUpdateBreak(idx, 'startTime', e.target.value)}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>End Time</label>
+                            <input
+                              type="time"
+                              className="form-input"
+                              value={b.endTime}
+                              onChange={(e) => handleUpdateBreak(idx, 'endTime', e.target.value)}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', paddingTop: '1.3rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBreak(idx)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title="Remove Break"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Card 3: Half Day Rules */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '14px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem'
+                }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Shield size={16} style={{ color: 'var(--accent-secondary)' }} />
+                    Half-Day Rules & Thresholds
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Define rules when an employee clocking record should automatically be classified as a Half-day.
+                  </p>
+
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Minimum Work Hours Threshold</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        max="12"
+                        className="form-input"
+                        value={timetable.halfDayThresholdHours}
+                        onChange={(e) => setTimetable(prev => ({ ...prev, halfDayThresholdHours: e.target.value }))}
+                      />
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        If total work time is less than this (e.g. 4.0 hrs), status automatically becomes Half-day.
+                      </p>
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Half-Day Cutoff Log Out Time</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={timetable.halfDayClockOutTime}
+                        onChange={(e) => setTimetable(prev => ({ ...prev, halfDayClockOutTime: e.target.value }))}
+                      />
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        Clocking out before this time (e.g. 14:00) will record a Half-day.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

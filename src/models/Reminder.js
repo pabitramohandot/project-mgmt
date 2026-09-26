@@ -83,8 +83,8 @@ const ReminderSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Reminder) {
-  delete mongoose.models.Reminder;
-}
+ReminderSchema.index({ companyId: 1, isCompleted: 1 });
+ReminderSchema.index({ createdBy: 1, isCompleted: 1 });
 
-export default mongoose.model('Reminder', ReminderSchema);
+export default mongoose.models.Reminder || mongoose.model('Reminder', ReminderSchema);
+

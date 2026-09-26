@@ -34,6 +34,7 @@ function InvoicesContent() {
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('project'); // 'project' or 'client'
   const [role, setRole] = useState('');
+  const [companyCurrency, setCompanyCurrency] = useState('INR');
 
   useEffect(() => {
     async function getRole() {
@@ -42,6 +43,9 @@ function InvoicesContent() {
         if (res.ok) {
           const data = await res.json();
           setRole(data.role);
+          if (data.company?.currency) {
+            setCompanyCurrency(data.company.currency);
+          }
         }
       } catch (err) {
         console.error('Failed to get user role:', err);
@@ -296,10 +300,7 @@ function InvoicesContent() {
   const grandTotal = subtotal + taxAmount - discountAmount;
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(value);
+    return `${companyCurrency} ${(Number(value) || 0).toLocaleString()}`;
   };
 
   const filteredInvoices = invoices.filter(inv => {

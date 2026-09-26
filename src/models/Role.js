@@ -20,6 +20,7 @@ const RoleSchema = new mongoose.Schema(
     permissions: {
       // Global Sidebar Modules
       ai_agent: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
+      crm: { type: String, enum: ['none', 'read', 'write'], default: 'write' },
       clients: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       invoices: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
       credentials: { type: String, enum: ['none', 'read', 'write'], default: 'none' },
@@ -45,8 +46,5 @@ const RoleSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Role) {
-  delete mongoose.models.Role;
-}
+export default mongoose.models.Role || mongoose.model('Role', RoleSchema);
 
-export default mongoose.model('Role', RoleSchema);

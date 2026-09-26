@@ -83,6 +83,10 @@ export default function PendingTasksPage() {
   };
 
   const filteredTasks = tasks.filter(task => {
+    // If user is employee, strictly show only their own pending tasks and calendar posts
+    if (userCategory === 'Employee' && task.type !== 'project_pending' && task.type !== 'calendar_pending') {
+      return false;
+    }
     if (filter === 'all') return true;
     if (filter === 'invoice_draft') return task.type === 'invoice_draft';
     if (filter === 'invoice_overdue') return task.type === 'invoice_overdue';
@@ -98,7 +102,7 @@ export default function PendingTasksPage() {
     return new Date(a.date) - new Date(b.date);
   });
 
-  const getTaskStyles = (type) => {
+  const getTaskStyles = (type, task = {}) => {
     switch (type) {
       case 'hosting_expiry':
         return {
@@ -115,11 +119,12 @@ export default function PendingTasksPage() {
           badgeText: 'DOMAIN EXPIRY'
         };
       case 'project_pending':
+        const isOverdue = task.isOverdue !== false && (task.isOverdue || task.title?.toLowerCase().includes('overdue'));
         return {
           icon: Briefcase,
-          color: '#f59e0b',
-          bgLight: 'rgba(245, 158, 11, 0.1)',
-          badgeText: 'PROJECT OVERDUE'
+          color: isOverdue ? '#f59e0b' : 'var(--accent-primary)',
+          bgLight: isOverdue ? 'rgba(245, 158, 11, 0.1)' : 'rgba(0, 174, 239, 0.1)',
+          badgeText: isOverdue ? 'PROJECT OVERDUE' : 'TASK PENDING'
         };
       case 'invoice_draft':
         return {
@@ -168,7 +173,7 @@ export default function PendingTasksPage() {
             className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            All ({tasks.length})
+            All ({userCategory === 'Employee' ? tasks.filter(t => t.type === 'project_pending' || t.type === 'calendar_pending').length : tasks.length})
           </button>
           {userCategory !== 'Employee' && (
             <>
@@ -207,7 +212,7 @@ export default function PendingTasksPage() {
             className={`btn ${filter === 'project_pending' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            Project Overdues ({tasks.filter(t => t.type === 'project_pending').length})
+            {userCategory === 'Employee' ? 'My Tasks' : 'Project Overdues'} ({tasks.filter(t => t.type === 'project_pending').length})
           </button>
           <button 
             onClick={() => setFilter('calendar_pending')} 
@@ -251,8 +256,14 @@ export default function PendingTasksPage() {
             </thead>
             <tbody>
               {filteredTasks.map((task) => {
-                const styles = getTaskStyles(task.type);
+                const styles = getTaskStyles(task.type, task);
                 const TaskIcon = styles.icon;
+                const resolveTargetUrl =
+                  task.link && task.link.startsWith('/tasks')
+                    ? task.link
+                    : task.type === 'project_pending'
+                    ? `/tasks?search=${encodeURIComponent(task.taskName || (task.title || '').replace(/^(Overdue Task:\s*|Pending Task:\s*)/i, '').split('(')[0].trim())}`
+                    : (userCategory === 'Employee' ? '/tasks' : (task.link || '/tasks'));
 
                 return (
                   <tr key={`${task.type}-${task.id}`}>
@@ -309,7 +320,7 @@ export default function PendingTasksPage() {
                       {new Date(task.date).toLocaleDateString('en-IN')}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <Link href={task.link} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                      <Link href={resolveTargetUrl} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                         <span>Resolve Action</span>
                         <ArrowRight size={12} />
                       </Link>

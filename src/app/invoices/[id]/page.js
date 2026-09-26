@@ -238,10 +238,8 @@ export default function InvoiceDetailPage() {
   }
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(value);
+    const code = invoice?.companyId?.currency || 'INR';
+    return `${code} ${(Number(value) || 0).toLocaleString()}`;
   };
 
   const taxAmount = invoice.subtotal * (invoice.taxRate / 100);

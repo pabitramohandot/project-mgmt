@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Users, Building, X, Clock, Trash2, Search } from 'lucide-react';
+import { Plus, Users, Building, X, Clock, Trash2, Search, KeyRound } from 'lucide-react';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function UsersPage() {
@@ -26,6 +26,11 @@ export default function UsersPage() {
     companyId: '',
     customRole: ''
   });
+
+  // Reset Password modal state
+  const [resetModalUser, setResetModalUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -99,6 +104,37 @@ export default function UsersPage() {
     });
   };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.trim().length < 4) {
+      showToast('Password must be at least 4 characters long', 'error');
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      const res = await fetch(`/api/superadmin/users/${resetModalUser._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
+      });
+
+      if (res.ok) {
+        showToast(`Password for ${resetModalUser.username} updated successfully`, 'success');
+        setResetModalUser(null);
+        setNewPassword('');
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to reset password', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error resetting user password', 'error');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!form.username || !form.password || !form.role) {
@@ -140,8 +176,6 @@ export default function UsersPage() {
   const filteredUsers = users.filter((u) => {
     // Role Filter
     if (roleFilter !== 'all' && u.role !== roleFilter) return false;
-
-
 
     // Search Query (username, company, role)
     if (searchQuery.trim() !== '') {
@@ -194,7 +228,7 @@ export default function UsersPage() {
           </div>
 
           {/* Role Filter */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'nowrap', alignItems: 'center' }}>
             <select
               className="form-select"
               style={{ 
@@ -291,19 +325,34 @@ export default function UsersPage() {
                         </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {currentUser && currentUser.userId !== u._id ? (
+                        <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
                           <button
-                            onClick={() => handleDeleteUser(u._id, u.username)}
+                            onClick={() => {
+                              setResetModalUser(u);
+                              setNewPassword('');
+                            }}
                             className="btn btn-secondary"
-                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px', color: 'var(--status-overdue)' }}
-                            title="Delete User"
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px', color: 'var(--accent-primary)' }}
+                            title="Reset Password"
                           >
-                            <Trash2 size={12} />
-                            <span>Delete</span>
+                            <KeyRound size={12} />
+                            <span>Reset Password</span>
                           </button>
-                        ) : (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Active Session</span>
-                        )}
+
+                          {currentUser && currentUser.userId !== u._id ? (
+                            <button
+                              onClick={() => handleDeleteUser(u._id, u.username)}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', gap: '4px', color: 'var(--status-overdue)' }}
+                              title="Delete User"
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Active Session</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -526,6 +575,73 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* Reset Password Modal */}
+      {resetModalUser && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <KeyRound size={20} style={{ color: 'var(--accent-primary)' }} />
+                <h2 style={{ fontSize: '1.2rem' }}>Reset User Password</h2>
+              </div>
+              <button 
+                onClick={() => {
+                  setResetModalUser(null);
+                  setNewPassword('');
+                }} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              Enter a new password for account <strong style={{ color: 'var(--text-primary)' }}>{resetModalUser.username}</strong>.
+            </p>
+
+            <form onSubmit={handleResetPassword}>
+              <div className="form-group">
+                <label className="form-label">New Password *</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Enter new password (min. 4 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={4}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: '40px' }}
+                  onClick={() => {
+                    setResetModalUser(null);
+                    setNewPassword('');
+                  }}
+                  disabled={resettingPassword}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 1, height: '40px' }}
+                  disabled={resettingPassword}
+                >
+                  {resettingPassword ? 'Updating...' : 'Save New Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+

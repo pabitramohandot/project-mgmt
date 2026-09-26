@@ -3036,10 +3036,13 @@ export default function ProjectDetailPage() {
   })();
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-    }).format(value);
+    const code = project?.companyId?.currency || "INR";
+    const num = Number(value) || 0;
+    if (code === 'INR') return `₹${num.toLocaleString()}`;
+    if (code === 'USD') return `$${num.toLocaleString()}`;
+    if (code === 'EUR') return `€${num.toLocaleString()}`;
+    if (code === 'GBP') return `£${num.toLocaleString()}`;
+    return `${code} ${num.toLocaleString()}`;
   };
 
   const allowedTabs = tabs.filter((tab) => {
@@ -8578,9 +8581,18 @@ export default function ProjectDetailPage() {
                         marginTop: "0.5rem",
                         fontSize: "0.75rem",
                         color: "var(--text-muted)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
                       }}
                     >
-                      {completedTasks} of {totalTasks} items completed
+                      <span>{completedTasks} of {totalTasks} items completed</span>
+                      <span style={{ fontWeight: 700, color: "var(--accent-primary)", fontSize: "0.8rem" }}>
+                        Total Time Logged: {(() => {
+                          const totalMins = (employeeFilteredTasks || []).reduce((acc, t) => acc + (t.totalTimeSpent || 0), 0);
+                          return `${Math.floor(totalMins / 60)}h ${totalMins % 60}m`;
+                        })()}
+                      </span>
                     </div>
                     <div
                       className="table-container"
@@ -8615,6 +8627,7 @@ export default function ProjectDetailPage() {
                               <th>Due Date</th>
                               <th>Priority</th>
                               <th>Status</th>
+                              <th>Logged Time</th>
                               <th
                                 style={{ width: "60px", textAlign: "center" }}
                               >
@@ -8979,6 +8992,11 @@ export default function ProjectDetailPage() {
                                             Completed
                                           </option>
                                         </select>
+                                      </td>
+                                      <td style={{ verticalAlign: "middle" }}>
+                                        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                                          {task.totalTimeSpent ? `${Math.floor(task.totalTimeSpent / 60)}h ${task.totalTimeSpent % 60}m` : "0m"}
+                                        </span>
                                       </td>
                                       <td
                                         style={{

@@ -21,19 +21,25 @@ export async function GET(request) {
     }
 
     await dbConnect();
-    await User.findByIdAndUpdate(payload.userId, {
-      $set: {
-        isOnline: true,
-        lastActive: new Date()
-      }
-    });
+
+    const user = await User.findById(payload.userId).populate('customRole').lean();
+    if (!user) {
+      return NextResponse.json({ loggedIn: false });
+    }
+
+    // Throttle database lastActive updates to max once every 60 seconds
+    const now = new Date();
+    if (!user.lastActive || (now.getTime() - new Date(user.lastActive).getTime() > 60000)) {
+      User.findByIdAndUpdate(payload.userId, {
+        $set: { isOnline: true, lastActive: now }
+      }).catch(err => console.error('Throttled active update error:', err));
+    }
 
     if (payload.loginHistoryId) {
       try {
         const LoginHistory = (await import('@/models/LoginHistory')).default;
         const loginRecord = await LoginHistory.findById(payload.loginHistoryId);
         if (loginRecord && !loginRecord.logoutTime) {
-          const now = new Date();
           loginRecord.duration = Math.round((now.getTime() - loginRecord.loginTime.getTime()) / 1000);
           await loginRecord.save();
         }
@@ -42,40 +48,42 @@ export async function GET(request) {
       }
     }
 
-    const user = await User.findById(payload.userId).populate('customRole').lean();
-    if (!user) {
-      return NextResponse.json({ loggedIn: false });
-    }
-
-    const permissions = await getPermissionsForUser(user);
-    const category = await getCategoryForUser(user);
+    const [permissions, category] = await Promise.all([
+      getPermissionsForUser(user),
+      getCategoryForUser(user)
+    ]);
 
     let company = null;
     let companyUsers = [];
     let projectCount = 0;
     let clientCount = 0;
     let employeeCount = 0;
+    let globalSettings = null;
 
     if (user.companyId) {
-      company = await Company.findById(user.companyId).lean();
+      const [companyRes, companyUsersRes, projCountRes, clientCountRes, settingsRes] = await Promise.all([
+        Company.findById(user.companyId).lean(),
+        User.find({ companyId: user.companyId }).select("username role email whatsapp createdAt").sort({ username: 1 }).lean(),
+        Project.countDocuments({ companyId: user.companyId }),
+        Client.countDocuments({ companyId: user.companyId }),
+        GlobalSettings.findOne({ key: "platform" }).lean()
+      ]);
+
+      company = companyRes;
       if (company && company.isActive === false && user.role !== "superadmin") {
         const response = NextResponse.json({ error: "Company suspended", suspended: true }, { status: 403 });
         response.cookies.delete("admin_token");
         return response;
       }
-      // Allow all company members to fetch list of teammates to support task assignment
-      companyUsers = await User.find({ companyId: user.companyId })
-        .select("username role email whatsapp createdAt")
-        .sort({ username: 1 })
-        .lean();
-        
-      projectCount = await Project.countDocuments({ companyId: user.companyId });
-      clientCount = await Client.countDocuments({ companyId: user.companyId });
+      companyUsers = companyUsersRes;
+      projectCount = projCountRes;
+      clientCount = clientCountRes;
       employeeCount = companyUsers.length;
+      globalSettings = settingsRes;
+    } else {
+      globalSettings = await GlobalSettings.findOne({ key: "platform" }).lean();
     }
 
-    // Fetch global platform settings (like uploadCode)
-    const globalSettings = await GlobalSettings.findOne({ key: "platform" }).lean();
     const uploadCode = globalSettings?.uploadCode || "ABC012";
 
     return NextResponse.json({
@@ -99,6 +107,7 @@ export async function GET(request) {
             slug: company.slug,
             logo: company.logo,
             brandColors: company.brandColors,
+            currency: company.currency || 'INR',
             projectLimit: company.projectLimit || 0,
             clientLimit: company.clientLimit || 0,
             employeeLimit: company.employeeLimit || 0,
@@ -112,6 +121,15 @@ export async function GET(request) {
             },
             bankDetails: company.bankDetails || "",
             bankQrCode: company.bankQrCode || "",
+            timetable: company.timetable || {
+              clockInTime: '09:00',
+              clockOutTime: '18:00',
+              halfDayThresholdHours: 4,
+              halfDayClockOutTime: '14:00',
+              breaks: [
+                { name: 'Lunch Break', startTime: '13:00', endTime: '14:00' }
+              ]
+            },
           }
         : null,
       companyUsers: companyUsers
@@ -166,7 +184,9 @@ export async function PUT(request) {
       brandingPrimaryColor,
       brandingSecondaryColor,
       bankDetails,
-      bankQrCode
+      bankQrCode,
+      timetable,
+      currency
     } = data;
 
     if (email !== undefined) user.email = email.trim();
@@ -236,6 +256,22 @@ export async function PUT(request) {
         }
         if (bankQrCode !== undefined) {
           company.bankQrCode = bankQrCode.trim();
+        }
+        if (currency !== undefined && currency.trim()) {
+          company.currency = currency.trim();
+        }
+        if (timetable !== undefined && typeof timetable === 'object') {
+          company.timetable = {
+            clockInTime: timetable.clockInTime || '09:00',
+            clockOutTime: timetable.clockOutTime || '18:00',
+            halfDayThresholdHours: timetable.halfDayThresholdHours !== undefined ? Number(timetable.halfDayThresholdHours) : 4,
+            halfDayClockOutTime: timetable.halfDayClockOutTime || '14:00',
+            breaks: Array.isArray(timetable.breaks) ? timetable.breaks.map(b => ({
+              name: b.name || 'Break',
+              startTime: b.startTime || '13:00',
+              endTime: b.endTime || '14:00',
+            })) : []
+          };
         }
         await company.save();
       }

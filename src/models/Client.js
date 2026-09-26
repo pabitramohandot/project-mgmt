@@ -45,8 +45,9 @@ const ClientSchema = new mongoose.Schema(
   }
 );
 
-if (mongoose.models.Client) {
-  delete mongoose.models.Client;
-}
+ClientSchema.index({ companyId: 1, createdAt: -1 });
+ClientSchema.index({ companyId: 1, email: 1 });
+ClientSchema.index({ companyId: 1, status: 1 });
 
-export default mongoose.model('Client', ClientSchema);
+export default mongoose.models.Client || mongoose.model('Client', ClientSchema);
+

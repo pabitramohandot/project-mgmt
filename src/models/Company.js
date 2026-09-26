@@ -104,14 +104,44 @@ const CompanySchema = new mongoose.Schema(
       type: Number,
       default: 0, // 0 = unlimited
     },
+    timetable: {
+      clockInTime: {
+        type: String,
+        default: '09:00',
+        trim: true,
+      },
+      clockOutTime: {
+        type: String,
+        default: '18:00',
+        trim: true,
+      },
+      halfDayThresholdHours: {
+        type: Number,
+        default: 4,
+      },
+      halfDayClockOutTime: {
+        type: String,
+        default: '14:00',
+        trim: true,
+      },
+      breaks: [
+        {
+          name: { type: String, default: 'Lunch Break', trim: true },
+          startTime: { type: String, default: '13:00', trim: true },
+          endTime: { type: String, default: '14:00', trim: true },
+        },
+      ],
+    },
+    currency: {
+      type: String,
+      default: 'INR',
+      trim: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-if (mongoose.models.Company) {
-  delete mongoose.models.Company;
-}
+export default mongoose.models.Company || mongoose.model('Company', CompanySchema);
 
-export default mongoose.model('Company', CompanySchema);

@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Megaphone, Search, Check, Send, Sparkles, Mail, Eye, RefreshCw, X, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
+import { createPortal } from 'react-dom';
+import { Megaphone, Search, Check, Send, Sparkles, Mail, Eye, RefreshCw, X, MessageSquare, ShieldAlert } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useNotification } from '@/components/NotificationProvider';
 
 export default function AnnouncementsPage() {
   const { showToast } = useNotification();
   const [companyName, setCompanyName] = useState('Workspace');
+  const [mounted, setMounted] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   
   // Recipients states
   const [clients, setClients] = useState([]);
@@ -46,7 +50,23 @@ export default function AnnouncementsPage() {
   };
 
   useEffect(() => {
-    fetchClients();
+    setMounted(true);
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.category === 'Employee' && data.role !== 'company_admin' && data.role !== 'superadmin') {
+            setAccessDenied(true);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to check auth:', e);
+      }
+      fetchClients();
+    }
+    checkAuth();
     if (typeof window !== 'undefined') {
       const savedName = localStorage.getItem('company_name');
       if (savedName) setCompanyName(savedName);
@@ -178,6 +198,21 @@ export default function AnnouncementsPage() {
     : (recipientType === 'selected' && selectedClients.length > 0 ? clients.find(c => c._id === selectedClients[0]) : null);
 
   const previewName = samplePreviewClient ? samplePreviewClient.name : 'Client Name';
+
+  if (accessDenied) {
+    return (
+      <div className="card animate-fade-in" style={{ padding: '3.5rem 2rem', textAlign: 'center', maxWidth: '560px', margin: '3rem auto' }}>
+        <ShieldAlert size={56} style={{ color: '#ef4444', margin: '0 auto 1rem' }} />
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Access Restricted</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '0.5rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+          Broadcast announcements are restricted to Management & Admin roles. Please use your Employee Workspace dashboard for your daily assignments.
+        </p>
+        <Link href="/" className="btn btn-primary" style={{ padding: '0.6rem 1.4rem', borderRadius: '8px', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>Return to My Workspace</span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -475,8 +510,8 @@ export default function AnnouncementsPage() {
       </div>
 
       {/* WhatsApp Dispatcher Queue Assistant Modal */}
-      {isQueueOpen && (
-        <div className="modal-overlay">
+      {mounted && typeof document !== 'undefined' && document.body && isQueueOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setIsQueueOpen(false)}>
           <div className="modal-content animate-fade-in" style={{ maxWidth: '640px', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -570,7 +605,8 @@ export default function AnnouncementsPage() {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
